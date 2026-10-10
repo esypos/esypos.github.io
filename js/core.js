@@ -128,8 +128,8 @@
   const todayKey = () => dkey(new Date());
   const addDays = (key, n) => { const [y, m, d] = key.split('-').map(Number); const t = new Date(y, m - 1, d + n); return dkey(t); };
   const monthStart = () => { const t = new Date(); return t.getFullYear() + '-' + z2(t.getMonth() + 1) + '-01'; };
-  const fmtDate = iso => new Date(iso).toLocaleDateString('bn-BD', { day: 'numeric', month: 'short', year: 'numeric' });
-  const fmtTime = iso => new Date(iso).toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' });
+  const fmtDate = iso => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const fmtTime = iso => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
   const fmtDT = iso => fmtDate(iso) + ' · ' + fmtTime(iso);
   const invLabel = s => (DB.settings.invPrefix || '') + String(s.no || 0).padStart(4, '0');
 

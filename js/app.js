@@ -23,7 +23,11 @@
       if (!Views[v]) v = 'pos';
       Modal.closeAll(); App.closeDrawers(); App.view = v; document.body.dataset.view = v;
       document.querySelectorAll('.nav-link[data-v]').forEach(b => b.classList.toggle('active', b.dataset.v === v));
-      Views[v].render(); window.scrollTo(0, 0);
+      try {
+        const viewEl = document.getElementById('view');
+        if (viewEl && Views[v] && typeof Views[v].render === 'function') Views[v].render();
+      } catch (err) { console.error('EsyPOS view render', v, err); }
+      window.scrollTo(0, 0);
     },
     refresh() { Views[App.view] && Views[App.view].render(); },
     toggleNav() { const d = $('mobile-nav'); const o = d.classList.contains('open'); App.closeDrawers(); if (!o) { d.classList.add('open'); $('scrim').classList.remove('hidden'); } syncLock(); },

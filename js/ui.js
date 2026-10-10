@@ -26,7 +26,8 @@
         if (kind === 'click') { tone(1568, 0, 0.14, 0.045); tone(2349, 0.03, 0.12, 0.022); }
         else if (kind === 'success') [1047, 1319, 1568, 2093].forEach((f, i) => tone(f, i * 0.08, 0.28, 0.05));
         else if (kind === 'warn') { tone(659, 0, 0.18, 0.05); tone(523, 0.12, 0.22, 0.05); }
-        else if (kind === 'beep') tone(1800, 0, 0.12, 0.08);
+        else if (kind === 'beep' || kind === 'ok') tone(1800, 0, 0.12, 0.08);
+        else if (kind === 'err') { tone(400, 0, 0.15, 0.06); tone(320, 0.1, 0.18, 0.06); }
       } catch (e) {}
     }
     return { play, isEnabled: () => enabled, setEnabled(v) { enabled = !!v; try { localStorage.setItem('esypos_sound', enabled ? '1' : '0'); } catch (_) {} if (enabled) play('click'); } };

@@ -311,7 +311,7 @@
     if ($('welcome')) return;
     const restore = mode === 'restore';
     const el = document.createElement('div'); el.id = 'welcome'; el.className = 'welcome';
-    el.innerHTML = `<div class="w-card"><div class="w-logo"><i class="fas fa-cash-register"></i></div>
+    el.innerHTML = `<div class="w-card"><div class="w-logo"><img class="logo-img" src="icons/icon-192.png" alt="EsyPOS" draggable="false"></div>
       <h2>${restore ? 'Restore data' : 'Welcome to EsyPOS'}</h2>
       <p>${restore ? 'Your Google account (' + esc(get(KEY.email)) + ') is connected, but this device has no data. Restore all from cloud.' : 'Sign in with Google — even if browser data is cleared, signing in again restores everything.'}</p>
       <ul class="w-list"><li><i class="fas fa-cloud-arrow-up"></i> Auto cloud backup</li><li><i class="fas fa-shield-halved"></i> Data only on your Drive</li><li><i class="fas fa-mobile-screen-button"></i> Same data on any device</li></ul>

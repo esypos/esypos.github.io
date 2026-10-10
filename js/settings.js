@@ -36,7 +36,7 @@
           const code = String(codes[0].rawValue || '').trim(); if (!code) return;
           const now = Date.now();
           if (code === this.last && now - this.lastT < 1800) return;
-          this.last = code; this.lastT = now; Sound.play('beep'); if (navigator.vibrate) navigator.vibrate(40);
+          this.last = code; this.lastT = now; window.Sound && window.Sound.play && window.Sound.play('beep'); if (navigator.vibrate) navigator.vibrate(40);
           const keep = cb(code);
           if (!o.continuous && keep !== false) this.close();
         } catch (_) {} finally { this.busy = false; }
@@ -74,7 +74,7 @@
     show(done) {
       if (this.el) return; let pin = '';
       const el = document.createElement('div'); el.className = 'lock';
-      el.innerHTML = `<div class="logo" style="width:64px;height:64px;font-size:28px;background:rgba(255,255,255,.2)"><i class="fas fa-lock"></i></div><h2>${esc(DB.settings.shopName)}</h2><p>Unlock with PIN</p><div class="dots" id="lk-dots"><i></i><i></i><i></i><i></i></div>
+      el.innerHTML = `<div class="logo" style="width:72px;height:72px"><img class="logo-img" src="icons/icon-192.png" alt="EsyPOS" draggable="false"></div><h2>${esc(DB.settings.shopName)}</h2><p>Unlock with PIN</p><div class="dots" id="lk-dots"><i></i><i></i><i></i><i></i></div>
         <div class="keypad">${[1, 2, 3, 4, 5, 6, 7, 8, 9, '', 0, '⌫'].map(k => k === '' ? '<span></span>' : `<button type="button" data-k="${k}">${k}</button>`).join('')}</div>
         <button type="button" id="lk-forgot" style="margin-top:26px;background:none;border:0;color:#fff;opacity:.7;font-size:13px;cursor:pointer;text-decoration:underline">Forgot PIN?</button>`;
       document.body.appendChild(el); this.el = el; syncLock();
