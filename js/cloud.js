@@ -212,12 +212,33 @@
       await afterSignIn();
     } catch (e) { fail(e, true); }
   }
+  // Clear everything stored on this device (cloud copy stays safe in Google Drive)
+  function wipeLocal() {
+    try { Object.keys(LS).forEach(k => { if (/^(esypos_|propos_)/.test(k) && k !== 'esypos_theme' && k !== KEY.client) LS.removeItem(k); }); } catch (_) {}
+    try { sessionStorage.removeItem(KEY.tok); } catch (_) {}
+  }
+  function finishSignOut() {
+    S.applying = true; clearTimeout(S.timer);
+    try { if (S.tok && window.google && google.accounts) google.accounts.oauth2.revoke(S.tok, () => {}); } catch (_) {}
+    S.tok = null; S.exp = 0; wipeLocal();
+    toast('Signed out'); setTimeout(() => location.reload(), 350);
+  }
   function signOut() {
-    askConfirm('Google will be disconnected from this device. Data stays on device and Drive, but auto-backup will stop.', () => {
-      try { if (S.tok && window.google && google.accounts) google.accounts.oauth2.revoke(S.tok, () => {}); } catch (_) {}
-      S.tok = null; S.exp = 0; try { sessionStorage.removeItem(KEY.tok); } catch (_) {}
-      [KEY.on, KEY.email, KEY.name, KEY.pic, KEY.rev, KEY.fid, KEY.last, KEY.snap, KEY.dirty].forEach(del);
-      S.status = 'off'; renderUI(); toast('Signed out of Google');
+    const dirty = get(KEY.dirty) === '1';
+    askConfirm(dirty
+      ? 'Some changes are not synced yet. EsyPOS will sync them first, then sign you out and clear this device. Your data stays in your Google Drive.'
+      : 'You will be signed out and this device will be cleared. Your data stays safe in your Google Drive — sign in again anytime to restore it.',
+    async () => {
+      if (dirty) {
+        toast('Syncing before sign out…');
+        try { await requestToken(true); await push(); } catch (_) {}
+        if (get(KEY.dirty) === '1') {
+          if (Modal.stack && Modal.stack.length) return;
+          askConfirm('Sync did not finish. If you sign out now, the unsynced changes will be lost.', finishSignOut, { title: 'Unsynced changes', yes: 'Sign out anyway', danger: true });
+          return;
+        }
+      }
+      finishSignOut();
     }, { title: 'Sign out?', yes: 'Sign out', danger: true });
   }
   async function pull() {
@@ -287,7 +308,7 @@
     return `<div class="flex items-c gap3 mb3">${avatar(true)}<div class="grow"><div class="fw7 trunc">${esc(get(KEY.name) || 'Google account')}</div><div class="xs muted trunc">${esc(get(KEY.email))}</div></div></div>
       <div class="sync-line ${l.c}"><i class="fas ${l.i}"></i><span>${l.long}</span></div>
       <div class="grid2 mt3"><button class="btn btn-primary" onclick="Cloud.syncNow()"><i class="fas fa-rotate"></i> Sync now</button><button class="btn btn-ghost" onclick="Cloud.pull()"><i class="fas fa-cloud-arrow-down"></i> Pull from cloud</button></div>
-      <div class="grid2 mt2"><button class="btn btn-ghost" onclick="Cloud.snapshots()"><i class="fas fa-clock-rotate-left"></i> Old copies</button><button class="btn btn-ghost" onclick="Cloud.signIn(true)"><i class="fas fa-user-group"></i> Other account</button></div>
+      <div class="mt2"><button class="btn btn-ghost btn-block" onclick="Cloud.snapshots()"><i class="fas fa-clock-rotate-left"></i> Old copies</button></div>
       <button class="btn btn-danger-soft btn-block mt2" onclick="Cloud.signOut()"><i class="fas fa-right-from-bracket"></i> Sign out</button>
       <p class="xs muted mt3">🔒 Data stays only in your Drive's private app folder — the app cannot see any other files. Data changes auto-sync within a few seconds; Google permission may need renewal every hour.</p>`;
   }
@@ -306,21 +327,46 @@
   }
 
   // ---------- ওয়েLockাম স্ক্রিন ----------
-  function closeWelcome() { const w = $('welcome'); if (w) { w.classList.add('out'); setTimeout(() => w.remove(), 250); } if (window.syncLock) syncLock(); }
-  function showWelcome(mode) {
+  function closeWelcome() { const w = $('welcome'); if (w) { w.classList.add('out'); setTimeout(() => w.remove(), 250); } document.body.classList.remove('gated'); if (window.syncLock) syncLock(); }
+  // Mandatory Google sign-in screen — the app cannot be used until the user signs in.
+  function showGate(mode) {
     if ($('welcome')) return;
     const restore = mode === 'restore';
-    const el = document.createElement('div'); el.id = 'welcome'; el.className = 'welcome';
-    el.innerHTML = `<div class="w-card"><div class="w-logo"><img class="logo-img" src="icons/icon-192.png" alt="EsyPOS" draggable="false"></div>
-      <h2>${restore ? 'Restore data' : 'Welcome to EsyPOS'}</h2>
-      <p>${restore ? 'Your Google account (' + esc(get(KEY.email)) + ') is connected, but this device has no data. Restore all from cloud.' : 'Sign in with Google — even if browser data is cleared, signing in again restores everything.'}</p>
-      <ul class="w-list"><li><i class="fas fa-cloud-arrow-up"></i> Auto cloud backup</li><li><i class="fas fa-shield-halved"></i> Data only on your Drive</li><li><i class="fas fa-mobile-screen-button"></i> Same data on any device</li></ul>
-      <button class="btn btn-google btn-block" id="w-go">${gIcon} ${restore ? 'Restore from cloud' : 'Sign in / Sign up with Google'}</button>
-      <button class="btn btn-ghost btn-block mt2" id="w-skip">${restore ? 'Start fresh' : 'Not now, start offline'}</button>
-      <div class="consent-note">By signing in you accept our <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a>  & <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> .</div></div>`;
+    document.body.classList.add('gated');
+    const el = document.createElement('div'); el.id = 'welcome'; el.className = 'welcome authgate'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
+    el.innerHTML = `<div class="gate">
+      <section class="gate-brand">
+        <div class="gate-logo"><img class="logo-img" src="icons/icon-192.png" alt="EsyPOS" draggable="false"></div>
+        <h1>EsyPOS</h1>
+        <p class="gate-tag">Simple POS for Every Business</p>
+        <ul class="gate-feats">
+          <li><i class="fas fa-cloud-arrow-up"></i><span><b>Cloud saved</b>Every sale is backed up to your Google Drive</span></li>
+          <li><i class="fas fa-mobile-screen-button"></i><span><b>Any device</b>Sign in anywhere and continue where you left off</span></li>
+          <li><i class="fas fa-shield-halved"></i><span><b>Private &amp; secure</b>Only you can access your shop data</span></li>
+        </ul>
+      </section>
+      <section class="gate-card">
+        <h2>${restore ? 'Welcome back' : 'Sign in to continue'}</h2>
+        <p>${restore ? 'Signed in as <b>' + esc(get(KEY.email)) + '</b>. Restore your shop data from the cloud to continue.' : 'EsyPOS needs a Google account. Sign in to open your shop — your data is stored safely in your own Google Drive.'}</p>
+        <button class="btn btn-google btn-block btn-lg" id="w-go">${gIcon} <span>${restore ? 'Restore from cloud' : 'Continue with Google'}</span></button>
+        <div class="gate-msg" id="w-msg" role="alert"></div>
+        ${restore ? '<button class="gate-link" id="w-other" type="button">Use a different account</button>' : ''}
+        <div class="consent-note">By continuing you accept our <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> &amp; <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</div>
+        ${clientId() ? '' : '<div class="note-warn mt3"><i class="fas fa-triangle-exclamation"></i> Google Client ID is not set. <a href="#" onclick="Cloud.setup();return false">View setup guide</a></div>'}
+      </section>
+    </div>`;
     document.body.appendChild(el);
-    el.querySelector('#w-go').onclick = () => signIn(false);
-    el.querySelector('#w-skip').onclick = () => { set(KEY.welcomed, '1'); if (restore) del(KEY.rev); closeWelcome(); };
+    const go = el.querySelector('#w-go'), msg = el.querySelector('#w-msg');
+    const note = () => { msg.textContent = navigator.onLine ? '' : 'No internet connection. Connect to the internet to sign in.'; };
+    if (clientId() && navigator.onLine) loadGIS().catch(() => {});
+    note(); window.addEventListener('online', note); window.addEventListener('offline', note);
+    go.onclick = async () => {
+      if (!navigator.onLine) { note(); return; }
+      go.disabled = true; go.classList.add('busy'); msg.textContent = '';
+      await signIn(false);
+      const g = $('w-go'); if (g && !el.classList.contains('out')) { g.disabled = false; g.classList.remove('busy'); msg.textContent = navigator.onLine ? 'Sign-in was not completed. Please try again.' : 'No internet connection. Connect to the internet to sign in.'; }
+    };
+    const other = el.querySelector('#w-other'); if (other) other.onclick = finishSignOut;
     if (window.syncLock) syncLock();
   }
 
@@ -349,11 +395,11 @@
     if (inited) { renderUI(); return; } inited = true;
     if (isOn()) {
       S.status = get(KEY.dirty) === '1' ? 'pending' : 'ok';
-      if (!hasLocal()) { del(KEY.rev); showWelcome('restore'); }
+      if (!hasLocal()) { del(KEY.rev); showGate('restore'); }
       else if (get(KEY.dirty) === '1') { setStatus(validTok() ? 'pending' : 'auth'); if (validTok()) S.timer = setTimeout(() => push(), 3000); }
-    } else if (clientId() && !hasLocal() && !get(KEY.welcomed)) showWelcome('new');
+    } else showGate('new');
     renderUI();
-    if (clientId() && navigator.onLine && (isOn() || !get(KEY.welcomed))) loadGIS().catch(() => {});
+    if (clientId() && navigator.onLine) loadGIS().catch(() => {});
     window.addEventListener('online', () => { if (isOn() && get(KEY.dirty) === '1') { if (validTok()) { setStatus('pending'); push(); } else setStatus('auth'); } });
     window.addEventListener('offline', () => { if (isOn()) renderUI(); });
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && isOn() && get(KEY.dirty) === '1' && validTok()) push(); });
@@ -363,4 +409,6 @@
   }
 
   window.Cloud = { init, markDirty, signIn, signOut, syncNow, pull, snapshots, panel, setup, renderUI, isOn };
+  // Gate the app immediately — nothing is usable before sign-in
+  if (!isOn()) showGate('new');
 })();

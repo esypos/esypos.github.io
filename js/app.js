@@ -46,7 +46,7 @@
   function pushGuard() { try { history.pushState({ g: 1 }, ''); } catch (_) {} }
   function handleBack() {
     if (window.hasConfirm && hasConfirm()) { closeConfirm(); return true; }
-    if (document.querySelector('.lock,.welcome')) return true;
+    if (document.querySelector('.lock,.welcome,.authgate')) return true;
     if (window.Scanner && Scanner.isOpen()) { Scanner.close(); return true; }
     if (Modal.stack.length) { Modal.close(); return true; }
     if (App.drawerOpen()) { App.closeDrawers(); return true; }

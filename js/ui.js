@@ -91,7 +91,7 @@
     isDark() { return this.mode === 'dark' || (this.mode === 'auto' && mq && mq.matches); },
     apply() {
       document.documentElement.classList.toggle('dark', this.isDark());
-      const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = this.isDark() ? '#0a1020' : '#4f46e5';
+      const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = this.isDark() ? '#0d0a1a' : '#5b21b6';
       document.querySelectorAll('.theme-ico').forEach(i => { i.className = 'theme-ico fas ' + (this.isDark() ? 'fa-sun' : 'fa-moon'); });
       const s = document.getElementById('theme-select'); if (s) s.value = this.mode;
     },
