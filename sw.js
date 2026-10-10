@@ -1,7 +1,7 @@
 /* EsyPOS Service Worker — network-first, aggressive cache refresh (v9)
    App data lives in localStorage + optional Google Drive.
    SW cache is only a short offline fallback and is replaced on every deploy. */
-const CACHE_VERSION = 'v9.1';
+const CACHE_VERSION = 'v9.4';
 const APP_CACHE = `esypos-app-${CACHE_VERSION}`;
 const CDN_CACHE = `esypos-cdn-${CACHE_VERSION}`;
 
@@ -9,7 +9,7 @@ const APP_SHELL = [
   './', './index.html', './privacy.html', './terms.html', './style.css', './manifest.webmanifest',
   './js/core.js', './js/ui.js', './js/app.js', './js/people.js', './js/misc.js', './js/settings.js',
   './js/config.js', './js/cloud.js', './js/pwa.js',
-  './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png'
+  './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png', './favicon.ico', './icons/favicon-32.png', './icons/favicon-16.png'
 ];
 const CDN_HOSTS = ['cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 
