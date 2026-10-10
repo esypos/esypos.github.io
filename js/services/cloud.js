@@ -351,6 +351,7 @@
         <div class="gate-msg" id="w-msg" role="alert"></div>
         ${restore || resume ? '<button class="gate-link" id="w-other" type="button">Use a different account</button>' : ''}
         <div class="consent-note">By continuing you accept our <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> &amp; <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</div>
+        <div class="consent-note"><a href="features.html">Features &amp; FAQ</a> · <a href="bn.html">বাংলা</a></div>
         ${clientId() ? '' : '<div class="note-warn mt3"><i class="fas fa-triangle-exclamation"></i> Google Client ID is not set. <a href="#" onclick="Cloud.setup();return false">View setup guide</a></div>'}
       </section>
     </div>`;

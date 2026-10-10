@@ -1,7 +1,7 @@
 {
-  "name": "EsyPOS — Simple POS for Every Business",
+  "name": "EsyPOS – Free Offline POS Software",
   "short_name": "EsyPOS",
-  "description": "Simple POS software for every business",
+  "description": "Free offline POS app for small shops: billing, barcode scan, stock, customer due, expenses, reports and Google Drive backup.",
   "id": "./",
   "start_url": "./index.html",
   "scope": "./",
@@ -14,7 +14,8 @@
   "categories": [
     "business",
     "finance",
-    "productivity"
+    "productivity",
+    "shopping"
   ],
   "icons": [
     {
@@ -34,6 +35,36 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "assets/screenshots/02-dashboard.png",
+      "sizes": "405x900",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Dashboard"
+    },
+    {
+      "src": "assets/screenshots/03-products.png",
+      "sizes": "405x900",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Products and stock"
+    },
+    {
+      "src": "assets/screenshots/04-customers.png",
+      "sizes": "405x900",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Customers and due"
+    },
+    {
+      "src": "assets/screenshots/08-reports.png",
+      "sizes": "405x900",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Reports"
     }
   ]
 }

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   EsyPOS v10.2 — design system
+   EsyPOS v10.3 — design system
    Mobile-first. Breakpoints: 700px (tablet) · 1024px (desktop sidebar) · 1280px (docked cart)
    ========================================================================== */
 
@@ -445,3 +445,7 @@ body.gated .sidebar,body.gated .topbar,body.gated .main,body.gated .cart-bar,bod
   .pos-grid{grid-template-columns:minmax(0,1fr) 430px}
   .view{max-width:1600px}
 }
+
+/* SEO: crawlable summary, visually hidden (kept in DOM), removed once the app is open */
+.seo-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+html:not(.needs-login) .seo-only{display:none}

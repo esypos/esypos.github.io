@@ -1,7 +1,7 @@
-/* EsyPOS Service Worker — network-first with offline fallback (v10.2)
+/* EsyPOS Service Worker — network-first with offline fallback (v10.3)
    App data lives in localStorage + Google Drive. The SW cache only keeps the app shell
    (and icon/font CDN files) so the shop still opens offline; it is replaced on every deploy. */
-const CACHE_VERSION = 'v10.2';
+const CACHE_VERSION = 'v10.3';
 const APP_CACHE = `esypos-app-${CACHE_VERSION}`;
 const CDN_CACHE = `esypos-cdn-${CACHE_VERSION}`;
 

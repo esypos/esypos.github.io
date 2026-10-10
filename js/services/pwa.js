@@ -1,7 +1,7 @@
 /* PWA: network-first updates, auto cache clear, install + offline badge */
 (function () {
   'use strict';
-  const CACHE_VERSION = 'v10.2';   // keep in sync with sw.js
+  const CACHE_VERSION = 'v10.3';   // keep in sync with sw.js
   // Delete caches from OLDER versions only — the current offline cache must survive.
   async function clearOldCaches() {
     if (!('caches' in window)) return;
