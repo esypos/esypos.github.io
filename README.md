@@ -26,6 +26,12 @@ EsyPOS is a free point-of-sale web app for small shops. It works in any browser,
 
 > **বাংলায়:** ফ্রি, অফলাইনে চলা POS সফটওয়্যার। বিক্রি, স্টক, বাকি, খরচ ও রিপোর্ট সব এক অ্যাপে।
 
+## Open Source
+
+EsyPOS is an open-source project. Anyone can run their own business with their own Google account. No third-party company or middleman is involved.
+
+> **বাংলায়:** এটি ওপেন সোর্স প্রজেক্ট। যে কেউ নিজের Google অ্যাকাউন্ট দিয়ে নিজের ব্যবসা পরিচালনা করতে পারবেন, কোনো থার্ড পার্টি কোম্পানির কাছে যেতে হবে না।
+
 ## Features
 
 - **Sales Counter:** search, barcode scan, discount, tax, hold bills
