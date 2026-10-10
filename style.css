@@ -1,4 +1,4 @@
-/* ProPOS v6 — ডিজাইন সিস্টেম (লাইট + ডার্ক) */
+/* EsyPOS v6 — ডিজাইন সিস্টেম (লাইট + ডার্ক) */
 :root{
   --bg:#f1f5f9; --card:#ffffff; --text:#0f172a; --muted:#64748b; --border:#e2e8f0; --hover:#f1f5f9;
   --input:#f8fafc; --primary:#4f46e5; --primary2:#6366f1; --psoft:#eef2ff; --ptext:#4338ca;
@@ -238,7 +238,7 @@ html.dark #toast{background:#e6eaf2;color:#0a1020}
 .has-ico{padding-left:38px}
 
 /* =====================================================================
-   ProPOS v7 — আধুনিক ডিজাইন, অ্যানিমেশন, Google সাইন-ইন UI
+   EsyPOS v7 — আধুনিক ডিজাইন, অ্যানিমেশন, Google সাইন-ইন UI
    ===================================================================== */
 :root{
   --primary2:#7c3aed; --grad:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);

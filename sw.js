@@ -1,9 +1,9 @@
-/* ProPOS Service Worker — network-first, aggressive cache refresh (v9)
+/* EsyPOS Service Worker — network-first, aggressive cache refresh (v9)
    App data lives in localStorage + optional Google Drive.
    SW cache is only a short offline fallback and is replaced on every deploy. */
-const CACHE_VERSION = 'v9';
-const APP_CACHE = `propos-app-${CACHE_VERSION}`;
-const CDN_CACHE = `propos-cdn-${CACHE_VERSION}`;
+const CACHE_VERSION = 'v9.1';
+const APP_CACHE = `esypos-app-${CACHE_VERSION}`;
+const CDN_CACHE = `esypos-cdn-${CACHE_VERSION}`;
 
 const APP_SHELL = [
   './', './index.html', './privacy.html', './terms.html', './style.css', './manifest.webmanifest',
@@ -26,10 +26,10 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    // Delete every old propos cache — keep only current version
+    // Delete every old esypos cache — keep only current version
     await Promise.all(
       keys
-        .filter(k => k.startsWith('propos-') && k !== APP_CACHE && k !== CDN_CACHE)
+        .filter(k => (k.startsWith('esypos-') || k.startsWith('propos-')) && k !== APP_CACHE && k !== CDN_CACHE)
         .map(k => caches.delete(k))
     );
     await self.clients.claim();
@@ -45,7 +45,7 @@ self.addEventListener('message', event => {
   if (data === 'CLEAR_CACHES') {
     event.waitUntil((async () => {
       const keys = await caches.keys();
-      await Promise.all(keys.filter(k => k.startsWith('propos-')).map(k => caches.delete(k)));
+      await Promise.all(keys.filter(k => k.startsWith('esypos-') || k.startsWith('propos-')).map(k => caches.delete(k)));
       const cache = await caches.open(APP_CACHE);
       await Promise.all(APP_SHELL.map(u => cache.add(u).catch(() => null)));
     })());

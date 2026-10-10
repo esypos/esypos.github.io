@@ -1,4 +1,4 @@
-# ProPOS v8 — Free Offline Point of Sale (PWA)
+# EsyPOS v8 — Free Offline Point of Sale (PWA)
 
 Runs without a server, installable on mobile. Data stays on the device and can auto-backup to your Google Drive.
 
@@ -20,7 +20,7 @@ Runs without a server, installable on mobile. Data stays on the device and can a
    ```
 
 ## Cloud backup
-- Data is stored in your Drive **private app data folder** as `propos-data.json` (scope `drive.appdata` only).
+- Data is stored in your Drive **private app data folder** as `esypos-data.json` (scope `drive.appdata` only).
 - Auto-sync ~12 seconds after changes.
 - Daily snapshots (last 14) can be restored from Settings / account card.
 - Conflict between devices prompts which data to keep.

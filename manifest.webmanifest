@@ -1,6 +1,6 @@
 {
-  "name": "ProPOS - Free Point of Sale",
-  "short_name": "ProPOS",
+  "name": "EsyPOS - Free Point of Sale",
+  "short_name": "EsyPOS",
   "description": "Free offline professional point of sale software",
   "id": "./",
   "start_url": "./index.html",
