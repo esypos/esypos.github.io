@@ -12,7 +12,7 @@
     <script>(function(){try{var m=localStorage.getItem('esypos_theme')||'auto';if(m==='dark'||(m==='auto'&&window.matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}})()</script>
 
     <link rel="manifest" href="manifest.webmanifest">
-    <meta name="theme-color" content="#4f46e5">
+    <meta name="theme-color" content="#5b21b6">
     <link rel="preconnect" href="https://accounts.google.com">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -26,6 +26,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap">
     <style>.hidden{display:none!important}.drawer{position:fixed;top:0;height:100%;transition:transform .28s}.drawer.left{left:0;transform:translateX(-100%)}.drawer.right{right:0;transform:translateX(100%)}.drawer.open{transform:none}</style>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -38,7 +39,7 @@
     <div style="padding:10px;border-top:1px solid var(--border)" class="flex col gap2">
         <div class="js-acct"></div>
         <button class="btn btn-primary btn-block" onclick="Cloud.panel()"><i class="fas fa-cloud"></i> Cloud Backup</button>
-        <div class="grid2"><button class="btn btn-ghost" onclick="Theme.toggle()"><i class="theme-ico fas fa-moon"></i> Theme</button><button class="btn btn-ghost" onclick="Lock.lockNow()"><i class="fas fa-lock"></i> Lock</button></div>
+        <div class="grid3"><button class="btn btn-ghost" onclick="Theme.toggle()"><i class="theme-ico fas fa-moon"></i> Theme</button><button class="btn btn-ghost" onclick="Lock.lockNow()"><i class="fas fa-lock"></i> Lock</button><button class="btn btn-ghost btn-logout" onclick="Cloud.signOut()"><i class="fas fa-right-from-bracket"></i> Sign out</button></div>
         <div class="legal-links"><a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a></div>
     </div>
 </aside>
@@ -64,7 +65,7 @@
     <div style="padding:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--border)" class="flex col gap2">
         <div class="js-acct" onclick="App.closeDrawers()"></div>
         <button class="btn btn-primary btn-block" onclick="App.closeDrawers();Cloud.panel()"><i class="fas fa-cloud"></i> Cloud Backup</button>
-        <div class="grid2"><button class="btn btn-ghost" onclick="Theme.toggle()"><i class="theme-ico fas fa-moon"></i> Theme</button><button class="btn btn-ghost" onclick="App.closeDrawers();Lock.lockNow()"><i class="fas fa-lock"></i> Lock</button></div>
+        <div class="grid3"><button class="btn btn-ghost" onclick="Theme.toggle()"><i class="theme-ico fas fa-moon"></i> Theme</button><button class="btn btn-ghost" onclick="App.closeDrawers();Lock.lockNow()"><i class="fas fa-lock"></i> Lock</button><button class="btn btn-ghost btn-logout" onclick="App.closeDrawers();Cloud.signOut()"><i class="fas fa-right-from-bracket"></i> Sign out</button></div>
         <div class="legal-links"><a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a></div>
     </div>
 </aside>

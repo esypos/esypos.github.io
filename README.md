@@ -29,3 +29,11 @@ Runs without a server, installable on mobile. Data stays on the device and can a
 - Privacy: `privacy.html`
 - Terms: `terms.html`
 - Provider: MH IT Limited
+
+
+## v10 — Brand, theme & sign-in
+- New simple logo (white "E" monogram on violet). Assets in `icons/` (PNG sizes, maskable, Apple touch, WebP, JPG, SVG, wordmark, OG image) and `favicon.ico`.
+- Violet theme (light + dark), refined navigation, cards, modals and product grid.
+- **Google sign-in is mandatory.** The app shows a full-screen sign-in gate until the user signs in; no offline/skip mode.
+- **Sign out** (sidebar/drawer footer or Cloud panel) syncs pending changes, clears all data stored on the device, and returns to the sign-in screen. Data stays in the user's Google Drive and is restored on the next sign-in.
+- Set `googleClientId` in `js/config.js` (Authorized JavaScript origin = your site URL).

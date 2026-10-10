@@ -1,7 +1,7 @@
-/* EsyPOS Service Worker — network-first, aggressive cache refresh (v9)
+/* EsyPOS Service Worker — network-first, aggressive cache refresh (v10)
    App data lives in localStorage + optional Google Drive.
    SW cache is only a short offline fallback and is replaced on every deploy. */
-const CACHE_VERSION = 'v9.4';
+const CACHE_VERSION = 'v10.0';
 const APP_CACHE = `esypos-app-${CACHE_VERSION}`;
 const CDN_CACHE = `esypos-cdn-${CACHE_VERSION}`;
 
