@@ -1,4 +1,4 @@
-/* ProPOS: Customer, Due Collected, Suppliers, Purchases */
+/* EsyPOS: Customer, Due Collected, Suppliers, Purchases */
 (function () {
   'use strict';
   const C = Core, { DB, esc, num, r2, money, genId, toast, findCustomer, findSupplier, findProduct } = C;
@@ -54,7 +54,7 @@
         <div class="tr">${x.b > 0 ? `<div class="fw7 bad">${money(x.b)}</div><div class="xs muted">Due</div>` : (x.b < 0 ? `<div class="fw7 ok">${money(-x.b)}</div><div class="xs muted">Advance</div>` : '<span class="badge b-ok">Clear</span>')}</div></div>`).join('')
         : '<div class="empty"><i class="fas fa-users"></i>No customers</div>';
     },
-    csvOut() { C.download('propos-customers.csv', C.toCSV([['Name', 'Phone', 'Address', 'Current due'], ...DB.customers.map(c => [c.name, c.phone, c.address, C.customerBalance(c.id)])]), 'text/csv'); },
+    csvOut() { C.download('esypos-customers.csv', C.toCSV([['Name', 'Phone', 'Address', 'Current due'], ...DB.customers.map(c => [c.name, c.phone, c.address, C.customerBalance(c.id)])]), 'text/csv'); },
 
     edit(id, after) {
       const c = id ? findCustomer(id) : null;

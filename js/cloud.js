@@ -1,4 +1,4 @@
-/* ProPOS Cloud — Google সাইন-ইন + Google Drive (গোপন appDataFolder) অটো Backup  & Restore
+/* EsyPOS Cloud — Google সাইন-ইন + Google Drive (গোপন appDataFolder) অটো Backup  & Restore
    • শুধু drive.appdata স্কোপ: অ্যাপ আপনার অন্য কোনো ড্রাইভ ফাইল দেখতে পায় না
    • ব্রাউজারের ডেটা মুছে গেলে & আবার Sign in করলেই All ডেটা ফিরে আসে */
 (function () {
@@ -7,9 +7,9 @@
   const LS = localStorage;
   const $ = id => document.getElementById(id);
 
-  const KEY = { on: 'propos_g_on', email: 'propos_g_email', name: 'propos_g_name', pic: 'propos_g_pic', rev: 'propos_g_rev', fid: 'propos_g_fid',
-    last: 'propos_g_last', snap: 'propos_g_snap', dirty: 'propos_g_dirty', welcomed: 'propos_welcomed', client: 'propos_g_client', tok: 'propos_g_tok' };
-  const MAIN = 'propos-data.json', SNAP = 'propos-snap-', KEEP_SNAPS = 14;
+  const KEY = { on: 'esypos_g_on', email: 'esypos_g_email', name: 'esypos_g_name', pic: 'esypos_g_pic', rev: 'esypos_g_rev', fid: 'esypos_g_fid',
+    last: 'esypos_g_last', snap: 'esypos_g_snap', dirty: 'esypos_g_dirty', welcomed: 'esypos_welcomed', client: 'esypos_g_client', tok: 'esypos_g_tok' };
+  const MAIN = 'esypos-data.json', SNAP = 'esypos-snap-', KEEP_SNAPS = 14;
   const SCOPE = 'openid email profile https://www.googleapis.com/auth/drive.appdata';
   const DRIVE = 'https://www.googleapis.com/drive/v3/files', UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
 
@@ -77,7 +77,11 @@
     const u = DRIVE + '?' + new URLSearchParams({ spaces: 'appDataFolder', pageSize: '100', orderBy: 'modifiedTime desc', fields: 'files(id,name,modifiedTime,size)', q });
     return ((await (await api(u)).json()).files) || [];
   }
-  const findMain = async () => (await listFiles("name = '" + MAIN + "' and trashed = false"))[0] || null;
+  const findMain = async () => {
+    let f = (await listFiles("name = '" + MAIN + "' and trashed = false"))[0];
+    if (!f) f = (await listFiles("name = 'propos-data.json' and trashed = false"))[0] || null;
+    return f || null;
+  };
   const getMeta = async id => { const j = await (await api(DRIVE + '/' + id + '?fields=id,modifiedTime')).json(); if (!j || !j.id) throw mk('http', 404); return j; };
   const download = async id => (await api(DRIVE + '/' + id + '?alt=media')).json();
   async function writeMain(fid, text) {
@@ -107,7 +111,7 @@
 
   // ---------- ডেটা ----------
   function payload() {
-    const out = { app: 'ProPOS', version: 4, exportDate: new Date().toISOString(), device: (navigator.platform || '') };
+    const out = { app: 'EsyPOS', version: 4, exportDate: new Date().toISOString(), device: (navigator.platform || '') };
     Object.keys(K).forEach(k => { if (k !== 'cart') out[k] = k === 'settings' ? DB.settings : DB[k]; });
     return out;
   }
@@ -123,7 +127,7 @@
     C.migrate(); C.saveAll();
     set(KEY.rev, f.modifiedTime); set(KEY.fid, f.id); set(KEY.last, String(Date.now()));
     if (pushAfter) set(KEY.dirty, '1'); else del(KEY.dirty);
-    del('propos_dirty');
+    del('esypos_dirty');
     toast('✓ Data restored from cloud');
     setTimeout(() => location.reload(), 900);
   }
@@ -148,7 +152,7 @@
       if (f) await snapshotBefore(f);
       const res = await writeMain(f ? f.id : null, JSON.stringify(payload()));
       set(KEY.fid, res.id); set(KEY.rev, res.modifiedTime); set(KEY.last, String(Date.now()));
-      if (S.seq === seq) { del(KEY.dirty); del('propos_dirty'); setStatus('ok'); }
+      if (S.seq === seq) { del(KEY.dirty); del('esypos_dirty'); setStatus('ok'); }
       else { setStatus('pending'); S.timer = setTimeout(() => push(), 3000); }
     } catch (e) { fail(e); }
     finally { S.busy = false; }
@@ -168,7 +172,7 @@
     const rs = sum(d), ls = sum({ products: DB.products, sales: DB.sales, customers: DB.customers });
     const m = Modal.open({
       title: 'Which data to keep?', static: true,
-      body: `<p class="muted sm mb3">Your Google Drive already has ProPOS data that differs from this device.</p>
+      body: `<p class="muted sm mb3">Your Google Drive already has EsyPOS data that differs from this device.</p>
         <div class="grid2 mb3">
           <div class="cl-opt"><div class="xs muted mb1"><i class="fas fa-cloud"></i> Cloud data</div><div class="fw7">${rs.p} Product · ${rs.s} Sales</div><div class="xs muted">${rs.c} Customer<br>${d.exportDate ? C.fmtDT(d.exportDate) : C.fmtDT(f.modifiedTime)}</div></div>
           <div class="cl-opt"><div class="xs muted mb1"><i class="fas fa-mobile-screen"></i> This device data</div><div class="fw7">${ls.p} Product · ${ls.s} Sales</div><div class="xs muted">${ls.c} Customer</div></div>
@@ -248,7 +252,7 @@
     else if (c === 'offline' || e instanceof TypeError || !navigator.onLine) st = 'offline';
     else if (/popup|access_denied|interaction|immediate/.test(c)) { st = 'auth'; msg = '⚠️ Sign-in incomplete'; }
     else if (c === 'noclient') { setup(); st = 'off'; }
-    else if (c === 'badfile') msg = '⚠️ Cloud file is not valid ProPOS data';
+    else if (c === 'badfile') msg = '⚠️ Cloud file is not valid EsyPOS data';
     else if (e.status === 403) msg = '⚠️ Google Drive API not enabled or no permission — view setup guide';
     else if (e.status === 404) msg = '⚠️ Cloud file not found';
     console.warn('[Cloud]', e);
@@ -308,7 +312,7 @@
     const restore = mode === 'restore';
     const el = document.createElement('div'); el.id = 'welcome'; el.className = 'welcome';
     el.innerHTML = `<div class="w-card"><div class="w-logo"><i class="fas fa-cash-register"></i></div>
-      <h2>${restore ? 'Restore data' : 'Welcome to ProPOS'}</h2>
+      <h2>${restore ? 'Restore data' : 'Welcome to EsyPOS'}</h2>
       <p>${restore ? 'Your Google account (' + esc(get(KEY.email)) + ') is connected, but this device has no data. Restore all from cloud.' : 'Sign in with Google — even if browser data is cleared, signing in again restores everything.'}</p>
       <ul class="w-list"><li><i class="fas fa-cloud-arrow-up"></i> Auto cloud backup</li><li><i class="fas fa-shield-halved"></i> Data only on your Drive</li><li><i class="fas fa-mobile-screen-button"></i> Same data on any device</li></ul>
       <button class="btn btn-google btn-block" id="w-go">${gIcon} ${restore ? 'Restore from cloud' : 'Sign in / Sign up with Google'}</button>

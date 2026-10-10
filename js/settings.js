@@ -1,4 +1,4 @@
-/* ProPOS: Settings, Barcode scanার, PIN lock, Bluetooth printer */
+/* EsyPOS: Settings, Barcode scanার, PIN lock, Bluetooth printer */
 (function () {
   'use strict';
   const C = Core, { DB, esc, num, money, fmt, toast } = C;
@@ -152,7 +152,7 @@
     lines(s) {
       const sh = DB.settings; const cust = C.findCustomer(s.customerId); const bal = cust ? C.customerBalance(cust.id) : 0; const L = [];
       const MN = { cash: 'Cash', card: 'Card', mobile: 'Mobile', due: 'Due' };
-      L.push({ t: sh.shopName || 'ProPOS', a: 'c', b: 1, s: 28 });
+      L.push({ t: sh.shopName || 'EsyPOS', a: 'c', b: 1, s: 28 });
       if (sh.shopAddress) L.push({ t: sh.shopAddress, a: 'c', s: 20 }); if (sh.shopPhone) L.push({ t: 'Phone: ' + sh.shopPhone, a: 'c', s: 20 });
       L.push({ hr: 1 }, { t: 'Receipt #', t2: '#' + C.invLabel(s), s: 21 }, { t: 'Date', t2: C.fmtDT(s.date), s: 21 });
       if (cust) L.push({ t: 'Customer', t2: cust.name, s: 21 }); L.push({ t: 'Payment', t2: MN[s.paymentMethod] || '', s: 21 }, { hr: 1 });
@@ -192,7 +192,7 @@
       const sh = DB.settings; const w = sh.paper === '80' ? 48 : 32; const asc = t => String(t || '').replace(/[^\x20-\x7E]/g, '?');
       const lr = (a, b) => { a = asc(a); b = asc(b); return a.slice(0, Math.max(1, w - b.length - 1)).padEnd(w - b.length) + b + '\n'; };
       const e = new TextEncoder(); const o = []; const t = x => e.encode(x).forEach(c => o.push(c));
-      o.push(0x1B, 0x40, 0x1B, 0x61, 0x01, 0x1B, 0x21, 0x30); t(asc(sh.shopName || 'ProPOS') + '\n'); o.push(0x1B, 0x21, 0x00); if (sh.shopPhone) t('Tel: ' + asc(sh.shopPhone) + '\n'); t('-'.repeat(w) + '\n'); o.push(0x1B, 0x61, 0x00);
+      o.push(0x1B, 0x40, 0x1B, 0x61, 0x01, 0x1B, 0x21, 0x30); t(asc(sh.shopName || 'EsyPOS') + '\n'); o.push(0x1B, 0x21, 0x00); if (sh.shopPhone) t('Tel: ' + asc(sh.shopPhone) + '\n'); t('-'.repeat(w) + '\n'); o.push(0x1B, 0x61, 0x00);
       t(lr('No', '#' + C.invLabel(s))); t(lr('Date', C.dkey(s.date))); t('-'.repeat(w) + '\n');
       s.items.forEach(i => { t(asc(i.name) + '\n'); t(lr('  ' + i.qty + ' x ' + i.price.toFixed(2), (i.price * i.qty).toFixed(2))); });
       t('-'.repeat(w) + '\n'); t(lr('Subtotal', s.subtotal.toFixed(2))); if (s.discount > 0) t(lr('Discount', '-' + s.discount.toFixed(2))); if (s.tax > 0) t(lr('Tax', s.tax.toFixed(2)));
@@ -205,7 +205,7 @@
   App.Views.settings = {
     render() {
       const s = DB.settings; let bytes = 0; try { Object.keys(localStorage).forEach(k => { bytes += (k.length + (localStorage.getItem(k) || '').length) * 2; }); } catch (_) {}
-      const kb = Math.round(bytes / 1024); const last = parseInt(localStorage.getItem('propos_last_backup') || '0', 10);
+      const kb = Math.round(bytes / 1024); const last = parseInt(localStorage.getItem('esypos_last_backup') || '0', 10);
       $('view').innerHTML = `<div class="page-head"><div><h2>Settings</h2><p>Shop, appearance, security, printer & data</p></div></div>
       <div class="card pad mb3"><div class="sec-title"><i class="fas fa-store ptext"></i> Shop info</div>
         <div class="field"><label class="label">Shop name</label><input id="st-name" class="input" value="${esc(s.shopName)}"></div>
@@ -229,7 +229,7 @@
         <button class="btn btn-danger-soft btn-block mt2" onclick="wipeAllData()"><i class="fas fa-trash"></i> Delete all data</button></div>
       <div class="card pad mb3"><div class="sec-title"><i class="fas fa-scale-balanced ptext"></i> Legal</div>
         <div class="grid2"><a class="btn btn-ghost" href="privacy.html" target="_blank" rel="noopener"><i class="fas fa-user-shield"></i> Privacy Policy</a><a class="btn btn-ghost" href="terms.html" target="_blank" rel="noopener"><i class="fas fa-file-contract"></i> Terms of Service</a></div></div>
-      <div class="tc muted xs">ProPOS v8 · Free offline POS · Data stays on your device<br>© MH IT Limited · <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a></div>`;
+      <div class="tc muted xs">EsyPOS · Free offline POS · Data stays on your device<br>© MH IT Limited · <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a></div>`;
       Theme.apply(); Printer.ui(); if (window.Cloud) Cloud.renderUI();
     },
     save() {

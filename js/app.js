@@ -1,4 +1,4 @@
-/* ProPOS App: রাউটার, ব্যাক-বাটন, Sales Counter (POS), Product */
+/* EsyPOS App: রাউটার, ব্যাক-বাটন, Sales Counter (POS), Product */
 (function () {
   'use strict';
   const C = Core, { DB, esc, num, r2, fmt, money, genId, toast, findProduct, findCustomer } = C;
@@ -462,8 +462,8 @@
         <label class="btn btn-primary btn-block" style="cursor:pointer"><i class="fas fa-file-import"></i> CSV Import<input type="file" accept=".csv,text/csv" class="hidden" onchange="Products.csvIn(this)"></label>` });
     },
     head: ['Name', 'Barcode', 'Category', 'Cost', 'Sell price', 'Stock', 'Unit', 'Low stock limit', 'Expiry'],
-    csvOut() { C.download('propos-products.csv', C.toCSV([this.head, ...DB.products.map(p => [p.name, p.barcode, p.category, p.cost, p.price, p.stock, p.unit, p.minStock, p.expiry])]), 'text/csv'); },
-    csvTemplate() { C.download('propos-products-template.csv', C.toCSV([this.head, ['Tea', '8901001', 'Beverages', 5, 10, 100, 'Cup', 20, '']]), 'text/csv'); },
+    csvOut() { C.download('esypos-products.csv', C.toCSV([this.head, ...DB.products.map(p => [p.name, p.barcode, p.category, p.cost, p.price, p.stock, p.unit, p.minStock, p.expiry])]), 'text/csv'); },
+    csvTemplate() { C.download('esypos-products-template.csv', C.toCSV([this.head, ['Tea', '8901001', 'Beverages', 5, 10, 100, 'Cup', 20, '']]), 'text/csv'); },
     csvIn(input) {
       const f = input.files && input.files[0]; input.value = ''; if (!f) return; const rd = new FileReader();
       rd.onload = e => {

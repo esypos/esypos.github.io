@@ -1,4 +1,4 @@
-/* ProPOS UI: সাউন্ড, ডায়ালগ, মডাল, Theme, Backup, Share/Print হেল্পার */
+/* EsyPOS UI: সাউন্ড, ডায়ালগ, মডাল, Theme, Backup, Share/Print হেল্পার */
 (function () {
   'use strict';
   const { DB, esc, toast, saveAll, load, K } = Core;
@@ -6,7 +6,7 @@
   // ================= সাউন্ড =================
   const Sound = (function () {
     let ctx = null, last = 0;
-    let enabled = true; try { enabled = localStorage.getItem('propos_sound') !== '0'; } catch (_) {}
+    let enabled = true; try { enabled = localStorage.getItem('esypos_sound') !== '0'; } catch (_) {}
     function ensure() {
       if (!ctx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null; ctx = new AC(); }
       if (ctx.state === 'suspended') ctx.resume();
@@ -29,7 +29,7 @@
         else if (kind === 'beep') tone(1800, 0, 0.12, 0.08);
       } catch (e) {}
     }
-    return { play, isEnabled: () => enabled, setEnabled(v) { enabled = !!v; try { localStorage.setItem('propos_sound', enabled ? '1' : '0'); } catch (_) {} if (enabled) play('click'); } };
+    return { play, isEnabled: () => enabled, setEnabled(v) { enabled = !!v; try { localStorage.setItem('esypos_sound', enabled ? '1' : '0'); } catch (_) {} if (enabled) play('click'); } };
   })();
   window.Sound = Sound;
   document.addEventListener('click', e => {
@@ -86,7 +86,7 @@
   // ================= Theme (লাইট/ডার্ক/অটো) =================
   const mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   const Theme = {
-    mode: (function () { try { return localStorage.getItem('propos_theme') || 'auto'; } catch (_) { return 'auto'; } })(),
+    mode: (function () { try { return localStorage.getItem('esypos_theme') || 'auto'; } catch (_) { return 'auto'; } })(),
     isDark() { return this.mode === 'dark' || (this.mode === 'auto' && mq && mq.matches); },
     apply() {
       document.documentElement.classList.toggle('dark', this.isDark());
@@ -94,7 +94,7 @@
       document.querySelectorAll('.theme-ico').forEach(i => { i.className = 'theme-ico fas ' + (this.isDark() ? 'fa-sun' : 'fa-moon'); });
       const s = document.getElementById('theme-select'); if (s) s.value = this.mode;
     },
-    set(mode) { this.mode = mode; try { localStorage.setItem('propos_theme', mode); } catch (_) {} this.apply(); },
+    set(mode) { this.mode = mode; try { localStorage.setItem('esypos_theme', mode); } catch (_) {} this.apply(); },
     toggle() { this.set(this.isDark() ? 'light' : 'dark'); }
   };
   window.Theme = Theme;
@@ -110,7 +110,7 @@
     if (silent && !force) return;
     if (!force) return;
     // force=true still allows emergency wipe path to snapshot nothing extra
-    try { localStorage.setItem('propos_last_backup', String(Date.now())); localStorage.removeItem('propos_dirty'); } catch (_) {}
+    try { localStorage.setItem('esypos_last_backup', String(Date.now())); localStorage.removeItem('esypos_dirty'); } catch (_) {}
   };
   window.importData = function (input) {
     const file = input.files && input.files[0]; input.value = ''; if (!file) return;
@@ -123,7 +123,7 @@
           Object.keys(K).forEach(k => { if (k === 'settings') DB.settings = Object.assign({}, Core.DEFAULTS, d.settings || {}); else if (k === 'cart') DB.cart = []; else DB[k] = Array.isArray(d[k]) ? d[k] : []; });
           Core.migrate(); saveAll(); toast('Restore successful ✓'); setTimeout(() => location.reload(), 700);
         }, { title: 'Restore backup?', yes: 'Yes, restore', danger: true });
-      } catch (err) { toast('⚠️ Not a valid ProPOS backup file'); }
+      } catch (err) { toast('⚠️ Not a valid EsyPOS backup file'); }
     };
     rd.onerror = () => toast('Could not read file'); rd.readAsText(file);
   };
@@ -131,7 +131,7 @@
     askConfirm('All data (products, sales, customers, expenses...) will be permanently deleted.', () => {
       askConfirm('Really delete all data? This cannot be undone!', () => {
         exportData(true, true);
-        setTimeout(() => { Object.values(K).forEach(k => localStorage.removeItem(k)); ['propos_last_backup', 'propos_dirty'].forEach(k => localStorage.removeItem(k)); location.reload(); }, 900);
+        setTimeout(() => { Object.values(K).forEach(k => localStorage.removeItem(k)); ['esypos_last_backup', 'esypos_dirty'].forEach(k => localStorage.removeItem(k)); location.reload(); }, 900);
       }, { title: 'Final confirmation', yes: 'Yes, delete all', danger: true });
     }, { title: 'Delete all data?', yes: 'Continue', danger: true });
   };

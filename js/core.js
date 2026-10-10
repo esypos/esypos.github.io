@@ -1,12 +1,12 @@
-/* ProPOS core: ডেটা, হিসাব, হেল্পার — DOM-এর উপর নির্ভর করে না (শুধু toast ছাড়া) */
+/* EsyPOS core: ডেটা, হিসাব, হেল্পার — DOM-এর উপর নির্ভর করে না (শুধু toast ছাড়া) */
 (function (root) {
   'use strict';
 
   const K = {
-    products: 'propos_products', sales: 'propos_sales', customers: 'propos_customers',
-    payments: 'propos_payments', suppliers: 'propos_suppliers', purchases: 'propos_purchases',
-    spayments: 'propos_spayments', expenses: 'propos_expenses', returns: 'propos_returns',
-    hold: 'propos_hold', cart: 'propos_cart', settings: 'propos_settings'
+    products: 'esypos_products', sales: 'esypos_sales', customers: 'esypos_customers',
+    payments: 'esypos_payments', suppliers: 'esypos_suppliers', purchases: 'esypos_purchases',
+    spayments: 'esypos_spayments', expenses: 'esypos_expenses', returns: 'esypos_returns',
+    hold: 'esypos_hold', cart: 'esypos_cart', settings: 'esypos_settings'
   };
   const DEFAULTS = {
     shopName: 'My Shop', shopAddress: '', shopPhone: '', defaultTax: 0,
@@ -33,7 +33,7 @@
   function safeSave(key, value) {
     try {
       root.localStorage.setItem(key, JSON.stringify(value));
-      if (key !== K.cart) { root.localStorage.setItem('propos_dirty', '1'); if (root.Cloud) root.Cloud.markDirty(); }
+      if (key !== K.cart) { root.localStorage.setItem('esypos_dirty', '1'); if (root.Cloud) root.Cloud.markDirty(); }
       return true;
     } catch (e) {
       console.error('Save failed:', key, e);
@@ -44,7 +44,42 @@
   function save(name) { return safeSave(K[name], name === 'settings' ? DB.settings : DB[name]); }
   function saveAll() { Object.keys(K).forEach(save); }
 
+
+  // Migrate ProPOS → EsyPOS localStorage keys (one-time)
+  function migrateBrandKeys() {
+    try {
+      const pairs = [
+        ['propos_products','esypos_products'],['propos_sales','esypos_sales'],['propos_customers','esypos_customers'],
+        ['propos_payments','esypos_payments'],['propos_suppliers','esypos_suppliers'],['propos_purchases','esypos_purchases'],
+        ['propos_spayments','esypos_spayments'],['propos_expenses','esypos_expenses'],['propos_returns','esypos_returns'],
+        ['propos_hold','esypos_hold'],['propos_cart','esypos_cart'],['propos_settings','esypos_settings'],
+        ['propos_theme','esypos_theme'],['propos_sound','esypos_sound'],['propos_dirty','esypos_dirty'],
+        ['propos_last_backup','esypos_last_backup'],['propos_welcomed','esypos_welcomed'],
+        ['propos_g_on','esypos_g_on'],['propos_g_email','esypos_g_email'],['propos_g_name','esypos_g_name'],
+        ['propos_g_pic','esypos_g_pic'],['propos_g_rev','esypos_g_rev'],['propos_g_fid','esypos_g_fid'],
+        ['propos_g_last','esypos_g_last'],['propos_g_snap','esypos_g_snap'],['propos_g_dirty','esypos_g_dirty'],
+        ['propos_g_client','esypos_g_client'],['propos_g_tok','esypos_g_tok']
+      ];
+      let moved = false;
+      pairs.forEach(([oldK, newK]) => {
+        if (root.localStorage.getItem(newK) != null) return;
+        const v = root.localStorage.getItem(oldK);
+        if (v != null) { root.localStorage.setItem(newK, v); root.localStorage.removeItem(oldK); moved = true; }
+      });
+      // session token
+      try {
+        const st = sessionStorage.getItem('propos_g_tok');
+        if (st && !sessionStorage.getItem('esypos_g_tok')) {
+          sessionStorage.setItem('esypos_g_tok', st);
+          sessionStorage.removeItem('propos_g_tok');
+        }
+      } catch (_) {}
+      if (moved) console.info('EsyPOS: migrated data from ProPOS keys');
+    } catch (e) { console.warn('EsyPOS migrate keys', e); }
+  }
+
   function load() {
+    migrateBrandKeys();
     Object.keys(K).forEach(name => {
       if (name === 'settings') DB.settings = Object.assign({}, DEFAULTS, safeLoad(K.settings, {}));
       else DB[name] = safeLoad(K[name], []);

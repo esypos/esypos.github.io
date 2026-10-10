@@ -1,4 +1,4 @@
-/* ProPOS: Receipt, Returns, ইতিহাস, Expenses, Reports, Dashboard */
+/* EsyPOS: Receipt, Returns, ইতিহাস, Expenses, Reports, Dashboard */
 (function () {
   'use strict';
   const C = Core, { DB, esc, num, r2, fmt, money, genId, toast, findProduct, findCustomer } = C;
@@ -14,7 +14,7 @@
     inner(s) {
       const sh = DB.settings; const cust = findCustomer(s.customerId); const ret = C.returnedAmount(s.id);
       const bal = cust ? C.customerBalance(cust.id) : 0;
-      return `<div class="rc-c rc-b" style="font-size:15px">${esc(sh.shopName || 'ProPOS')}</div>
+      return `<div class="rc-c rc-b" style="font-size:15px">${esc(sh.shopName || 'EsyPOS')}</div>
         ${sh.shopAddress ? `<div class="rc-c rc-s">${esc(sh.shopAddress)}</div>` : ''}${sh.shopPhone ? `<div class="rc-c rc-s">Phone: ${esc(sh.shopPhone)}</div>` : ''}
         <div class="rc-hr"></div>
         <div class="rc-row rc-s"><span>Receipt #</span><b>#${C.invLabel(s)}</b></div>
@@ -127,7 +127,7 @@
         <div class="grow"><div class="t">#${C.invLabel(s)} · ${esc(c ? c.name : 'Walk-in')}</div><div class="s">${C.fmtDT(s.date)} · ${esc(s.items.map(i => i.name + '×' + i.qty).join(', '))}</div></div>
         <div class="tr"><div class="fw7 ptext">${money(s.total)}</div><div class="flex gap1" style="justify-content:flex-end">${s.due > 0 ? `<span class="badge b-bad">Due ${money(s.due)}</span>` : `<span class="badge b-ok">${MN[s.paymentMethod] || 'Cash'}</span>`}${ret ? '<span class="badge b-warn">Returns</span>' : ''}</div></div></div>`; }).join('') : '<div class="empty"><i class="fas fa-receipt"></i>No sales</div>';
     },
-    csv() { const arr = this.rows(); C.download('propos-sales.csv', C.toCSV([['Receipt', 'Date', 'Customer', 'Subtotal', 'Discount', 'Tax', 'Total', 'Paid', 'Due', 'Payment', 'Product'], ...arr.map(s => { const c = findCustomer(s.customerId); return [C.invLabel(s), C.dkey(s.date), c ? c.name : '', s.subtotal, s.discount, s.tax, s.total, s.paid, s.due, MN[s.paymentMethod], s.items.map(i => i.name + '×' + i.qty).join('; ')]; })]), 'text/csv'); }
+    csv() { const arr = this.rows(); C.download('esypos-sales.csv', C.toCSV([['Receipt', 'Date', 'Customer', 'Subtotal', 'Discount', 'Tax', 'Total', 'Paid', 'Due', 'Payment', 'Product'], ...arr.map(s => { const c = findCustomer(s.customerId); return [C.invLabel(s), C.dkey(s.date), c ? c.name : '', s.subtotal, s.discount, s.tax, s.total, s.paid, s.due, MN[s.paymentMethod], s.items.map(i => i.name + '×' + i.qty).join('; ')]; })]), 'text/csv'); }
   };
   App.Views.history = Hist;
 
@@ -193,7 +193,7 @@
     label() { const [f, t] = this.range(); return f || t ? `${f || '…'} from ${t || '…'}` : 'All Time'; },
     csv() {
       const r = this.data();
-      C.download('propos-report.csv', C.toCSV([['ProPOS Report', this.label()], [], ['Invoices', r.count], ['Gross Sales', r.grossSales], ['Returns', r.returnsTotal], ['Net Sales', r.netSales], ['COGS', r.cogs], ['Gross Profit', r.grossProfit], ['Expenses', r.expenses], ['Net Profit', r.netProfit], ['New Due', r.newDue], ['Due Collected', r.dueCollected], [], ['Product', 'Qty', 'Sales', 'Profit'], ...r.topProducts.map(p => [p.name, p.qty, p.amount, p.profit])]), 'text/csv');
+      C.download('esypos-report.csv', C.toCSV([['EsyPOS Report', this.label()], [], ['Invoices', r.count], ['Gross Sales', r.grossSales], ['Returns', r.returnsTotal], ['Net Sales', r.netSales], ['COGS', r.cogs], ['Gross Profit', r.grossProfit], ['Expenses', r.expenses], ['Net Profit', r.netProfit], ['New Due', r.newDue], ['Due Collected', r.dueCollected], [], ['Product', 'Qty', 'Sales', 'Profit'], ...r.topProducts.map(p => [p.name, p.qty, p.amount, p.profit])]), 'text/csv');
     },
     print() {
       const r = this.data(); const row = (a, b) => `<tr><td>${a}</td><td style="text-align:right"><b>${b}</b></td></tr>`;

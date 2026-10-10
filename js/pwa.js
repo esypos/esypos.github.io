@@ -6,10 +6,10 @@
     if (!('caches' in window)) return;
     try {
       const keys = await caches.keys();
-      const keep = keys.filter(k => !k.startsWith('propos-') || k.indexOf('v9') !== -1);
-      // Delete all propos caches except current v9 — forces fresh assets next load
+      const keep = keys.filter(k => !k.startsWith('esypos-') || k.indexOf('v9') !== -1);
+      // Delete all esypos caches except current v9 — forces fresh assets next load
       await Promise.all(
-        keys.filter(k => k.startsWith('propos-') && k.indexOf('v9') === -1).map(k => caches.delete(k))
+        keys.filter(k => (k.startsWith('esypos-') || k.startsWith('propos-')) && k.indexOf('v9') === -1).map(k => caches.delete(k))
       );
     } catch (_) {}
   }
