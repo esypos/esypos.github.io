@@ -1,4 +1,4 @@
-/* EsyPOS App: রাউটার, ব্যাক-বাটন, Sales Counter (POS), Product */
+/* EsyPOS App: router, back-button handling, Sales Counter (POS), Products */
 (function () {
   'use strict';
   const C = Core, { DB, esc, num, r2, fmt, money, genId, toast, findProduct, findCustomer } = C;
@@ -51,7 +51,7 @@
   try { history.replaceState({ root: 1 }, ''); pushGuard(); } catch (_) {}
   window.addEventListener('popstate', () => {
     if (handleBack()) { pushGuard(); return; }
-    if (exitArmed) return;                       // দ্বিতীয় Back — সিস্টেম অ্যাপ Close করবে
+    if (exitArmed) return;                       // second Back: let the system close the app
     exitArmed = true; toast('Press Back again to exit');
     setTimeout(() => { if (exitArmed) { exitArmed = false; pushGuard(); } }, 2500);
   });
@@ -181,9 +181,9 @@
       if (!window.Scanner || Scanner.isOpen()) return;
       Scanner.open(code => {
         const p = this.findByBarcode(code);
-        if (!p) { Scanner.flash('⚠️ Barcode not found: ' + code, 'bad'); return false; }   // ক্যামেরা খোলা থাকে, আবার চেষ্টা করা যায়
-        Scanner.close();                                         // Product মিলেছে → ক্যামেরা সাথে সাথে Close
-        this.add(p.id, true, { picked: true });                  // Cartে সিলেক্ট + "Product selected" বার্তা
+        if (!p) { Scanner.flash('⚠️ Barcode not found: ' + code, 'bad'); return false; }   // camera stays open so the user can retry
+        Scanner.close();                                         // product found: close the camera right away
+        this.add(p.id, true, { picked: true });                  // add to cart + "Product selected" message
       }, { hint: 'Hold product barcode in frame' });
     },
     add(id, quiet, opt) {
@@ -272,7 +272,7 @@
     hold() {
       if (!DB.cart.length) { toast('Cart empty'); return; }
       const c = findCustomer(this.customerId);
-      DB.hold.unshift({ id: genId(), date: new Date().toISOString(), items: DB.cart, customerId: this.customerId, disc: this.disc, discType: this.discType, tax: this.tax, label: c ? c.name : '' });
+      DB.hold.unshift({ id: genId(), date: new Date().toISOString(), items: DB.cart, customerId: this.customerId, disc: this.disc, discType: this.discType, tax: this.tax, note: this.note || '', label: c ? c.name : '' });
       C.save('hold'); DB.cart = []; this.resetBill(); C.save('cart'); this.renderCart(); this.renderGrid(); toast('Bill held ✓');
     },
     showHold() {
@@ -284,12 +284,12 @@
     restore(id, btn) {
       const h = DB.hold.find(x => x.id === id); if (!h) return;
       const run = () => {
-        DB.cart = h.items; this.customerId = h.customerId; this.disc = h.disc; this.discType = h.discType; this.tax = h.tax;
+        DB.cart = h.items; this.customerId = h.customerId; this.disc = h.disc; this.discType = h.discType; this.tax = h.tax; this.note = h.note || '';
         DB.hold = DB.hold.filter(x => x.id !== id); C.save('hold'); C.save('cart'); Modal.closeAll(); this.renderCart(); this.renderGrid(); toast('Bill resumed ✓');
       };
       if (DB.cart.length) askConfirm('Current cart items will be replaced. Continue?', run, { yes: 'Yes' }); else run();
     },
-    dropHold(id, btn) { askConfirm('Delete this held bill?', () => { DB.hold = DB.hold.filter(x => x.id !== id); C.save('hold'); Modal.closeAll(); this.renderGrid(); toast('Deleted'); }, { danger: true, yes: 'Delete' }); },
+    dropHold(id, btn) { askConfirm('Delete this held bill?', () => { DB.hold = DB.hold.filter(x => x.id !== id); C.save('hold'); Modal.closeAll(); this.renderGrid(); toast('Deleted'); if (DB.hold.length) this.showHold(); }, { danger: true, yes: 'Delete' }); },
     checkout() {
       if (!DB.cart.length) return;
       App.closeDrawers(); this.payMethod = 'cash';
@@ -397,7 +397,7 @@
         const exp = p.expiry ? (p.expiry < C.todayKey() ? '<span class="badge b-bad">Expired</span>' : (p.expiry <= soon ? '<span class="badge b-warn">Expiry ' + p.expiry + '</span>' : '')) : '';
         return `<div class="row" onclick="Products.edit('${p.id}')">
           <div class="avatar" style="overflow:hidden">${p.image ? `<img src="${esc(p.image)}" style="width:100%;height:100%;object-fit:cover">` : '<i class="fas fa-box"></i>'}</div>
-          <div class="grow"><div class="t">${esc(p.name)} ${exp}</div><div class="s">${esc(p.category || 'No category')}${p.barcode ? ' · ' + esc(p.barcode) : ''} · Purchases ${money(p.cost || 0)}</div></div>
+          <div class="grow"><div class="t">${esc(p.name)} ${exp}</div><div class="s">${esc(p.category || 'No category')}${p.barcode ? ' · ' + esc(p.barcode) : ''} · Cost ${money(p.cost || 0)}</div></div>
           <div class="tr"><div class="fw7 ptext">${money(p.price)}</div><div class="xs ${low ? 'bad fw6' : 'muted'}">${p.track === false ? 'Not tracked' : p.stock + ' ' + esc(p.unit || '')}</div></div>
           <button class="icon-btn" onclick="event.stopPropagation();Products.del('${p.id}')"><i class="fas fa-trash bad"></i></button></div>`;
       }).join('') + (arr.length > 300 ? `<div class="empty">Search to see remaining products (${arr.length - 300} more)</div>` : '');
@@ -421,7 +421,7 @@
     },
     pickImg(input) {
       const f = input.files && input.files[0]; if (!f) return; const rd = new FileReader();
-      rd.onload = e => { const im = new Image(); im.onload = () => { const r = Math.min(1, 400 / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * r); c.height = Math.round(im.height * r); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); this.img = c.toDataURL('image/jpeg', .75); $('pf-img').innerHTML = `<img src="${this.img}" style="width:100%;height:100%;object-fit:cover">`; }; im.src = e.target.result; };
+      rd.onload = e => { const im = new Image(); im.onload = () => { const r = Math.min(1, 320 / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * r); c.height = Math.round(im.height * r); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); this.img = c.toDataURL('image/jpeg', .7); $('pf-img').innerHTML = `<img src="${this.img}" style="width:100%;height:100%;object-fit:cover">`; }; im.src = e.target.result; };
       rd.readAsDataURL(f);
     },
     scanBC() { Scanner.open(code => { const f = $('pf-bc'); if (f) { f.value = code; toast('✓ Barcode captured'); } }, { hint: 'Hold product barcode' }); },
@@ -458,9 +458,9 @@
         if (/^\s*(Name|name)\s*$/i.test(rows[0][0] || '')) rows = rows.slice(1);
         let add = 0, upd = 0, bad = 0;
         rows.forEach(r => {
-          const name = (r[0] || '').trim(); const price = parseFloat(r[4]); if (!name || !isFinite(price)) { bad++; return; }
+          const name = (r[0] || '').trim(); const price = parseFloat(r[4]); if (!name || !isFinite(price) || price < 0) { bad++; return; }
           const bc = (r[1] || '').trim(); let p = (bc && DB.products.find(x => x.barcode === bc)) || DB.products.find(x => x.name === name);
-          const data = { name, barcode: bc, category: (r[2] || '').trim(), cost: num(r[3]), price, stock: num(r[5]), unit: (r[6] || '').trim() || 'Pcs', minStock: r[7] === undefined || r[7] === '' ? 5 : num(r[7]), expiry: (r[8] || '').trim() };
+          const data = { name, barcode: bc, category: (r[2] || '').trim(), cost: Math.max(0, num(r[3])), price, stock: Math.max(0, num(r[5])), unit: (r[6] || '').trim() || 'Pcs', minStock: r[7] === undefined || r[7] === '' ? (DB.settings.lowStockDefault || 5) : Math.max(0, num(r[7])), expiry: (r[8] || '').trim() };
           if (p) { Object.assign(p, data); upd++; } else { DB.products.push(Object.assign({ id: genId(), track: true, image: null }, data)); add++; }
         });
         C.save('products'); Modal.closeAll(); toast(`✓ ${add} new, ${upd} updated${bad ? ', ' + bad + ' excluded' : ''}`); App.refresh();
@@ -480,7 +480,13 @@
     const tag = ((document.activeElement && document.activeElement.tagName) || '').toLowerCase();
     const typing = tag === 'input' || tag === 'textarea' || tag === 'select' || (document.activeElement && document.activeElement.isContentEditable);
     if (document.querySelector('.modal-back,.ui-confirm-backdrop,.lock,.scan')) {
-      if (e.key === 'Escape') { try { Modal.closeAll(); } catch (_) {} }
+      if (e.key === 'Escape') {
+        try {
+          if (window.hasConfirm && hasConfirm()) closeConfirm();
+          else if (window.Scanner && Scanner.isOpen()) Scanner.close();
+          else if (Modal.stack.length) Modal.close();
+        } catch (_) {}
+      }
       return;
     }
     if (e.key === 'Escape') { App.closeDrawers(); return; }

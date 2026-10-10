@@ -1,13 +1,14 @@
 /* PWA: network-first updates, auto cache clear, install + offline badge */
 (function () {
   'use strict';
+  const CACHE_VERSION = 'v10.2';   // keep in sync with sw.js
+  // Delete caches from OLDER versions only — the current offline cache must survive.
   async function clearOldCaches() {
     if (!('caches' in window)) return;
     try {
       const keys = await caches.keys();
-      const keep = keys.filter(k => !k.startsWith('esypos-') || k.indexOf('v9') !== -1);
       await Promise.all(
-        keys.filter(k => (k.startsWith('esypos-') || k.startsWith('propos-')) && k.indexOf('v9') === -1).map(k => caches.delete(k))
+        keys.filter(k => (k.startsWith('esypos-') || k.startsWith('propos-')) && !k.endsWith('-' + CACHE_VERSION)).map(k => caches.delete(k))
       );
     } catch (_) {}
   }
@@ -38,9 +39,6 @@
         document.addEventListener('visibilitychange', () => {
           if (document.visibilityState === 'visible') {
             try { reg.update(); } catch (_) {}
-            if (navigator.serviceWorker.controller) {
-              navigator.serviceWorker.controller.postMessage('CLEAR_CACHES');
-            }
           }
         });
       } catch (err) {

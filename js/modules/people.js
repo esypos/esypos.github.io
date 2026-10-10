@@ -28,8 +28,8 @@
       $('view').innerHTML = `
       <div class="page-head"><div><h2>Customers & Due</h2><p>Due balances, collections & ledger</p></div>
         <div class="flex gap2"><button class="btn btn-ghost" onclick="People.csvOut()"><i class="fas fa-file-csv"></i></button><button class="btn btn-primary" onclick="People.edit()"><i class="fas fa-user-plus"></i> New customer</button></div></div>
-      <div class="stats"><div class="stat hl"><div class="k">Total supplier payable</div><div class="v">${money(due)}</div></div>
-        <div class="stat"><div class="k">Total Customer</div><div class="v">${DB.customers.length}</div></div>
+      <div class="stats"><div class="stat hl"><div class="k">Total customer due</div><div class="v">${money(due)}</div></div>
+        <div class="stat"><div class="k">Total customers</div><div class="v">${DB.customers.length}</div></div>
         <div class="stat"><div class="k">Customers with due</div><div class="v ${withDue ? 'bad' : ''}">${withDue}</div></div>
         <div class="stat"><div class="k">Payable to suppliers</div><div class="v">${money(C.totalSupplierDue())}</div></div></div>
       <div class="card pad-s mb3"><div class="relative mb2"><i class="fas fa-magnifying-glass search-ico"></i><input class="input has-ico" placeholder="Name or phone..." value="${esc(this.cq)}" oninput="People.cSearch(this.value)"></div>
@@ -52,7 +52,7 @@
     csvOut() { C.download('esypos-customers.csv', C.toCSV([['Name', 'Phone', 'Address', 'Current due'], ...DB.customers.map(c => [c.name, c.phone, c.address, C.customerBalance(c.id)])]), 'text/csv'); },
     edit(id, after) {
       const c = id ? findCustomer(id) : null;
-      const m = Modal.open({ title: c ? 'Customer Edit' : 'New customer', body: `
+      const m = Modal.open({ title: c ? 'Edit customer' : 'New customer', body: `
         <div class="field"><label class="label">Name *</label><input id="cf-name" class="input" autofocus value="${esc(c ? c.name : '')}"></div>
         <div class="field"><label class="label">Mobile</label><input id="cf-phone" type="tel" class="input" value="${esc(c ? c.phone : '')}"></div>
         <div class="field"><label class="label">Address</label><input id="cf-addr" class="input" value="${esc(c ? c.address : '')}"></div>
@@ -89,11 +89,11 @@
         <div class="field"><label class="label">Note</label><input id="cl-note" class="input" placeholder="Optional"></div>`,
         foot: `<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-ok" id="cl-ok">Confirm collection</button>` });
       m.querySelector('#cl-ok').onclick = () => {
-        const a = num($('cl-amt').value); if (a <= 0) { toast('⚠️ Enter a valid qty'); return; }
+        const a = num($('cl-amt').value); if (a <= 0) { toast('⚠️ Enter a valid amount'); return; }
         const go = () => {
           DB.payments.push({ id: genId(), date: new Date().toISOString(), customerId: id, amount: r2(a), method: $('cl-m').value, note: $('cl-note').value.trim() });
           C.save('payments'); Modal.closeAll(); toast('Due collected ✓'); App.refresh();
-          const nb = C.customerBalance(id); const txt = `Dear ${c.name}, ${DB.settings.shopName} — your balance is ${money(a)} payment received.${nb > 0 ? ' Current due ' + money(nb) : ' Your due is clear.'} Thank you.`;
+          const nb = C.customerBalance(id); const txt = `Dear ${c.name}, we received your payment of ${money(a)} at ${DB.settings.shopName}.${nb > 0 ? ' Your current due is ' + money(nb) + '.' : ' Your account is now clear.'} Thank you.`;
           setTimeout(() => { if (c.phone) askConfirm('Send WhatsApp confirmation to customer?', () => shareWA(c.phone, txt), { yes: 'Send', icon: 'fa-paper-plane' }); }, 400);
         };
         if (a > Math.max(0, b)) askConfirm(`Overpaying by ${money(a - Math.max(0, b))} — excess will be kept as advance.`, go, { yes: 'OK' }); else go();
@@ -101,7 +101,7 @@
     },
     remind(id) {
       const c = findCustomer(id); const b = C.customerBalance(id); if (b <= 0) { toast('This customer has no due'); return; }
-      const txt = `Dear ${c.name}, ${DB.settings.shopName} — your balance is ${money(b)} is due. Please pay at your convenience. Thank you.`;
+      const txt = `Dear ${c.name}, this is a friendly reminder from ${DB.settings.shopName}: your outstanding due is ${money(b)}. Please pay at your convenience. Thank you.`;
       const m = Modal.open({ title: 'Due reminder', body: `<div class="card pad-s mb3 sm" style="user-select:text">${esc(txt)}</div>
         <div class="grid2"><button class="btn btn-ok" id="rm-wa"><i class="fab fa-whatsapp"></i> WhatsApp</button>
         <button class="btn btn-soft" id="rm-sms"><i class="fas fa-message"></i> SMS</button></div>${c.phone ? '' : '<p class="xs muted mt2">No phone number — pick a contact in WhatsApp.</p>'}` });
@@ -120,14 +120,14 @@
       const t = People.tab;
       $('view').innerHTML = `
       <div class="page-head"><div><h2>Purchases & Suppliers</h2><p>Buy stock, increase inventory & supplier dues</p></div>
-        <div class="flex gap2"><button class="btn btn-ghost" onclick="Buy.editSup()"><i class="fas fa-user-plus"></i> Suppliers</button><button class="btn btn-primary" onclick="Buy.newPurchase()"><i class="fas fa-plus"></i> New purchase</button></div></div>
+        <div class="flex gap2"><button class="btn btn-ghost" onclick="Buy.editSup()"><i class="fas fa-user-plus"></i> New supplier</button><button class="btn btn-primary" onclick="Buy.newPurchase()"><i class="fas fa-plus"></i> New purchase</button></div></div>
       <div class="stats"><div class="stat"><div class="k">Payable to suppliers</div><div class="v bad">${money(C.totalSupplierDue())}</div></div><div class="stat"><div class="k">Suppliers</div><div class="v">${DB.suppliers.length}</div></div>
         <div class="stat"><div class="k">This month's purchases</div><div class="v">${money(C.buildReport(C.monthStart(), C.todayKey()).purchases)}</div></div></div>
       <div class="chips mb3"><button class="chip ${t === 'purchases' ? 'on' : ''}" onclick="Buy.tab('purchases')">Purchase list</button><button class="chip ${t === 'suppliers' ? 'on' : ''}" onclick="Buy.tab('suppliers')">Suppliers</button></div>
       <div class="card" id="buy-list"></div>`;
       const el = $('buy-list');
       if (t === 'purchases') {
-        el.innerHTML = DB.purchases.length ? [...DB.purchases].sort((a, b) => a.date < b.date ? 1 : -1).slice(0, 200).map(p => { const s = findSupplier(p.supplierId); return `<div class="row" onclick="Buy.viewPurchase('${p.id}')"><div class="avatar"><i class="fas fa-truck"></i></div><div class="grow"><div class="t">Purchases #${p.no} · ${esc(s ? s.name : 'No supplier')}</div><div class="s">${C.fmtDT(p.date)} · ${p.items.length} items</div></div><div class="tr"><div class="fw7">${money(p.total)}</div>${p.due > 0 ? `<span class="badge b-bad">Due ${money(p.due)}</span>` : '<span class="badge b-ok">Paid</span>'}</div></div>`; }).join('') : '<div class="empty"><i class="fas fa-truck-ramp-box"></i>No purchases</div>';
+        el.innerHTML = DB.purchases.length ? [...DB.purchases].sort((a, b) => a.date < b.date ? 1 : -1).slice(0, 200).map(p => { const s = findSupplier(p.supplierId); return `<div class="row" onclick="Buy.viewPurchase('${p.id}')"><div class="avatar"><i class="fas fa-truck"></i></div><div class="grow"><div class="t">Purchase #${p.no} · ${esc(s ? s.name : 'No supplier')}</div><div class="s">${C.fmtDT(p.date)} · ${p.items.length} items</div></div><div class="tr"><div class="fw7">${money(p.total)}</div>${p.due > 0 ? `<span class="badge b-bad">Due ${money(p.due)}</span>` : '<span class="badge b-ok">Paid</span>'}</div></div>`; }).join('') : '<div class="empty"><i class="fas fa-truck-ramp-box"></i>No purchases</div>';
       } else {
         el.innerHTML = DB.suppliers.length ? DB.suppliers.map(s => { const b = C.supplierBalance(s.id); return `<div class="row" onclick="Buy.supDetail('${s.id}')"><div class="avatar">${ini(s.name)}</div><div class="grow"><div class="t">${esc(s.name)}</div><div class="s">${esc(s.phone || 'No phone')}</div></div><div class="tr">${b > 0 ? `<div class="fw7 bad">${money(b)}</div><div class="xs muted">Payable</div>` : '<span class="badge b-ok">Clear</span>'}</div></div>`; }).join('') : '<div class="empty"><i class="fas fa-user-tie"></i>No suppliers</div>';
       }
@@ -135,7 +135,7 @@
     tab(t) { People.tab = t; this.render(); },
     editSup(id, after) {
       const s = id ? findSupplier(id) : null;
-      const m = Modal.open({ title: s ? 'Suppliers Edit' : 'New supplier', body: `
+      const m = Modal.open({ title: s ? 'Edit supplier' : 'New supplier', body: `
         <div class="field"><label class="label">Name / company *</label><input id="sf-name" class="input" autofocus value="${esc(s ? s.name : '')}"></div>
         <div class="field"><label class="label">Mobile</label><input id="sf-phone" type="tel" class="input" value="${esc(s ? s.phone : '')}"></div>
         <div class="field"><label class="label">Address</label><input id="sf-addr" class="input" value="${esc(s ? s.address : '')}"></div>
@@ -157,10 +157,10 @@
     },
     pay(id) {
       const s = findSupplier(id); const b = C.supplierBalance(id);
-      const m = Modal.open({ title: 'Payment — ' + s.name, body: `<div class="field"><label class="label">Qty (৳)</label><input id="sp-amt" type="number" step="any" min="0" class="input" style="font-size:20px;font-weight:700" autofocus value="${b > 0 ? b : ''}"></div>
+      const m = Modal.open({ title: 'Payment — ' + s.name, body: `<div class="field"><label class="label">Amount (৳)</label><input id="sp-amt" type="number" step="any" min="0" class="input" style="font-size:20px;font-weight:700" autofocus value="${b > 0 ? b : ''}"></div>
         <div class="field"><label class="label">Method</label><select id="sp-m" class="input"><option value="cash">Cash</option><option value="mobile">Mobile banking</option><option value="card">Card/Bank</option></select></div>
         <div class="field"><label class="label">Note</label><input id="sp-note" class="input"></div>`, foot: `<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" id="sp-ok">Confirm</button>` });
-      m.querySelector('#sp-ok').onclick = () => { const a = num($('sp-amt').value); if (a <= 0) { toast('⚠️ Enter a valid qty'); return; }
+      m.querySelector('#sp-ok').onclick = () => { const a = num($('sp-amt').value); if (a <= 0) { toast('⚠️ Enter a valid amount'); return; }
         DB.spayments.push({ id: genId(), date: new Date().toISOString(), supplierId: id, amount: r2(a), method: $('sp-m').value, note: $('sp-note').value.trim() }); C.save('spayments'); Modal.closeAll(); toast('Payment Saved ✓'); App.refresh(); };
     },
     delSup(id) {
@@ -171,12 +171,12 @@
       if (!DB.products.length) { toast('⚠️ Add a product first'); return; }
       People.pr = [{ pid: '', qty: 1, cost: 0 }];
       const m = Modal.open({ title: 'New purchase (stock in)', size: 'wide', static: true, body: `
-        <div class="field"><label class="label">Suppliers</label><div class="flex gap2"><select id="pu-sup" class="input"><option value="">— none —</option>${DB.suppliers.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select><button class="btn btn-soft" onclick="Buy.quickSup()"><i class="fas fa-plus"></i></button></div></div>
+        <div class="field"><label class="label">Supplier</label><div class="flex gap2"><select id="pu-sup" class="input"><option value="">— none —</option>${DB.suppliers.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select><button class="btn btn-soft" onclick="Buy.quickSup()"><i class="fas fa-plus"></i></button></div></div>
         <div id="pu-rows"></div><button class="btn btn-ghost btn-block mb3" onclick="Buy.addRow()"><i class="fas fa-plus"></i> Another product</button>
         <div class="card pad-s"><div class="sumrow big" style="border:0;margin:0;padding:0"><span>Total</span><span class="ptext" id="pu-total">৳0</span></div></div>
         <div class="grid2 mt3"><div class="field"><label class="label">Payment now</label><input id="pu-paid" type="number" step="any" min="0" class="input" oninput="Buy.puCalc()"></div><div class="field"><label class="label">Due remaining</label><input id="pu-due" class="input" disabled value="৳0"></div></div>
         <div class="field"><label class="label">Note</label><input id="pu-note" class="input"></div>`,
-        foot: `<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" onclick="Buy.savePurchase(this)">Purchases Save</button>` });
+        foot: `<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" onclick="Buy.savePurchase(this)">Save purchase</button>` });
       this.rows();
     },
     quickSup() { Buy.editSup(null, id => { const sel = $('pu-sup'); if (sel) { sel.innerHTML += `<option value="${id}">${esc(findSupplier(id).name)}</option>`; sel.value = id; } }); },
@@ -189,7 +189,7 @@
     addRow() { People.pr.push({ pid: '', qty: 1, cost: 0 }); this.rows(); },
     delRow(i) { if (People.pr.length > 1) People.pr.splice(i, 1); else People.pr[0] = { pid: '', qty: 1, cost: 0 }; this.rows(); },
     selP(i, pid) { People.pr[i].pid = pid; const p = findProduct(pid); if (p) People.pr[i].cost = p.cost || 0; this.rows(); },
-    setR(i, k, v) { People.pr[i][k] = num(v); this.puCalc(); },
+    setR(i, k, v) { People.pr[i][k] = Math.max(0, num(v)); this.puCalc(); },
     puTotal() { return r2(People.pr.reduce((s, r) => s + num(r.qty) * num(r.cost), 0)); },
     puCalc() { const t = this.puTotal(); const e = $('pu-total'); if (!e) return; e.textContent = money(t); const paid = Math.min(Math.max(0, num($('pu-paid').value)), t); $('pu-due').value = money(Math.max(0, r2(t - paid))); },
     savePurchase(btn) {
@@ -204,13 +204,13 @@
     },
     viewPurchase(id) {
       const p = DB.purchases.find(x => x.id === id); if (!p) return; const s = findSupplier(p.supplierId);
-      Modal.open({ title: 'Purchases #' + p.no, body: `<div class="kv"><span class="muted">Suppliers</span><b>${esc(s ? s.name : '—')}</b></div><div class="kv"><span class="muted">Date</span><span>${C.fmtDT(p.date)}</span></div>
+      Modal.open({ title: 'Purchase #' + p.no, body: `<div class="kv"><span class="muted">Supplier</span><b>${esc(s ? s.name : '—')}</b></div><div class="kv"><span class="muted">Date</span><span>${C.fmtDT(p.date)}</span></div>
         ${p.items.map(i => `<div class="kv"><span>${esc(i.name)} × ${i.qty}</span><span>${money(i.qty * i.cost)}</span></div>`).join('')}
         <div class="kv"><b>Total</b><b>${money(p.total)}</b></div><div class="kv"><span class="muted">Payment</span><span class="ok">${money(p.paid)}</span></div><div class="kv"><span class="muted">Due</span><span class="bad">${money(p.due)}</span></div>${p.note ? `<p class="xs muted mt2">Note: ${esc(p.note)}</p>` : ''}`,
-        foot: `<button class="btn btn-danger-soft" onclick="Buy.delPurchase('${id}')"><i class="fas fa-trash"></i> Cancel</button>` });
+        foot: `<button class="btn btn-danger-soft" onclick="Buy.delPurchase('${id}')"><i class="fas fa-trash"></i> Cancel purchase</button>` });
     },
     delPurchase(id) {
-      askConfirm('Cancelling this purchase will reduce stock and adjust supplier balance. Confirm?', () => {
+      askConfirm('Cancelling this purchase will reduce stock and remove its due from the supplier balance. Payments already made stay on record. Continue?', () => {
         const p = DB.purchases.find(x => x.id === id); if (!p) return;
         p.items.forEach(i => { const pr = findProduct(i.id); if (pr && pr.track !== false) pr.stock = Math.max(0, r2(pr.stock - i.qty)); });
         DB.purchases = DB.purchases.filter(x => x.id !== id); C.save('products'); C.save('purchases'); Modal.closeAll(); toast('Purchase cancelled'); App.refresh();

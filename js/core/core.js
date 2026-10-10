@@ -1,4 +1,4 @@
-/* EsyPOS core: ডেটা, হিসাব, হেল্পার — DOM-এর উপর নির্ভর করে না (শুধু toast ছাড়া) */
+/* EsyPOS core: data, calculations, helpers (no DOM dependency except toast) */
 (function (root) {
   'use strict';
   const K = {
@@ -104,7 +104,7 @@
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
   const r2 = n => Math.round((n + Number.EPSILON) * 100) / 100;
-  const fmt = n => Number(n || 0).toLocaleString('en-BD', { maximumFractionDigits: 2 });
+  const fmt = n => Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
   const UNIT_MAP = { 'পিস':'Pcs','কেজি':'Kg','গ্রাম':'g','লিটার':'L','মিটার':'m','ডজন':'Dozen','বক্স':'Box','প্যাকেট':'Packet','বোতল':'Bottle','জোড়া':'Pair','কাপ':'Cup' };
   const unitLabel = u => UNIT_MAP[u] || u || 'Pcs';
   const money = n => '৳' + fmt(n);
@@ -162,7 +162,7 @@
     DB.sales.forEach(s => { if (s.customerId === id) rows.push({ date: s.date, type: 'sale', desc: 'Sales #' + invLabel(s) + ' (Total ' + money(s.total) + ', Paid ' + money(s.paid) + ')', debit: num(s.due), credit: 0, ref: s.id }); });
     DB.payments.forEach(p => { if (p.customerId === id) rows.push({ date: p.date, type: 'payment', desc: 'Due Collected' + (p.note ? ' — ' + p.note : ''), debit: 0, credit: num(p.amount), ref: p.id }); });
     DB.returns.forEach(r => { if (r.customerId === id && r.refundType === 'due') rows.push({ date: r.date, type: 'return', desc: 'Returns (deducted from due)', debit: 0, credit: num(r.amount), ref: r.id }); });
-    rows.sort((a, b) => a.date < b.date ? -1 : 1);
+    rows.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
     let bal = 0; rows.forEach(r => { bal = r2(bal + r.debit - r.credit); r.balance = bal; });
     return rows;
   }
@@ -215,8 +215,16 @@
     };
   }
   const stockValue = () => r2(DB.products.reduce((s, p) => s + (p.track === false ? 0 : num(p.stock) * num(p.cost)), 0));
+  // Neutralise spreadsheet formulas (=, @, tab, or +/- followed by non-numeric text) in exported text cells
+  function csvCell(c) {
+    if (c == null) return '';
+    if (typeof c === 'number') return String(c);
+    c = String(c);
+    if (/^[=@\t\r]/.test(c) || (/^[+-]/.test(c) && !/^[+-]?[\d\s().-]+$/.test(c))) c = "'" + c;
+    return /[",\n\r]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c;
+  }
   function toCSV(rows) {
-    return '\ufeff' + rows.map(r => r.map(c => { c = c == null ? '' : String(c); return /[",\n\r]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c; }).join(',')).join('\r\n');
+    return '\ufeff' + rows.map(r => r.map(csvCell).join(',')).join('\r\n');
   }
   function parseCSV(text) {
     text = text.replace(/^\ufeff/, ''); const rows = []; let row = [], cur = '', q = false;

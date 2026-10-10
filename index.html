@@ -2,13 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>EsyPOS - Free Point of Sale</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <title>EsyPOS — Simple POS for Every Business</title>
     <noscript><style>body::before{content:"Enable JavaScript to run EsyPOS";display:block;padding:20px;text-align:center}</style></noscript>
-    <meta name="description" content="EsyPOS - Free offline point of sale software">
-    <meta property="og:title" content="EsyPOS - Free Point of Sale">
+    <meta name="description" content="EsyPOS is a free, offline-first point of sale app: fast billing, stock, customer dues, suppliers, expenses, profit reports, barcode scanning and automatic Google Drive backup. Works on mobile and desktop.">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="EsyPOS — Simple POS for Every Business">
+    <meta property="og:description" content="Free offline-first point of sale: billing, stock, dues, reports and Google Drive backup.">
     <meta property="og:image" content="assets/icons/og-image.png">
     <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="EsyPOS — Simple POS for Every Business">
     <script>(function(){try{var m=localStorage.getItem('esypos_theme')||'auto';if(m==='dark'||(m==='auto'&&window.matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}})()</script>
 
 <script>(function(){var d=document.documentElement,n=false;try{var on=localStorage.getItem('esypos_g_on')==='1';n=!on;if(on&&navigator.onLine){var t=JSON.parse(sessionStorage.getItem('esypos_g_tok')||'null');n=!(t&&t.exp>Date.now()+60000)}}catch(e){n=true}if(n)d.classList.add('needs-login')})();</script>
@@ -18,8 +22,9 @@
     <link rel="preconnect" href="https://accounts.google.com">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="EsyPOS">
-    <link rel="icon" href="favicon.ico?v=10.1" sizes="any">
+    <link rel="icon" href="favicon.ico?v=10.2" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16.png">
     <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
@@ -30,7 +35,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap">
     <style>.hidden{display:none!important}.drawer{position:fixed;top:0;height:100%;transition:transform .28s}.drawer.left{left:0;transform:translateX(-100%)}.drawer.right{right:0;transform:translateX(100%)}.drawer.open{transform:none}</style>
-    <link rel="stylesheet" href="css/style.css?v=10.1">
+    <link rel="stylesheet" href="css/style.css?v=10.2">
 </head>
 <body data-view="pos">
 
@@ -40,7 +45,7 @@
     <nav class="nav" id="nav-desk"></nav>
     <div style="padding:10px;border-top:1px solid var(--border)" class="flex col gap2">
         <div class="js-acct"></div>
-        <button class="btn btn-primary btn-block" onclick="Cloud.panel()"><i class="fas fa-cloud"></i> Cloud Backup</button>
+        <button class="btn btn-soft btn-block" onclick="Cloud.panel()"><i class="fas fa-cloud"></i> Cloud Backup</button>
         <div class="grid3"><button class="btn btn-ghost" onclick="Theme.toggle()"><i class="theme-ico fas fa-moon"></i> Theme</button><button class="btn btn-ghost" onclick="Lock.lockNow()"><i class="fas fa-lock"></i> Lock</button><button class="btn btn-ghost btn-logout" onclick="Cloud.signOut()"><i class="fas fa-right-from-bracket"></i> Sign out</button></div>
         <div class="legal-links"><a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a></div>
     </div>
@@ -51,8 +56,8 @@
     <div class="flex items-c gap2"><div class="logo" style="width:34px;height:34px"><img class="logo-img" src="assets/icons/icon-192.png" alt="EsyPOS" draggable="false"></div><b style="font-size:17px">EsyPOS</b></div>
     <div class="flex items-c topbar-actions">
         <button type="button" class="sync-chip js-chip" onclick="Cloud.panel()" title="Google Drive Backup"></button>
-        <button class="icon-btn" onclick="Theme.toggle()" title="Dark/Light"><i class="theme-ico fas fa-moon"></i></button>
-        <button class="icon-btn" onclick="App.toggleNav()" title="Menu"><i class="fas fa-bars"></i></button>
+        <button class="icon-btn" onclick="Theme.toggle()" title="Dark / light mode" aria-label="Toggle dark mode"><i class="theme-ico fas fa-moon"></i></button>
+        <button class="icon-btn" onclick="App.toggleNav()" title="Menu" aria-label="Open menu"><i class="fas fa-bars"></i></button>
     </div>
 </header>
 
@@ -62,11 +67,11 @@
 
 <!-- Mobile Menu -->
 <aside id="mobile-nav" class="drawer left">
-    <div class="brand"><div class="logo"><img class="logo-img" src="assets/icons/icon-192.png" alt="EsyPOS" draggable="false"></div><div class="grow"><div class="fw7" style="font-size:17px">EsyPOS</div><div class="xs muted">Simple POS for Every Business</div></div><button class="icon-btn" onclick="App.closeDrawers()"><i class="fas fa-xmark"></i></button></div>
+    <div class="brand"><div class="logo"><img class="logo-img" src="assets/icons/icon-192.png" alt="EsyPOS" draggable="false"></div><div class="grow"><div class="fw7" style="font-size:17px">EsyPOS</div><div class="xs muted">Simple POS for Every Business</div></div><button class="icon-btn" onclick="App.closeDrawers()" aria-label="Close menu"><i class="fas fa-xmark"></i></button></div>
     <nav class="nav" id="nav-mob"></nav>
     <div style="padding:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--border)" class="flex col gap2">
         <div class="js-acct" onclick="App.closeDrawers()"></div>
-        <button class="btn btn-primary btn-block" onclick="App.closeDrawers();Cloud.panel()"><i class="fas fa-cloud"></i> Cloud Backup</button>
+        <button class="btn btn-soft btn-block" onclick="App.closeDrawers();Cloud.panel()"><i class="fas fa-cloud"></i> Cloud Backup</button>
         <div class="grid3"><button class="btn btn-ghost" onclick="Theme.toggle()"><i class="theme-ico fas fa-moon"></i> Theme</button><button class="btn btn-ghost" onclick="App.closeDrawers();Lock.lockNow()"><i class="fas fa-lock"></i> Lock</button><button class="btn btn-ghost btn-logout" onclick="App.closeDrawers();Cloud.signOut()"><i class="fas fa-right-from-bracket"></i> Sign out</button></div>
         <div class="legal-links"><a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a></div>
     </div>
@@ -74,7 +79,7 @@
 
 <!-- Mobile Cart -->
 <aside id="mobile-cart" class="drawer right">
-    <div class="flex between items-c" style="padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top));border-bottom:1px solid var(--border)"><b style="font-size:17px">Sales Cart</b><button class="icon-btn" onclick="App.closeDrawers()"><i class="fas fa-xmark"></i></button></div>
+    <div class="flex between items-c" style="padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top));border-bottom:1px solid var(--border)"><b style="font-size:17px">Sales Cart</b><button class="icon-btn" onclick="App.closeDrawers()" aria-label="Close cart"><i class="fas fa-xmark"></i></button></div>
     <div id="cart-mobile" style="padding:14px;overflow-y:auto;flex:1;padding-bottom:calc(14px + env(safe-area-inset-bottom))"></div>
 </aside>
 
@@ -82,14 +87,14 @@
 
 <div id="toast" class="hidden"></div>
 
-<script defer src="js/core/core.js?v=10.1"></script>
-<script defer src="js/core/ui.js?v=10.1"></script>
-<script defer src="js/modules/app.js?v=10.1"></script>
-<script defer src="js/modules/people.js?v=10.1"></script>
-<script defer src="js/modules/misc.js?v=10.1"></script>
-<script defer src="js/modules/settings.js?v=10.1"></script>
-<script defer src="js/core/config.js?v=10.1"></script>
-<script defer src="js/services/cloud.js?v=10.1"></script>
-<script defer src="js/services/pwa.js?v=10.1"></script>
+<script defer src="js/core/core.js?v=10.2"></script>
+<script defer src="js/core/ui.js?v=10.2"></script>
+<script defer src="js/modules/app.js?v=10.2"></script>
+<script defer src="js/modules/people.js?v=10.2"></script>
+<script defer src="js/modules/misc.js?v=10.2"></script>
+<script defer src="js/modules/settings.js?v=10.2"></script>
+<script defer src="js/core/config.js?v=10.2"></script>
+<script defer src="js/services/cloud.js?v=10.2"></script>
+<script defer src="js/services/pwa.js?v=10.2"></script>
 </body>
 </html>

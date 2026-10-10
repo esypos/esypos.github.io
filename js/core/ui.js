@@ -1,4 +1,4 @@
-/* EsyPOS UI: সাউন্ড, ডায়ালগ, মডাল, Theme, Backup, Share/Print হেল্পার */
+/* EsyPOS UI: sound, dialogs, modals, theme, share/print helpers */
 (function () {
   'use strict';
   const { DB, esc, toast, saveAll, load, K } = Core;
@@ -54,7 +54,7 @@
     stack: [],
     open(o) {
       const el = document.createElement('div'); el.className = 'modal-back';
-      el.innerHTML = '<div class="modal-sheet ' + (o.size || '') + '"><div class="modal-head"><h3>' + esc(o.title || '') + '</h3><button type="button" class="icon-btn" data-x><i class="fas fa-xmark"></i></button></div><div class="modal-body">' + (o.body || '') + '</div>' + (o.foot ? '<div class="modal-foot">' + o.foot + '</div>' : '') + '</div>';
+      el.innerHTML = '<div class="modal-sheet ' + (o.size || '') + '" role="dialog" aria-modal="true"><div class="modal-head"><h3>' + esc(o.title || '') + '</h3><button type="button" class="icon-btn" data-x aria-label="Close"><i class="fas fa-xmark"></i></button></div><div class="modal-body">' + (o.body || '') + '</div>' + (o.foot ? '<div class="modal-foot">' + o.foot + '</div>' : '') + '</div>';
       el.querySelector('[data-x]').onclick = () => Modal.close(el);
       if (!o.static) el.addEventListener('mousedown', e => { if (e.target === el) Modal.close(el); });
       el._onClose = o.onClose;
@@ -116,7 +116,8 @@
     rd.onerror = () => toast('Could not read file'); rd.readAsText(file);
   };
   window.wipeAllData = function () {
-    askConfirm('All data (products, sales, customers, expenses...) will be permanently deleted.', () => {
+    const cloudNote = window.Cloud && Cloud.isOn() ? ' Your Google Drive backup is NOT deleted — signing in again will restore it.' : '';
+    askConfirm('All data on this device (products, sales, customers, expenses...) will be deleted.' + cloudNote, () => {
       askConfirm('Really delete all data? This cannot be undone!', () => {
         exportData(true, true);
         setTimeout(() => { Object.values(K).forEach(k => localStorage.removeItem(k)); ['esypos_last_backup', 'esypos_dirty'].forEach(k => localStorage.removeItem(k)); location.reload(); }, 900);

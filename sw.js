@@ -1,7 +1,7 @@
-/* EsyPOS Service Worker — network-first, aggressive cache refresh (v10)
-   App data lives in localStorage + optional Google Drive.
-   SW cache is only a short offline fallback and is replaced on every deploy. */
-const CACHE_VERSION = 'v10.1';
+/* EsyPOS Service Worker — network-first with offline fallback (v10.2)
+   App data lives in localStorage + Google Drive. The SW cache only keeps the app shell
+   (and icon/font CDN files) so the shop still opens offline; it is replaced on every deploy. */
+const CACHE_VERSION = 'v10.2';
 const APP_CACHE = `esypos-app-${CACHE_VERSION}`;
 const CDN_CACHE = `esypos-cdn-${CACHE_VERSION}`;
 
@@ -20,7 +20,7 @@ self.addEventListener('install', event => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(APP_CACHE).then(cache =>
-      Promise.all(APP_SHELL.map(u => cache.add(u).catch(() => null)))
+      Promise.all(APP_SHELL.map(u => cache.add(new Request(u, { cache: 'reload' })).catch(() => null)))
     )
   );
 });
@@ -45,11 +45,12 @@ self.addEventListener('message', event => {
     return;
   }
   if (data === 'CLEAR_CACHES') {
+    // Drop caches of older versions and refresh the current app shell (CDN cache is kept for offline icons/fonts)
     event.waitUntil((async () => {
       const keys = await caches.keys();
-      await Promise.all(keys.filter(k => k.startsWith('esypos-') || k.startsWith('propos-')).map(k => caches.delete(k)));
+      await Promise.all(keys.filter(k => (k.startsWith('esypos-') || k.startsWith('propos-')) && k !== APP_CACHE && k !== CDN_CACHE).map(k => caches.delete(k)));
       const cache = await caches.open(APP_CACHE);
-      await Promise.all(APP_SHELL.map(u => cache.add(u).catch(() => null)));
+      await Promise.all(APP_SHELL.map(u => cache.add(new Request(u, { cache: 'reload' })).catch(() => null)));
     })());
   }
 });
@@ -58,13 +59,17 @@ self.addEventListener('message', event => {
 function networkFirst(request, cacheName) {
   return fetch(request)
     .then(res => {
-      if (res && res.ok && (request.method === 'GET')) {
+      // Cache OK responses and opaque (no-cors) ones — icon/font CSS from the CDN is requested without CORS
+      if (res && (res.ok || res.type === 'opaque') && request.method === 'GET') {
         const copy = res.clone();
         caches.open(cacheName).then(c => c.put(request, copy)).catch(() => {});
       }
       return res;
     })
-    .catch(() => caches.open(cacheName).then(c => c.match(request, { ignoreSearch: true }).then(r => r || caches.match('./index.html'))));
+    .catch(() => caches.open(cacheName)
+      .then(c => c.match(request, { ignoreSearch: true }))
+      // Never answer a script/style request with index.html — return a clean offline error instead
+      .then(r => r || new Response('', { status: 503, statusText: 'Offline' })));
 }
 
 self.addEventListener('fetch', event => {
@@ -84,7 +89,7 @@ self.addEventListener('fetch', event => {
           }
           return res;
         })
-        .catch(() => caches.match('./index.html'))
+        .catch(() => caches.match('./index.html').then(r => r || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } })))
     );
     return;
   }

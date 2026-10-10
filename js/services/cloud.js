@@ -1,13 +1,13 @@
-/* EsyPOS Cloud — Google সাইন-ইন + Google Drive (গোপন appDataFolder) অটো Backup  & Restore
-   • শুধু drive.appdata স্কোপ: অ্যাপ আপনার অন্য কোনো ড্রাইভ ফাইল দেখতে পায় না
-   • ব্রাউজারের ডেটা মুছে গেলে & আবার Sign in করলেই All ডেটা ফিরে আসে */
+/* EsyPOS Cloud: Google sign-in + automatic backup & restore in Google Drive (private appDataFolder)
+   - Only the drive.appdata scope is used: the app cannot see any other file in your Drive.
+   - If browser data is ever cleared, signing in again brings all shop data back. */
 (function () {
   'use strict';
   const C = Core, DB = C.DB, K = C.K, esc = C.esc, toast = C.toast;
   const LS = localStorage;
   const $ = id => document.getElementById(id);
   const KEY = { on: 'esypos_g_on', email: 'esypos_g_email', name: 'esypos_g_name', pic: 'esypos_g_pic', rev: 'esypos_g_rev', fid: 'esypos_g_fid',
-    last: 'esypos_g_last', snap: 'esypos_g_snap', dirty: 'esypos_g_dirty', welcomed: 'esypos_welcomed', client: 'esypos_g_client', tok: 'esypos_g_tok' };
+    last: 'esypos_g_last', snap: 'esypos_g_snap', dirty: 'esypos_g_dirty', welcomed: 'esypos_welcomed', client: 'esypos_g_client', tok: 'esypos_g_tok', pinReset: 'esypos_pin_reset' };
   const MAIN = 'esypos-data.json', SNAP = 'esypos-snap-', KEEP_SNAPS = 14;
   const SCOPE = 'openid email profile https://www.googleapis.com/auth/drive.appdata';
   const DRIVE = 'https://www.googleapis.com/drive/v3/files', UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
@@ -112,6 +112,7 @@
       else if (k === 'cart') DB.cart = [];
       else DB[k] = Array.isArray(d[k]) ? d[k] : [];
     });
+    if (get(KEY.pinReset) === '1') { DB.settings.pinHash = ''; DB.settings.pinSalt = ''; pushAfter = true; del(KEY.pinReset); }
     C.migrate(); C.saveAll();
     set(KEY.rev, f.modifiedTime); set(KEY.fid, f.id); set(KEY.last, String(Date.now()));
     if (pushAfter) set(KEY.dirty, '1'); else del(KEY.dirty);
@@ -164,7 +165,11 @@
         <p class="xs muted">Safety: if you choose cloud data, a backup of this device data will download first. If you keep device data, a copy of the old cloud data will be saved on Drive.</p>`,
       foot: `<button class="btn btn-primary" id="cf-cloud"><i class="fas fa-cloud-arrow-down"></i> Take cloud data</button><button class="btn btn-ghost" id="cf-local"><i class="fas fa-cloud-arrow-up"></i> Keep device data</button>`
     });
-    m.querySelector('#cf-cloud').onclick = () => { Modal.close(m); setTimeout(() => applyRemote(d, f), 400); };
+    m.querySelector('#cf-cloud').onclick = () => {
+      Modal.close(m);
+      try { C.download('esypos-device-backup-' + C.todayKey() + '.json', JSON.stringify(payload()), 'application/json'); } catch (_) {}
+      setTimeout(() => applyRemote(d, f), 400);
+    };
     m.querySelector('#cf-local').onclick = async () => {
       Modal.close(m); setStatus('syncing');
       try { await snapshotBefore(f, 'before-overwrite-' + C.todayKey() + '-' + Date.now().toString(36)); } catch (_) {}
@@ -203,11 +208,12 @@
     try { Object.keys(LS).forEach(k => { if (/^(esypos_|propos_)/.test(k) && k !== 'esypos_theme' && k !== KEY.client) LS.removeItem(k); }); } catch (_) {}
     try { sessionStorage.removeItem(KEY.tok); } catch (_) {}
   }
-  function finishSignOut() {
+  function finishSignOut(mode) {
     S.applying = true; clearTimeout(S.timer);
     try { if (S.tok && window.google && google.accounts) google.accounts.oauth2.revoke(S.tok, () => {}); } catch (_) {}
     S.tok = null; S.exp = 0; wipeLocal();
-    toast('Signed out'); setTimeout(() => location.reload(), 350);
+    if (mode === 'pin') set(KEY.pinReset, '1');
+    toast(mode === 'pin' ? 'Signed out — sign in again to reset your PIN' : 'Signed out'); setTimeout(() => location.reload(), 350);
   }
   function signOut() {
     const dirty = get(KEY.dirty) === '1';
@@ -217,15 +223,29 @@
     async () => {
       if (dirty) {
         toast('Syncing before sign out…');
+        const before = Modal.stack.length;
         try { await requestToken(true); await push(); } catch (_) {}
         if (get(KEY.dirty) === '1') {
-          if (Modal.stack && Modal.stack.length) return;
-          askConfirm('Sync did not finish. If you sign out now, the unsynced changes will be lost.', finishSignOut, { title: 'Unsynced changes', yes: 'Sign out anyway', danger: true });
+          if (Modal.stack.length > before) return;   // a "which data to keep?" dialog opened — let the user answer it first
+          askConfirm('Sync did not finish. If you sign out now, the unsynced changes will be lost.', () => finishSignOut(), { title: 'Unsynced changes', yes: 'Sign out anyway', danger: true });
           return;
         }
       }
       finishSignOut();
     }, { title: 'Sign out?', yes: 'Sign out', danger: true });
+  }
+  // Forgot PIN: sign out + clear this device; on the next Google sign-in the data is restored with the PIN removed.
+  function resetPin() {
+    const dirty = get(KEY.dirty) === '1';
+    askConfirm('To reset your PIN, EsyPOS will sign you out and clear this device. Sign in with Google again (internet needed) and your shop data returns from Google Drive without the PIN.' + (dirty ? ' Changes not yet synced may be lost.' : ''),
+      async () => {
+        if (dirty && validTok()) { try { await push(); } catch (_) {} }
+        if (get(KEY.dirty) === '1') {
+          askConfirm('Some changes are not synced and will be lost. Reset the PIN anyway?', () => finishSignOut('pin'), { title: 'Unsynced changes', yes: 'Reset anyway', danger: true });
+          return;
+        }
+        finishSignOut('pin');
+      }, { title: 'Reset PIN', yes: 'Sign out & reset', danger: true });
   }
   async function pull() {
     try { await requestToken(true); setStatus('syncing'); const f = await findMain(); if (!f) { setStatus('ok'); return toast('No data in cloud yet'); }
@@ -284,7 +304,7 @@
   function bodyHTML() {
     if (!isOn()) return `<p class="muted sm mb3">Sign in with Google to auto-save all data to a private folder in your Google Drive. Even if browser data is cleared, signing in again restores everything.</p>
       <button class="btn btn-google btn-block" onclick="Cloud.signIn()">${gIcon} Sign in / Sign up with Google</button>
-      <div class="consent-note">By signing in you accept our <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a>  & <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> .</div>
+      <div class="consent-note">By signing in you accept our <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> &amp; <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</div>
       ${clientId() ? '' : '<div class="note-warn mt3"><i class="fas fa-triangle-exclamation"></i> Client ID is not set. <a href="#" onclick="Cloud.setup();return false">View setup guide</a></div>'}`;
     const l = lbl();
     return `<div class="flex items-c gap3 mb3">${avatar(true)}<div class="grow"><div class="fw7 trunc">${esc(get(KEY.name) || 'Google account')}</div><div class="xs muted trunc">${esc(get(KEY.email))}</div></div></div>
@@ -345,23 +365,23 @@
       await signIn(false);
       const g = $('w-go'); if (g && !el.classList.contains('out')) { g.disabled = false; g.classList.remove('busy'); msg.textContent = navigator.onLine ? 'Sign-in was not completed. Please try again.' : 'No internet connection. Connect to the internet to sign in.'; }
     };
-    const other = el.querySelector('#w-other'); if (other) other.onclick = resume ? signOut : finishSignOut;
+    const other = el.querySelector('#w-other'); if (other) other.onclick = () => { if (resume) signOut(); else finishSignOut(); };
     if (window.syncLock) syncLock();
   }
   function setup() {
     const cur = get(KEY.client) || '';
     const m = Modal.open({ title: 'Google Sign-in setup', body: `
-      <p class="sm muted mb3">One-time setup (free). Then put the Client ID in <code>js/config.js</code>- and upload to GitHub/server.</p>
+      <p class="sm muted mb3">One-time setup (free). Then put the Client ID in <code>js/core/config.js</code> and upload the app to GitHub/your server.</p>
       <ol class="guide sm">
-        <li><b>console.cloud.google.com</b>- and create a new project.</li>
-        <li><b>APIs &amp; Services → Library</b> from <b>Google Drive API</b> Enable.</li>
-        <li><b>OAuth consent screen</b>: User type = External, Enter app name. Scopes: <code>drive.appdata</code>, <code>email</code>, <code>profile</code>, <code>openid</code> Add. Finally <b>Publish app (In production)</b> — these scopes do not require Google verification.</li>
-        <li><b>Credentials → Create credentials → OAuth client ID → Web application</b>।</li>
+        <li>Open <b>console.cloud.google.com</b> and create a new project.</li>
+        <li><b>APIs &amp; Services → Library</b>: enable the <b>Google Drive API</b>.</li>
+        <li><b>OAuth consent screen</b>: User type = External, Enter app name. Add the scopes <code>drive.appdata</code>, <code>email</code>, <code>profile</code>, <code>openid</code>. Finally <b>Publish app (In production)</b> — these scopes do not require Google verification.</li>
+        <li><b>Credentials → Create credentials → OAuth client ID → Web application</b>.</li>
         <li><b>Authorized JavaScript origins</b> — enter your site address (no path, no trailing /):<br><code class="sel">${esc(location.origin)}</code></li>
-        <li>The Client ID you get (<code>…apps.googleusercontent.com</code>) put in <code>js/config.js</code>-.</li>
+        <li>Copy the Client ID you get (<code>…apps.googleusercontent.com</code>) into <code>js/core/config.js</code>.</li>
       </ol>
       <div class="field mt3"><label class="label">Quick test — paste Client ID here (saved only in this browser)</label><input id="cl-id" class="input" placeholder="xxxx.apps.googleusercontent.com" value="${esc(cur)}"></div>
-      <p class="xs muted">⚠️ For permanent use put it in <code>js/config.js</code>- — otherwise clearing browser data also removes this ID.</p>`,
+      <p class="xs muted">⚠️ For permanent use put it in <code>js/core/config.js</code> — otherwise clearing browser data also removes this ID.</p>`,
       foot: '<button class="btn" onclick="Modal.closeFrom(this)">Close</button><button class="btn btn-primary" id="cl-save">Save</button>' });
     m.querySelector('#cl-save').onclick = () => { const v = m.querySelector('#cl-id').value.trim(); if (v) set(KEY.client, v); else del(KEY.client); Modal.close(m); toast('✓ Client ID saved'); renderUI(); if (clientId()) loadGIS().catch(() => {}); };
   }
@@ -370,7 +390,8 @@
     if (inited) { renderUI(); return; } inited = true;
     if (isOn()) {
       S.status = get(KEY.dirty) === '1' ? 'pending' : 'ok';
-      if (!hasLocal()) { del(KEY.rev); showGate('restore'); }
+      // Only offer "Restore" when this account has synced before (so a cloud copy exists). A brand-new empty shop just opens.
+      if (!hasLocal() && get(KEY.rev)) { del(KEY.rev); showGate('restore'); }
       else if (navigator.onLine && !validTok()) showGate('resume');
       else if (get(KEY.dirty) === '1') { setStatus(validTok() ? 'pending' : 'auth'); if (validTok()) S.timer = setTimeout(() => push(), 3000); }
     } else showGate('new');
@@ -380,7 +401,7 @@
     window.addEventListener('offline', () => { if (isOn()) renderUI(); });
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && isOn() && get(KEY.dirty) === '1' && validTok()) push(); });
   }
-  window.Cloud = { init, markDirty, signIn, signOut, syncNow, pull, snapshots, panel, setup, renderUI, isOn };
+  window.Cloud = { init, markDirty, signIn, signOut, resetPin, syncNow, pull, snapshots, panel, setup, renderUI, isOn };
   if (!isOn()) showGate('new'); else if (navigator.onLine && !validTok()) showGate('resume');
   window.addEventListener('storage', e => { if (e.key === KEY.on && e.newValue !== '1') location.reload(); });
 })();

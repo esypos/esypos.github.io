@@ -1,4 +1,4 @@
-/* EsyPOS: Settings, Barcode scanার, PIN lock, Bluetooth printer */
+/* EsyPOS: Settings, barcode scanner, PIN lock, Bluetooth printer */
 (function () {
   'use strict';
   const C = Core, { DB, esc, num, money, fmt, toast } = C;
@@ -9,7 +9,7 @@
     async open(cb, o) {
       o = o || {};
       if (this.el || this.opening) return;
-      if (!('BarcodeDetector' in window)) { toast('⚠️ Camera scan not available in this browser। Use USB/Bluetooth scanner or type.'); return; }
+      if (!('BarcodeDetector' in window)) { toast('⚠️ Camera scan is not available in this browser. Use a USB/Bluetooth scanner or type the code.'); return; }
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast('⚠️ Camera not available (HTTPS required)'); return; }
       let det; try { det = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf', 'qr_code'] }); } catch (_) { try { det = new BarcodeDetector(); } catch (e2) { toast('⚠️ Camera scan not available in this browser'); return; } }
       const tok = ++this.tok; this.opening = true;
@@ -17,7 +17,7 @@
       try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false }); }
       catch (e) { this.opening = false; toast(e && e.name === 'NotFoundError' ? '⚠️ No camera found on device' : '⚠️ Camera permission denied'); return; }
       this.opening = false;
-      if (tok !== this.tok) { stream.getTracks().forEach(t => t.stop()); return; }   // খোলার মাঝে Back/Close Teaপা হয়েছে
+      if (tok !== this.tok) { stream.getTracks().forEach(t => t.stop()); return; }   // Back/Close was pressed while the camera was starting
       this.stream = stream;
       const el = document.createElement('div'); el.className = 'scan';
       el.innerHTML = `<video playsinline muted autoplay></video><div class="frame"></div><div class="bar-top"><b>Barcode scan</b><button type="button" class="btn btn-sm" id="sc-x">Close</button></div><div class="sc-msg hidden" id="sc-msg"></div><div class="bar-bot">${esc(o.hint || 'Hold barcode inside the frame')}</div>`;
@@ -58,7 +58,11 @@
     let h1 = 5381, h2 = 52711; for (let i = 0; i < s.length; i++) { h1 = (h1 * 33) ^ s.charCodeAt(i); h2 = (h2 * 33) ^ s.charCodeAt(s.length - 1 - i); } return 'x' + (h1 >>> 0).toString(16) + (h2 >>> 0).toString(16);
   }
   const Lock = window.Lock = {
-    hiddenAt: 0, el: null, fails: 0, until: 0,
+    hiddenAt: 0, el: null,
+    get fails() { try { return parseInt(localStorage.getItem('esypos_lk_f') || '0', 10) || 0; } catch (_) { return 0; } },
+    set fails(v) { try { localStorage.setItem('esypos_lk_f', String(v)); } catch (_) {} },
+    get until() { try { return parseInt(localStorage.getItem('esypos_lk_u') || '0', 10) || 0; } catch (_) { return 0; } },
+    set until(v) { try { localStorage.setItem('esypos_lk_u', String(v)); } catch (_) {} },
     has() { return !!DB.settings.pinHash; },
     init(start) { if (this.has()) this.show(start); else start(); },
     lockNow() { if (!this.has()) { toast('Set PIN in Settings first'); return; } this.show(() => {}); },
@@ -80,12 +84,16 @@
           const h = await hashPin(pin, DB.settings.pinSalt);
           if (h === DB.settings.pinHash) { this.fails = 0; el.remove(); this.el = null; syncLock(); done && done(); }
           else {
-            if (++this.fails >= 5) { this.until = Date.now() + 30000; this.fails = 0; toast('⚠️ Too many wrong attempts — wait 30 seconds'); }
+            this.fails = this.fails + 1;
+            if (this.fails >= 5) { this.until = Date.now() + 30000; this.fails = 0; toast('⚠️ Too many wrong attempts — wait 30 seconds'); }
             const d = el.querySelector('#lk-dots'); d.classList.add('shake'); if (navigator.vibrate) navigator.vibrate(120); setTimeout(() => { d.classList.remove('shake'); pin = ''; paint(); }, 450);
           }
         }
       });
-      el.querySelector('#lk-forgot').onclick = () => askConfirm('If you forget the PIN, the only way is to wipe all data and start over. Continue?', () => { wipeAllData(); }, { danger: true, yes: 'Wipe & Reset Data', title: 'Reset PIN' });
+      el.querySelector('#lk-forgot').onclick = () => {
+        if (window.Cloud && Cloud.isOn()) Cloud.resetPin();
+        else askConfirm('Without a Google backup, the only way to remove a forgotten PIN is to wipe all data on this device. Continue?', () => { wipeAllData(); }, { danger: true, yes: 'Wipe & Reset Data', title: 'Reset PIN' });
+      };
     },
     setup() {
       const has = this.has();
@@ -144,14 +152,14 @@
       const MN = { cash: 'Cash', card: 'Card', mobile: 'Mobile', due: 'Due' };
       L.push({ t: sh.shopName || 'EsyPOS', a: 'c', b: 1, s: 28 });
       if (sh.shopAddress) L.push({ t: sh.shopAddress, a: 'c', s: 20 }); if (sh.shopPhone) L.push({ t: 'Phone: ' + sh.shopPhone, a: 'c', s: 20 });
-      L.push({ hr: 1 }, { t: 'Receipt #', t2: '#' + C.invLabel(s), s: 21 }, { t: 'Date', t2: C.fmtDT(s.date), s: 21 });
+      L.push({ hr: 1 }, { t: 'Receipt no.', t2: '#' + C.invLabel(s), s: 21 }, { t: 'Date', t2: C.fmtDT(s.date), s: 21 });
       if (cust) L.push({ t: 'Customer', t2: cust.name, s: 21 }); L.push({ t: 'Payment', t2: MN[s.paymentMethod] || '', s: 21 }, { hr: 1 });
       s.items.forEach(i => { L.push({ t: i.name, s: 22, b: 1 }); L.push({ t: i.qty + ' × ' + fmt(i.price), t2: fmt(i.price * i.qty), s: 21 }); });
       L.push({ hr: 1 }, { t: 'Subtotal', t2: fmt(s.subtotal), s: 21 });
       if (s.discount > 0) L.push({ t: 'Discount', t2: '-' + fmt(s.discount), s: 21 }); if (s.tax > 0) L.push({ t: 'Tax', t2: fmt(s.tax), s: 21 });
       L.push({ t: 'Total', t2: '৳' + fmt(s.total), s: 28, b: 1 }, { t: 'Paid', t2: fmt(s.paid), s: 21 });
       if (s.change > 0) L.push({ t: 'Change given', t2: fmt(s.change), s: 21 }); if (s.due > 0) L.push({ t: 'Due on this bill', t2: fmt(s.due), s: 23, b: 1 });
-      if (cust && bal > 0) L.push({ t: 'Total Due', t2: fmt(bal), s: 23, b: 1 });
+      if (cust && bal > 0) L.push({ t: 'Total due', t2: fmt(bal), s: 23, b: 1 });
       L.push({ hr: 1 }, { t: sh.footer || '', a: 'c', s: 20 }, { gap: 40 });
       return L;
     },
@@ -199,13 +207,13 @@
         <div class="field"><label class="label">Address</label><input id="st-addr" class="input" value="${esc(s.shopAddress)}"></div>
         <div class="grid2"><div class="field"><label class="label">Phone</label><input id="st-phone" class="input" value="${esc(s.shopPhone)}"></div><div class="field"><label class="label">Default tax (%)</label><input id="st-tax" type="number" step="any" min="0" class="input" value="${s.defaultTax || 0}"></div></div>
         <div class="field"><label class="label">Receipt footer text</label><input id="st-foot" class="input" value="${esc(s.footer)}"></div>
-        <div class="grid3"><div class="field"><label class="label">Invoice prefix</label><input id="st-pre" class="input" value="${esc(s.invPrefix)}" placeholder="INV-"></div><div class="field"><label class="label">Paper</label><select id="st-paper" class="input"><option value="58" ${s.paper === '58' ? 'selected' : ''}>58 mm</option><option value="80" ${s.paper === '80' ? 'selected' : ''}>80 mm</option></select></div><div class="field"><label class="label">Low stock (default)</label><input id="st-low" type="number" min="0" class="input" value="${s.lowStockDefault || 5}"></div></div>
+        <div class="grid3"><div class="field"><label class="label">Invoice prefix</label><input id="st-pre" class="input" value="${esc(s.invPrefix)}" placeholder="INV-"></div><div class="field"><label class="label">Paper</label><select id="st-paper" class="input"><option value="58" ${s.paper === '58' ? 'selected' : ''}>58 mm</option><option value="80" ${s.paper === '80' ? 'selected' : ''}>80 mm</option></select></div><div class="field"><label class="label">Low stock (default)</label><input id="st-low" type="number" min="0" class="input" value="${s.lowStockDefault == null ? 5 : s.lowStockDefault}"></div></div>
         <button class="btn btn-primary btn-block" onclick="Settings.save()"><i class="fas fa-floppy-disk"></i> Save</button></div>
       <div class="card pad mb3"><div class="sec-title"><i class="fas fa-palette ptext"></i> Appearance & sound</div>
         <div class="field"><label class="label">Theme</label><select id="theme-select" class="input" onchange="Theme.set(this.value)"><option value="auto">Auto (device setting)</option><option value="light">Light mode</option><option value="dark">Dark mode</option></select></div>
         <label class="switch"><span class="sm fw6"><i class="fas fa-volume-high ptext"></i> Click sound</span><input type="checkbox" ${Sound.isEnabled() ? 'checked' : ''} onchange="Sound.setEnabled(this.checked)"></label></div>
       <div class="card pad mb3"><div class="sec-title"><i class="fas fa-lock ptext"></i> Security (PIN lock)</div><p class="muted sm mb3">${Lock.has() ? 'PIN is set. App will ask for PIN on open and after 1+ min in background.' : 'With a PIN, others cannot see your sales and accounts.'}</p>
-        <div class="flex gap2"><button class="btn btn-primary" onclick="Lock.setup()">${Lock.has() ? 'Change PIN' : 'Set PIN'}</button>${Lock.has() ? '<button class="btn btn-ghost" onclick="Lock.lockNow()">Lock now</button><button class="btn btn-danger-soft" onclick="Lock.remove()">Close</button>' : ''}</div></div>
+        <div class="flex gap2"><button class="btn btn-primary" onclick="Lock.setup()">${Lock.has() ? 'Change PIN' : 'Set PIN'}</button>${Lock.has() ? '<button class="btn btn-ghost" onclick="Lock.lockNow()">Lock now</button><button class="btn btn-danger-soft" onclick="Lock.remove()">Disable PIN</button>' : ''}</div></div>
       <div class="card pad mb3"><div class="sec-title"><i class="fab fa-bluetooth-b ptext"></i> Bluetooth printer</div><div class="mb3" id="bt-status"></div>
         <div class="field"><label class="label">Print mode</label><select class="input" onchange="DB_.btMode(this.value)"><option value="image" ${s.btMode !== 'text' ? 'selected' : ''}>Image mode — supports all languages (recommended)</option><option value="text" ${s.btMode === 'text' ? 'selected' : ''}>Text mode — English only, faster</option></select></div>
         <div class="flex gap2"><button class="btn btn-primary grow" id="bt-conn" onclick="Printer.connect()"><i class="fab fa-bluetooth-b"></i> Connect printer</button><button class="btn btn-danger-soft grow hidden" id="bt-disc" onclick="Printer.disconnect()">Disconnect</button></div>
@@ -221,8 +229,8 @@
     },
     save() {
       const s = DB.settings; s.shopName = $('st-name').value.trim() || 'My Shop'; s.shopAddress = $('st-addr').value.trim(); s.shopPhone = $('st-phone').value.trim();
-      s.defaultTax = Math.max(0, num($('st-tax').value)); s.footer = $('st-foot').value.trim(); s.invPrefix = $('st-pre').value.trim(); s.paper = $('st-paper').value; s.lowStockDefault = num($('st-low').value) || 5;
-      C.save('settings'); POS.taxInit(); POS.renderCart(); toast('Settings Saved ✓');
+      s.defaultTax = Math.max(0, num($('st-tax').value)); s.footer = $('st-foot').value.trim(); s.invPrefix = $('st-pre').value.trim(); s.paper = $('st-paper').value; const lw = parseFloat($('st-low').value); s.lowStockDefault = isFinite(lw) && lw >= 0 ? lw : 5;
+      C.save('settings'); POS.taxInit(); POS.renderCart(); toast('Settings saved ✓');
     }
   };
   window.Settings = App.Views.settings;
