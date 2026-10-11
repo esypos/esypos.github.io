@@ -4,7 +4,7 @@
   const C = Core, { DB, esc, num, r2, fmt, money, genId, toast, findProduct, findCustomer } = C;
   const $ = id => document.getElementById(id);
   const MN = { cash: 'Cash', card: 'Card', mobile: 'Mobile banking', due: 'Due' };
-  const RC_CSS = `body{font-family:'Noto Sans Bengali','Courier New',monospace;font-size:12px;margin:0;padding:6px;color:#000}
+  const RC_CSS = `body{font-family:'Courier New',ui-monospace,monospace;font-size:12px;margin:0;padding:6px;color:#000}
   .rc-c{text-align:center}.rc-b{font-weight:700}.rc-hr{border-top:1px dashed #000;margin:6px 0}.rc-row{display:flex;justify-content:space-between;gap:6px}
   .rc-s{font-size:10.5px}.rc-big{font-size:14px;font-weight:700}@page{margin:2mm}`;
   const Receipt = window.Receipt = {
@@ -187,7 +187,7 @@
     },
     print() {
       const r = this.data(); const row = (a, b) => `<tr><td>${a}</td><td style="text-align:right"><b>${b}</b></td></tr>`;
-      printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Reports</title><style>body{font-family:'Noto Sans Bengali',sans-serif;padding:20px;color:#111}table{width:100%;border-collapse:collapse}td,th{padding:7px 4px;border-bottom:1px solid #ddd;font-size:14px}h2{margin:0}</style></head><body><h2>${esc(DB.settings.shopName)} — Reports</h2><p>${esc(this.label())}</p><table>${row('Invoices', r.count)}${row('Gross Sales', money(r.grossSales))}${row('Returns', money(r.returnsTotal))}${row('Net Sales', money(r.netSales))}${row('COGS', money(r.cogs))}${row('Gross Profit', money(r.grossProfit))}${row('Expenses', money(r.expenses))}${row('Net Profit', money(r.netProfit))}${row('New Due', money(r.newDue))}${row('Due Collected', money(r.dueCollected))}</table></body></html>`);
+      printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Reports</title><style>body{font-family:sans-serif;padding:20px;color:#111}table{width:100%;border-collapse:collapse}td,th{padding:7px 4px;border-bottom:1px solid #ddd;font-size:14px}h2{margin:0}</style></head><body><h2>${esc(DB.settings.shopName)} — Reports</h2><p>${esc(this.label())}</p><table>${row('Invoices', r.count)}${row('Gross Sales', money(r.grossSales))}${row('Returns', money(r.returnsTotal))}${row('Net Sales', money(r.netSales))}${row('COGS', money(r.cogs))}${row('Gross Profit', money(r.grossProfit))}${row('Expenses', money(r.expenses))}${row('Net Profit', money(r.netProfit))}${row('New Due', money(r.newDue))}${row('Due Collected', money(r.dueCollected))}</table></body></html>`);
     }
   };
   App.Views.reports = Rep;

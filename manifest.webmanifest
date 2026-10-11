@@ -66,5 +66,25 @@
       "form_factor": "narrow",
       "label": "Reports"
     }
+  ],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "New sale",
+      "short_name": "Sell",
+      "description": "Open the sales counter",
+      "url": "./index.html",
+      "icons": [
+        {
+          "src": "assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
   ]
 }

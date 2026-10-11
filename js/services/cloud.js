@@ -19,7 +19,9 @@
   const hasLocal = () => !!(DB.products.length || DB.sales.length || DB.customers.length || DB.suppliers.length || DB.expenses.length);
   const mk = (code, status) => { const e = new Error(code); e.code = code; e.status = status; return e; };
   const S = { status: 'off', busy: false, applying: false, timer: null, tok: null, exp: 0, authP: null, lastTry: 0, seq: 0, gis: null };
-  try { const t = JSON.parse(sessionStorage.getItem(KEY.tok) || 'null'); if (t && t.exp > Date.now() + 60000) { S.tok = t.t; S.exp = t.exp; } } catch (_) {}
+  // The Google access token lives ~1 hour. Keep it in localStorage so closing and reopening the app within that hour needs no new sign-in.
+  const clearTok = () => { try { LS.removeItem(KEY.tok); } catch (_) {} try { sessionStorage.removeItem(KEY.tok); } catch (_) {} };
+  [LS, sessionStorage].some(st => { try { const t = JSON.parse(st.getItem(KEY.tok) || 'null'); if (t && t.exp > Date.now() + 60000) { S.tok = t.t; S.exp = t.exp; return true; } } catch (_) {} return false; });
   const validTok = () => !!S.tok && Date.now() < S.exp - 60000;
   function loadGIS() {
     if (window.google && google.accounts && google.accounts.oauth2) return Promise.resolve();
@@ -33,10 +35,10 @@
   }
   function setTok(t, sec) {
     S.tok = t; S.exp = Date.now() + (Number(sec) || 3600) * 1000;
-    try { sessionStorage.setItem(KEY.tok, JSON.stringify({ t: S.tok, exp: S.exp })); } catch (_) {}
+    try { LS.setItem(KEY.tok, JSON.stringify({ t: S.tok, exp: S.exp })); } catch (_) {}
   }
-  function requestToken(interactive, pick) {
-    if (validTok()) return Promise.resolve(S.tok);
+  function requestToken(interactive, pick, silent, force) {
+    if (validTok() && !force) return Promise.resolve(S.tok);
     if (!interactive) return Promise.reject(mk('auth'));
     if (S.authP) return S.authP;
     S.lastTry = Date.now();
@@ -49,7 +51,7 @@
           callback: r => { if (r.error) return reject(mk(r.error)); setTok(r.access_token, r.expires_in); resolve(S.tok); },
           error_callback: e => reject(mk((e && e.type) || 'popup_closed'))
         });
-        const o = { prompt: pick ? 'select_account' : '' };
+        const o = { prompt: silent ? 'none' : (pick ? 'select_account' : '') };
         const hint = get(KEY.email); if (hint && !pick) o.hint = hint;
         cl.requestAccessToken(o);
       });
@@ -61,7 +63,7 @@
     if (!navigator.onLine) throw mk('offline');
     const t = await requestToken(false);
     const r = await fetch(url, Object.assign({}, opt, { headers: Object.assign({ Authorization: 'Bearer ' + t }, (opt && opt.headers) || {}) }));
-    if (r.status === 401 && !noRetry) { S.tok = null; S.exp = 0; try { sessionStorage.removeItem(KEY.tok); } catch (_) {} throw mk('auth', 401); }
+    if (r.status === 401 && !noRetry) { S.tok = null; S.exp = 0; clearTok(); throw mk('auth', 401); }
     if (!r.ok) throw mk('http', r.status);
     return r;
   }
@@ -196,7 +198,7 @@
       const u = r.ok ? await r.json() : {};
       const prev = get(KEY.email);
       if (isOn() && prev && u.email && u.email.toLowerCase() !== prev.toLowerCase()) {
-        try { google.accounts.oauth2.revoke(t, () => {}); } catch (_) {} S.tok = null; S.exp = 0; try { sessionStorage.removeItem(KEY.tok); } catch (_) {}
+        try { google.accounts.oauth2.revoke(t, () => {}); } catch (_) {} S.tok = null; S.exp = 0; clearTok();
         toast('⚠️ This device is signed in as ' + prev + '. Use that account or tap “Use a different account”.'); return;
       }
       set(KEY.email, u.email || ''); set(KEY.name, u.name || ''); set(KEY.pic, u.picture || '');
@@ -206,7 +208,7 @@
   }
   function wipeLocal() {
     try { Object.keys(LS).forEach(k => { if (/^(esypos_|propos_)/.test(k) && k !== 'esypos_theme' && k !== KEY.client) LS.removeItem(k); }); } catch (_) {}
-    try { sessionStorage.removeItem(KEY.tok); } catch (_) {}
+    clearTok();
   }
   function finishSignOut(mode) {
     S.applying = true; clearTimeout(S.timer);
@@ -292,7 +294,7 @@
       case 'ok': return { t: 'Secured in cloud', long: 'Synced' + (timeOf() ? ' · ' + timeOf() : ''), c: 'ok', i: 'fa-cloud' };
       case 'pending': return { t: 'Sync pending', long: 'Changes waiting to sync', c: 'pending', i: 'fa-cloud-arrow-up' };
       case 'syncing': return { t: 'Syncing', long: 'Syncing…', c: 'spin', i: 'fa-rotate' };
-      case 'auth': return { t: 'Renew', long: 'Reconnect needed — tap here', c: 'pending pulse', i: 'fa-link-slash' };
+      case 'auth': return { t: 'Reconnect', long: 'Reconnect to Google to sync — tap here', c: 'pending pulse', i: 'fa-link-slash' };
       case 'offline': return { t: 'Offline', long: 'Offline — will sync when online', c: 'pending', i: 'fa-wifi' };
       case 'error': return { t: 'Sync failed', long: 'Sync failed — try again', c: 'err', i: 'fa-triangle-exclamation' };
       default: return { t: 'Sign in', long: 'Not connected', c: '', i: 'fa-cloud' };
@@ -312,7 +314,7 @@
       <div class="grid2 mt3"><button class="btn btn-primary" onclick="Cloud.syncNow()"><i class="fas fa-rotate"></i> Sync now</button><button class="btn btn-ghost" onclick="Cloud.pull()"><i class="fas fa-cloud-arrow-down"></i> Pull from cloud</button></div>
       <div class="mt2"><button class="btn btn-ghost btn-block" onclick="Cloud.snapshots()"><i class="fas fa-clock-rotate-left"></i> Old copies</button></div>
       <button class="btn btn-danger-soft btn-block mt2" onclick="Cloud.signOut()"><i class="fas fa-right-from-bracket"></i> Sign out</button>
-      <p class="xs muted mt3">🔒 Data stays only in your Drive's private app folder — the app cannot see any other files. Data changes auto-sync within a few seconds; Google permission may need renewal every hour.</p>`;
+      <p class="xs muted mt3">🔒 Data stays only in your Drive's private app folder — the app cannot see any other files. Changes sync automatically within a few seconds. EsyPOS renews the Google connection in the background; if it cannot, tap Reconnect.</p>`;
   }
   function renderUI() {
     const l = lbl(), on = isOn();
@@ -330,7 +332,7 @@
   function closeWelcome() { const w = $('welcome'); if (w) { w.classList.add('out'); setTimeout(() => w.remove(), 250); } document.body.classList.remove('gated'); document.documentElement.classList.remove('needs-login'); if (window.syncLock) syncLock(); }
   function showGate(mode) {
     if ($('welcome')) return;
-    const restore = mode === 'restore', resume = mode === 'resume';
+    const restore = mode === 'restore';
     document.body.classList.add('gated');
     const el = document.createElement('div'); el.id = 'welcome'; el.className = 'welcome authgate'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
     el.innerHTML = `<div class="gate">
@@ -345,17 +347,18 @@
         </ul>
       </section>
       <section class="gate-card">
-        <h2>${restore || resume ? 'Welcome back' : 'Sign in to continue'}</h2>
-        <p>${resume ? 'Continue as <b>' + esc(get(KEY.email) || 'your Google account') + '</b>. Please verify with Google to open your shop.' : restore ? 'Signed in as <b>' + esc(get(KEY.email)) + '</b>. Restore your shop data from the cloud to continue.' : 'EsyPOS needs a Google account. Sign in to open your shop — your data is stored safely in your own Google Drive.'}</p>
+        <h2>${restore ? 'Welcome back' : 'Sign in to continue'}</h2>
+        <p>${restore ? 'Signed in as <b>' + esc(get(KEY.email)) + '</b>. Restore your shop data from the cloud to continue.' : 'EsyPOS needs a Google account. Sign in to open your shop — your data is stored safely in your own Google Drive.'}</p>
         <button class="btn btn-google btn-block btn-lg" id="w-go">${gIcon} <span>${restore ? 'Restore from cloud' : 'Continue with Google'}</span></button>
         <div class="gate-msg" id="w-msg" role="alert"></div>
-        ${restore || resume ? '<button class="gate-link" id="w-other" type="button">Use a different account</button>' : ''}
+        ${restore ? '<button class="gate-link" id="w-other" type="button">Use a different account</button>' : ''}
         <div class="consent-note">By continuing you accept our <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> &amp; <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</div>
-        <div class="consent-note"><a href="features.html">Features &amp; FAQ</a> · <a href="bn.html">বাংলা</a></div>
+        <div class="consent-note"><a href="features.html">Features &amp; FAQ</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></div>
         ${clientId() ? '' : '<div class="note-warn mt3"><i class="fas fa-triangle-exclamation"></i> Google Client ID is not set. <a href="#" onclick="Cloud.setup();return false">View setup guide</a></div>'}
       </section>
     </div>`;
     document.body.appendChild(el);
+    const about = $('seo-content'); if (about) { about.classList.remove('seo-only'); about.classList.add('gate-about'); el.appendChild(about); }
     const go = el.querySelector('#w-go'), msg = el.querySelector('#w-msg');
     const note = () => { msg.textContent = navigator.onLine ? '' : 'No internet connection. Connect to the internet to sign in.'; };
     if (clientId() && navigator.onLine) loadGIS().catch(() => {});
@@ -366,7 +369,7 @@
       await signIn(false);
       const g = $('w-go'); if (g && !el.classList.contains('out')) { g.disabled = false; g.classList.remove('busy'); msg.textContent = navigator.onLine ? 'Sign-in was not completed. Please try again.' : 'No internet connection. Connect to the internet to sign in.'; }
     };
-    const other = el.querySelector('#w-other'); if (other) other.onclick = () => { if (resume) signOut(); else finishSignOut(); };
+    const other = el.querySelector('#w-other'); if (other) other.onclick = () => finishSignOut();
     if (window.syncLock) syncLock();
   }
   function setup() {
@@ -386,6 +389,18 @@
       foot: '<button class="btn" onclick="Modal.closeFrom(this)">Close</button><button class="btn btn-primary" id="cl-save">Save</button>' });
     m.querySelector('#cl-save').onclick = () => { const v = m.querySelector('#cl-id').value.trim(); if (v) set(KEY.client, v); else del(KEY.client); Modal.close(m); toast('✓ Client ID saved'); renderUI(); if (clientId()) loadGIS().catch(() => {}); };
   }
+  // ---- Background reconnect: the shop opens straight away; Google access is renewed silently when possible. ----
+  const gestureHint = () => { if (!isOn()) return; if (validTok()) { setStatus(get(KEY.dirty) === '1' ? 'pending' : 'ok'); return; } setStatus(navigator.onLine ? 'auth' : 'offline'); };
+  async function resume(force) {
+    if (!isOn() || S.applying || S.authP || (validTok() && !force) || !clientId() || !navigator.onLine) return;
+    if (Date.now() - S.lastTry < 5 * 60 * 1000 && S.status === 'auth') return;   // do not hammer Google after a failed attempt
+    if (!force) setStatus('syncing');
+    try { await requestToken(true, false, true, !!force); }
+    catch (e) { gestureHint(); return; }
+    if (force) { gestureHint(); if (get(KEY.dirty) === '1') push(); return; }
+    try { await afterSignIn(); } catch (e) { fail(e); }
+  }
+  function chip() { if (isOn() && S.status === 'auth') return syncNow(); return panel(); }
   let inited = false;
   function init() {
     if (inited) { renderUI(); return; } inited = true;
@@ -393,16 +408,22 @@
       S.status = get(KEY.dirty) === '1' ? 'pending' : 'ok';
       // Only offer "Restore" when this account has synced before (so a cloud copy exists). A brand-new empty shop just opens.
       if (!hasLocal() && get(KEY.rev)) { del(KEY.rev); showGate('restore'); }
-      else if (navigator.onLine && !validTok()) showGate('resume');
-      else if (get(KEY.dirty) === '1') { setStatus(validTok() ? 'pending' : 'auth'); if (validTok()) S.timer = setTimeout(() => push(), 3000); }
+      else if (!validTok()) { S.status = navigator.onLine ? 'syncing' : 'offline'; setTimeout(resume, 400); }
+      else if (get(KEY.dirty) === '1') { setStatus('pending'); S.timer = setTimeout(() => push(), 3000); }
     } else showGate('new');
     renderUI();
     if (clientId() && navigator.onLine) loadGIS().catch(() => {});
-    window.addEventListener('online', () => { if (isOn() && get(KEY.dirty) === '1') { if (validTok()) { setStatus('pending'); push(); } else setStatus('auth'); } });
-    window.addEventListener('offline', () => { if (isOn()) renderUI(); });
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && isOn() && get(KEY.dirty) === '1' && validTok()) push(); });
+    window.addEventListener('online', () => { if (!isOn()) return; if (!validTok()) resume(); else if (get(KEY.dirty) === '1') { setStatus('pending'); push(); } });
+    window.addEventListener('offline', () => { if (isOn()) { if (!validTok()) S.status = 'offline'; renderUI(); } });
+    document.addEventListener('visibilitychange', () => {
+      if (!isOn()) return;
+      if (document.visibilityState === 'hidden') { if (get(KEY.dirty) === '1' && validTok()) push(); }
+      else if (!validTok()) resume();
+    });
+    // Renew the token a few minutes before it expires so sync never stops while the shop is open.
+    setInterval(() => { if (isOn() && document.visibilityState === 'visible' && !S.busy && S.tok && S.exp - Date.now() < 5 * 60 * 1000 && S.exp - Date.now() > 0) { resume(true); } }, 60 * 1000);
   }
-  window.Cloud = { init, markDirty, signIn, signOut, resetPin, syncNow, pull, snapshots, panel, setup, renderUI, isOn };
-  if (!isOn()) showGate('new'); else if (navigator.onLine && !validTok()) showGate('resume');
+  window.Cloud = { init, chip, markDirty, signIn, signOut, resetPin, syncNow, pull, snapshots, panel, setup, renderUI, isOn };
+  if (!isOn()) showGate('new');
   window.addEventListener('storage', e => { if (e.key === KEY.on && e.newValue !== '1') location.reload(); });
 })();

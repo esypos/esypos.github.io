@@ -6,21 +6,68 @@
   const Scanner = window.Scanner = {
     el: null, stream: null, timer: null, last: '', lastT: 0, busy: false, opening: false, tok: 0, msgT: null,
     isOpen() { return !!this.el || this.opening; },
+    // Ask the browser for the camera. Tries a few constraint sets so devices that reject "environment" still work.
+    async getStream() {
+      const tries = [
+        { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
+        { video: { facingMode: 'environment' }, audio: false },
+        { video: true, audio: false }
+      ];
+      let err;
+      for (const c of tries) {
+        try { return await navigator.mediaDevices.getUserMedia(c); }
+        catch (e) {
+          err = e;
+          // Permission and hardware problems will not change with other constraints: stop here.
+          if (e && /NotAllowed|Security|NotFound|NotReadable|Abort/.test(e.name || '')) break;
+        }
+      }
+      throw err;
+    },
+    // Friendly dialog that explains how to re-enable the camera (a browser "Block" cannot be overridden by the app).
+    help(kind, retry) {
+      const msgs = {
+        denied: ['Camera access is blocked', 'EsyPOS needs the camera only to scan barcodes. Allow it once and scanning will work from then on.'],
+        busy: ['Camera is in use', 'Another app or browser tab is using the camera. Close it and try again.'],
+        none: ['No camera found', 'This device has no usable camera. You can type the barcode, or use a USB or Bluetooth scanner.'],
+        insecure: ['Camera needs a secure page', 'Open EsyPOS over HTTPS to use the camera.'],
+        error: ['Camera could not start', 'Something went wrong while starting the camera. Please try again.']
+      };
+      const m = msgs[kind] || msgs.error;
+      const steps = kind === 'denied' ? `<ol class="perm-steps">
+          <li><b>Chrome / browser:</b> tap the <i class="fas fa-sliders"></i> or <i class="fas fa-lock"></i> icon next to the address bar, then <b>Permissions → Camera → Allow</b>.</li>
+          <li><b>Installed app:</b> press and hold the EsyPOS icon → <b>App info → Permissions → Camera → Allow</b>.</li>
+          <li><b>iPhone:</b> Settings → Safari → Camera → <b>Ask</b> or <b>Allow</b>.</li>
+          <li>Come back here and tap <b>Try again</b>.</li></ol>` : '';
+      const el = Modal.open({
+        title: m[0], size: '',
+        body: `<div class="perm-ico ${kind === 'denied' ? 'bad' : ''}"><i class="fas ${kind === 'none' ? 'fa-video-slash' : 'fa-camera'}"></i></div><p class="perm-msg">${esc(m[1])}</p>${steps}`,
+        foot: `<button class="btn" data-x2>Close</button>${kind === 'none' || kind === 'insecure' ? '' : '<button class="btn btn-primary" data-retry><i class="fas fa-rotate-right"></i> Try again</button>'}`
+      });
+      el.querySelector('[data-x2]').onclick = () => Modal.close(el);
+      const r = el.querySelector('[data-retry]'); if (r) r.onclick = () => { Modal.close(el); setTimeout(() => { if (typeof retry === 'function') retry(); }, 150); };
+    },
     async open(cb, o) {
       o = o || {};
       if (this.el || this.opening) return;
-      if (!('BarcodeDetector' in window)) { toast('⚠️ Camera scan is not available in this browser. Use a USB/Bluetooth scanner or type the code.'); return; }
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast('⚠️ Camera not available (HTTPS required)'); return; }
+      const retry = () => this.open(cb, o);
+      if (!('BarcodeDetector' in window)) { toast('⚠️ Camera scan is not supported in this browser. Use Chrome on Android, or a USB/Bluetooth scanner.'); return; }
+      if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { this.help('insecure'); return; }
       let det; try { det = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf', 'qr_code'] }); } catch (_) { try { det = new BarcodeDetector(); } catch (e2) { toast('⚠️ Camera scan not available in this browser'); return; } }
       const tok = ++this.tok; this.opening = true;
       let stream;
-      try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false }); }
-      catch (e) { this.opening = false; toast(e && e.name === 'NotFoundError' ? '⚠️ No camera found on device' : '⚠️ Camera permission denied'); return; }
+      try { stream = await this.getStream(); }
+      catch (e) {
+        this.opening = false;
+        const n = (e && e.name) || '';
+        this.help(/NotAllowed|Security/.test(n) ? 'denied' : n === 'NotFoundError' || n === 'OverconstrainedError' ? 'none' : /NotReadable|Abort/.test(n) ? 'busy' : 'error', retry);
+        return;
+      }
       this.opening = false;
       if (tok !== this.tok) { stream.getTracks().forEach(t => t.stop()); return; }   // Back/Close was pressed while the camera was starting
       this.stream = stream;
       const el = document.createElement('div'); el.className = 'scan';
-      el.innerHTML = `<video playsinline muted autoplay></video><div class="frame"></div><div class="bar-top"><b>Barcode scan</b><button type="button" class="btn btn-sm" id="sc-x">Close</button></div><div class="sc-msg hidden" id="sc-msg"></div><div class="bar-bot">${esc(o.hint || 'Hold barcode inside the frame')}</div>`;
+      el.innerHTML = `<video playsinline muted autoplay></video><div class="frame"><i></i><i></i><i></i><i></i><span class="beam"></span></div><div class="bar-top"><b>Barcode scan</b><button type="button" class="btn btn-sm" id="sc-x">Close</button></div><div class="sc-msg hidden" id="sc-msg"></div><div class="bar-bot">${esc(o.hint || 'Hold barcode inside the frame')}</div>`;
       document.body.appendChild(el); this.el = el; this.last = ''; this.lastT = 0; this.busy = false; syncLock();
       const v = el.querySelector('video'); v.srcObject = stream; try { await v.play(); } catch (_) {}
       el.querySelector('#sc-x').onclick = () => this.close();
@@ -52,6 +99,7 @@
     }
   };
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && Scanner.isOpen()) Scanner.close(); });
+  window.addEventListener('pagehide', () => { if (Scanner.isOpen()) Scanner.close(); });
   async function hashPin(pin, salt) {
     const s = salt + ':' + pin;
     if (window.crypto && crypto.subtle) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join(''); }
@@ -165,9 +213,9 @@
     },
     async imageJob(sale) {
       const W = DB.settings.paper === '80' ? 576 : 384; const pad = 6;
-      try { await document.fonts.load('20px "Noto Sans Bengali"'); } catch (_) {}
+      try { await document.fonts.load('20px Inter'); } catch (_) {}
       const cv = document.createElement('canvas'); cv.width = W; let ctx = cv.getContext('2d');
-      const font = (s, b) => `${b ? '700 ' : ''}${s}px "Noto Sans Bengali", sans-serif`;
+      const font = (s, b) => `${b ? '700 ' : ''}${s}px Inter, system-ui, sans-serif`;
       const wrap = (txt, maxW, f) => { ctx.font = f; const out = []; let line = ''; String(txt).split(' ').forEach(w => { const t = line ? line + ' ' + w : w; if (ctx.measureText(t).width > maxW && line) { out.push(line); line = w; } else line = t; }); if (line) out.push(line); return out; };
       const layout = []; let y = 4;
       this.lines(sale).forEach(l => {

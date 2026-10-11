@@ -6,7 +6,7 @@
 
 **Simple POS for Every Business**
 
-Free · Offline · Installable · Backup to your own Google Drive
+Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
 [**Website**](https://esypos.github.io/) · [Privacy Policy](https://esypos.github.io/privacy.html) · [Terms](https://esypos.github.io/terms.html)
 
@@ -22,15 +22,13 @@ Free · Offline · Installable · Backup to your own Google Drive
 
 ## About
 
-EsyPOS is a free point-of-sale web app for small shops. It works in any browser, installs like a native app, runs offline, and backs up your data to **your own Google Drive**. No server, no subscription.
+EsyPOS is a free, open-source point-of-sale (POS) web app for small shops and growing businesses. It works in any browser, installs like a native app, runs offline, and backs up your data to **your own Google Drive**. No server, no subscription.
 
-> **বাংলায়:** ফ্রি, অফলাইনে চলা POS সফটওয়্যার। বিক্রি, স্টক, বাকি, খরচ ও রিপোর্ট সব এক অ্যাপে।
 
 ## Open Source
 
 EsyPOS is an open-source project. Anyone can run their own business with their own Google account. No third-party company or middleman is involved.
 
-> **বাংলায়:** এটি ওপেন সোর্স প্রজেক্ট। যে কেউ নিজের Google অ্যাকাউন্ট দিয়ে নিজের ব্যবসা পরিচালনা করতে পারবেন, কোনো থার্ড পার্টি কোম্পানির কাছে যেতে হবে না।
 
 ## Features
 
@@ -41,12 +39,13 @@ EsyPOS is an open-source project. Anyone can run their own business with their o
 - **Products & Stock:** low-stock alerts, expiry, CSV import / export
 - **Purchases, Returns & Expenses**
 - **Reports:** sales, profit, collections, dashboard
-- **Security:** PIN lock, auto Google Drive backup
+- **Security:** PIN lock, automatic Google Drive backup
+- **Camera scanning:** barcode scan with built-in permission help (Chrome on Android); USB and Bluetooth scanners work everywhere
 
 ## Quick Start
 
 1. Open **[esypos.github.io](https://esypos.github.io/)**
-2. Sign in with Google and add products
+2. Sign in with Google once and add products (the app then opens instantly, and reconnects to Drive in the background)
 3. On phone: **Add to Home screen**
 
 ## Privacy
