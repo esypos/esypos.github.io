@@ -40,7 +40,7 @@ EsyPOS is an open-source project released under the **[MIT License](LICENSE)**. 
 - **Purchases, Returns & Expenses**
 - **Reports:** sales, profit, collections, dashboard
 - **Security:** PIN lock, automatic Google Drive backup
-- **Feels like a native app:** bottom tab bar, haptic feedback, back-button handling, app-icon shortcuts (long-press the icon), instant launch from an offline cache
+- **Feels like a native app:** haptic feedback, back-button handling, app-icon shortcuts (long-press the icon), instant launch from an offline cache
 - **Smooth on low-end phones:** coalesced saves, cached product photos, paged lists, no heavy blur effects
 - **Camera scanning:** barcode scan with built-in permission help (Chrome on Android); USB and Bluetooth scanners work everywhere
 

@@ -1,6 +1,6 @@
 @font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('../fonts/inter-latin-var.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 /* ==========================================================================
-   EsyPOS v10.5 — design system
+   EsyPOS v10.6 — design system
    Mobile-first. Breakpoints: 700px (tablet) · 1024px (desktop sidebar) · 1280px (docked cart)
    ========================================================================== */
 
@@ -541,10 +541,10 @@ h1,h2,h3{text-wrap:balance}
 
 
 /* ==========================================================================
-   v10.5 — native-app feel + smooth performance on low-end Android phones
+   v10.6 — native-app feel + smooth performance on low-end Android phones
    ========================================================================== */
 html{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
-.btn,.chip,.icon-btn,.nav-link,.tab,.pcard,.row,.qty button,.cart-bar{touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.btn,.chip,.icon-btn,.nav-link,.pcard,.row,.qty button,.cart-bar{touch-action:manipulation;-webkit-user-select:none;user-select:none}
 img{-webkit-user-drag:none}
 input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:text}
 
@@ -554,29 +554,8 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:tex
 .view{contain:layout style}
 .pimg img,.avatar img{background:var(--hover)}
 
-/* Bottom tab bar (phones and tablets) */
-.tabbar{display:none}
-@media(max-width:1023px){
-  :root{--tabh:calc(64px + env(safe-area-inset-bottom))}
-  .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:34;height:var(--tabh);padding:6px 6px env(safe-area-inset-bottom);background:var(--card);border-top:1px solid var(--border);box-shadow:0 -8px 26px rgba(15,23,42,.07)}
-  .tab{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:0;background:none;color:var(--muted);font:600 11px/1 inherit;font-family:inherit;position:relative;border-radius:16px;cursor:pointer}
-  .tab::before{content:'';position:absolute;top:5px;left:50%;width:58px;height:30px;margin-left:-29px;border-radius:16px;background:var(--psoft);opacity:0;transform:scale(.55);transition:opacity .22s var(--ease),transform .3s var(--ease)}
-  .tab i,.tab span{position:relative;transition:transform .25s var(--ease),color .2s}
-  .tab i{font-size:19px;height:30px;display:flex;align-items:center}
-  .tab span{margin-top:-1px;letter-spacing:.1px}
-  .tab.active{color:var(--ptext)}
-  .tab.active::before{opacity:1;transform:none}
-  .tab.active span{font-weight:800}
-  .tab:active i{transform:scale(.86)}
-  .main{padding-bottom:calc(var(--tabh) + 22px)}
-  body[data-view="pos"] .main{padding-bottom:calc(var(--tabh) + 86px)}
-  .cart-bar{bottom:calc(var(--tabh) + 10px)}
-  #toast,body[data-view="pos"] #toast{bottom:calc(var(--tabh) + 84px)}
-  .pwa-install-btn{bottom:calc(var(--tabh) + 84px)}
-  .pwa-update-bar{bottom:calc(var(--tabh) + 10px)}
-}
-body.gated .tabbar,body.kb-open .tabbar,body.kb-open .cart-bar{display:none!important}
-body.no-scroll .tabbar{pointer-events:none}
+/* Hide the floating cart bar while the on-screen keyboard is in use */
+body.kb-open .cart-bar{display:none!important}
 
 /* Smoothness on phones: no blur layers, no fixed gradients, no per-card entrance animation */
 @media(max-width:1023px),(pointer:coarse){
@@ -587,4 +566,4 @@ body.no-scroll .tabbar{pointer-events:none}
   .view{animation-duration:.2s}
   .modal-back{background:rgba(2,6,23,.6)}
 }
-@media(prefers-reduced-motion:reduce){.tab::before,.tab i{transition:none}}
+

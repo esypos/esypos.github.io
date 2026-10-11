@@ -20,8 +20,7 @@
     go(v) {
       if (!Views[v]) v = 'pos';
       Modal.closeAll(); App.closeDrawers(); App.view = v; document.body.dataset.view = v;
-      document.querySelectorAll('.nav-link[data-v],.tab[data-v]').forEach(b => b.classList.toggle('active', b.dataset.v === v));
-      const mt = document.querySelector('.tab.more'); if (mt) mt.classList.toggle('active', !document.querySelector('.tab[data-v="' + v + '"]'));
+      document.querySelectorAll('.nav-link[data-v]').forEach(b => b.classList.toggle('active', b.dataset.v === v));
       try {
         const viewEl = document.getElementById('view');
         if (viewEl && Views[v] && typeof Views[v].render === 'function') Views[v].render();
@@ -473,7 +472,7 @@
     }
   };
   Views.products = Products;
-  // Hide the bottom tab bar and cart bar while the on-screen keyboard is in use (like native apps).
+  // Hide the cart bar while the on-screen keyboard is in use (like native apps).
   (function keyboardAware() {
     const field = el => !!el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && !/^(checkbox|radio|button|submit|file)$/.test(el.type || '');
     document.addEventListener('focusin', e => { if (field(e.target)) document.body.classList.add('kb-open'); });
