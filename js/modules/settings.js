@@ -205,7 +205,7 @@
       s.items.forEach(i => { L.push({ t: i.name, s: 22, b: 1 }); L.push({ t: i.qty + ' × ' + fmt(i.price), t2: fmt(i.price * i.qty), s: 21 }); });
       L.push({ hr: 1 }, { t: 'Subtotal', t2: fmt(s.subtotal), s: 21 });
       if (s.discount > 0) L.push({ t: 'Discount', t2: '-' + fmt(s.discount), s: 21 }); if (s.tax > 0) L.push({ t: 'Tax', t2: fmt(s.tax), s: 21 });
-      L.push({ t: 'Total', t2: '৳' + fmt(s.total), s: 28, b: 1 }, { t: 'Paid', t2: fmt(s.paid), s: 21 });
+      L.push({ t: 'Total', t2: C.cur() + fmt(s.total), s: 28, b: 1 }, { t: 'Paid', t2: fmt(s.paid), s: 21 });
       if (s.change > 0) L.push({ t: 'Change given', t2: fmt(s.change), s: 21 }); if (s.due > 0) L.push({ t: 'Due on this bill', t2: fmt(s.due), s: 23, b: 1 });
       if (cust && bal > 0) L.push({ t: 'Total due', t2: fmt(bal), s: 23, b: 1 });
       L.push({ hr: 1 }, { t: sh.footer || '', a: 'c', s: 20 }, { gap: 40 });
@@ -254,12 +254,14 @@
         <div class="field"><label class="label">Shop name</label><input id="st-name" class="input" value="${esc(s.shopName)}"></div>
         <div class="field"><label class="label">Address</label><input id="st-addr" class="input" value="${esc(s.shopAddress)}"></div>
         <div class="grid2"><div class="field"><label class="label">Phone</label><input id="st-phone" class="input" value="${esc(s.shopPhone)}"></div><div class="field"><label class="label">Default tax (%)</label><input id="st-tax" type="number" step="any" min="0" class="input" value="${s.defaultTax || 0}"></div></div>
+        <div class="grid2"><div class="field"><label class="label">Currency symbol</label><input id="st-cur" class="input" maxlength="4" value="${esc(s.currency)}" placeholder="$"></div><div class="field"><label class="label">Example</label><div class="input" style="display:flex;align-items:center;background:var(--hover)">${esc(s.currency)}1,250.50</div></div></div>
         <div class="field"><label class="label">Receipt footer text</label><input id="st-foot" class="input" value="${esc(s.footer)}"></div>
         <div class="grid3"><div class="field"><label class="label">Invoice prefix</label><input id="st-pre" class="input" value="${esc(s.invPrefix)}" placeholder="INV-"></div><div class="field"><label class="label">Paper</label><select id="st-paper" class="input"><option value="58" ${s.paper === '58' ? 'selected' : ''}>58 mm</option><option value="80" ${s.paper === '80' ? 'selected' : ''}>80 mm</option></select></div><div class="field"><label class="label">Low stock (default)</label><input id="st-low" type="number" min="0" class="input" value="${s.lowStockDefault == null ? 5 : s.lowStockDefault}"></div></div>
         <button class="btn btn-primary btn-block" onclick="Settings.save()"><i class="fas fa-floppy-disk"></i> Save</button></div>
       <div class="card pad mb3"><div class="sec-title"><i class="fas fa-palette ptext"></i> Appearance & sound</div>
         <div class="field"><label class="label">Theme</label><select id="theme-select" class="input" onchange="Theme.set(this.value)"><option value="auto">Auto (device setting)</option><option value="light">Light mode</option><option value="dark">Dark mode</option></select></div>
-        <label class="switch"><span class="sm fw6"><i class="fas fa-volume-high ptext"></i> Click sound</span><input type="checkbox" ${Sound.isEnabled() ? 'checked' : ''} onchange="Sound.setEnabled(this.checked)"></label></div>
+        <label class="switch"><span class="sm fw6"><i class="fas fa-volume-high ptext"></i> Click sound</span><input type="checkbox" ${Sound.isEnabled() ? 'checked' : ''} onchange="Sound.setEnabled(this.checked)"></label>
+        ${Haptic.supported() ? `<label class="switch mt2"><span class="sm fw6"><i class="fas fa-mobile-screen ptext"></i> Vibration feedback</span><input type="checkbox" ${Haptic.isEnabled() ? 'checked' : ''} onchange="Haptic.setEnabled(this.checked)"></label>` : ''}</div>
       <div class="card pad mb3"><div class="sec-title"><i class="fas fa-lock ptext"></i> Security (PIN lock)</div><p class="muted sm mb3">${Lock.has() ? 'PIN is set. App will ask for PIN on open and after 1+ min in background.' : 'With a PIN, others cannot see your sales and accounts.'}</p>
         <div class="flex gap2"><button class="btn btn-primary" onclick="Lock.setup()">${Lock.has() ? 'Change PIN' : 'Set PIN'}</button>${Lock.has() ? '<button class="btn btn-ghost" onclick="Lock.lockNow()">Lock now</button><button class="btn btn-danger-soft" onclick="Lock.remove()">Disable PIN</button>' : ''}</div></div>
       <div class="card pad mb3"><div class="sec-title"><i class="fab fa-bluetooth-b ptext"></i> Bluetooth printer</div><div class="mb3" id="bt-status"></div>
@@ -272,12 +274,12 @@
         <button class="btn btn-danger-soft btn-block mt2" onclick="wipeAllData()"><i class="fas fa-trash"></i> Delete all data</button></div>
       <div class="card pad mb3"><div class="sec-title"><i class="fas fa-scale-balanced ptext"></i> Legal</div>
         <div class="grid2"><a class="btn btn-ghost" href="privacy.html" target="_blank" rel="noopener"><i class="fas fa-user-shield"></i> Privacy Policy</a><a class="btn btn-ghost" href="terms.html" target="_blank" rel="noopener"><i class="fas fa-file-contract"></i> Terms of Service</a></div></div>
-      <div class="tc muted xs">EsyPOS · Free offline POS · Data stays on your device<br>© MH IT Limited · <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a></div>`;
+      <div class="tc muted xs">EsyPOS · Free offline POS · Data stays on your device<br>© MH IT Limited · <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> · <a href="license.html" target="_blank" rel="noopener">MIT License</a> · <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a></div>`;
       Theme.apply(); Printer.ui(); if (window.Cloud) Cloud.renderUI();
     },
     save() {
       const s = DB.settings; s.shopName = $('st-name').value.trim() || 'My Shop'; s.shopAddress = $('st-addr').value.trim(); s.shopPhone = $('st-phone').value.trim();
-      s.defaultTax = Math.max(0, num($('st-tax').value)); s.footer = $('st-foot').value.trim(); s.invPrefix = $('st-pre').value.trim(); s.paper = $('st-paper').value; const lw = parseFloat($('st-low').value); s.lowStockDefault = isFinite(lw) && lw >= 0 ? lw : 5;
+      s.defaultTax = Math.max(0, num($('st-tax').value)); s.footer = $('st-foot').value.trim(); s.invPrefix = $('st-pre').value.trim(); s.currency = ($('st-cur').value || '').trim().slice(0, 4) || C.DEFAULTS.currency; s.paper = $('st-paper').value; const lw = parseFloat($('st-low').value); s.lowStockDefault = isFinite(lw) && lw >= 0 ? lw : 5;
       C.save('settings'); POS.taxInit(); POS.renderCart(); toast('Settings saved ✓');
     }
   };

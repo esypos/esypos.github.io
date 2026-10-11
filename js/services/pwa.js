@@ -1,7 +1,7 @@
-/* PWA: network-first updates, auto cache clear, install + offline badge */
+/* PWA: versioned offline cache, safe updates (never interrupts a sale), install + offline badge */
 (function () {
   'use strict';
-  const CACHE_VERSION = 'v10.4';   // keep in sync with sw.js
+  const CACHE_VERSION = 'v10.5';   // keep in sync with sw.js
   // Delete caches from OLDER versions only — the current offline cache must survive.
   async function clearOldCaches() {
     if (!('caches' in window)) return;
@@ -32,6 +32,9 @@
         let refreshing = false;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           if (refreshing || !hadController) return;
+          // Never reload in the middle of a sale: ask first when the cart has items or a dialog is open.
+          const busy = () => { try { return (window.Core && Core.DB.cart.length > 0) || (window.Modal && Modal.stack.length > 0); } catch (_) { return false; } };
+          if (busy() && document.visibilityState === 'visible') { showUpdateBar(null); return; }
           refreshing = true;
           clearOldCaches().finally(() => location.reload());
         });

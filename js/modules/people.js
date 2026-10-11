@@ -42,7 +42,7 @@
       const q = this.cq.trim().toLowerCase();
       let arr = DB.customers.map(c => ({ c, b: C.customerBalance(c.id) })).filter(x => !q || x.c.name.toLowerCase().includes(q) || (x.c.phone || '').includes(q));
       if (this.cf === 'due') arr = arr.filter(x => x.b > 0);
-      arr.sort((a, b) => b.b - a.b || a.c.name.localeCompare(b.c.name, 'bn'));
+      arr.sort((a, b) => b.b - a.b || C.collator.compare(a.c.name, b.c.name));
       const el = $('cust-list'); if (!el) return;
       el.innerHTML = arr.length ? arr.map(x => `<div class="row" onclick="People.detail('${x.c.id}')"><div class="avatar">${ini(x.c.name)}</div>
         <div class="grow"><div class="t">${esc(x.c.name)}</div><div class="s">${esc(x.c.phone || 'No phone')}${x.c.address ? ' · ' + esc(x.c.address) : ''}</div></div>
@@ -56,7 +56,7 @@
         <div class="field"><label class="label">Name *</label><input id="cf-name" class="input" autofocus value="${esc(c ? c.name : '')}"></div>
         <div class="field"><label class="label">Mobile</label><input id="cf-phone" type="tel" class="input" value="${esc(c ? c.phone : '')}"></div>
         <div class="field"><label class="label">Address</label><input id="cf-addr" class="input" value="${esc(c ? c.address : '')}"></div>
-        <div class="grid2"><div class="field"><label class="label">Opening due (৳)</label><input id="cf-open" type="number" step="any" class="input" value="${c ? c.openingDue || '' : ''}" placeholder="0"></div>
+        <div class="grid2"><div class="field"><label class="label">Opening due (${C.cur()})</label><input id="cf-open" type="number" step="any" class="input" value="${c ? c.openingDue || '' : ''}" placeholder="0"></div>
           <div class="field"><label class="label">Due limit</label><input id="cf-lim" type="number" min="0" class="input" value="${c ? c.creditLimit || '' : ''}" placeholder="Unlimited"></div></div>`,
         foot: `<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" id="cf-ok">Save</button>` });
       m.querySelector('#cf-ok').onclick = () => {
@@ -157,7 +157,7 @@
     },
     pay(id) {
       const s = findSupplier(id); const b = C.supplierBalance(id);
-      const m = Modal.open({ title: 'Payment — ' + s.name, body: `<div class="field"><label class="label">Amount (৳)</label><input id="sp-amt" type="number" step="any" min="0" class="input" style="font-size:20px;font-weight:700" autofocus value="${b > 0 ? b : ''}"></div>
+      const m = Modal.open({ title: 'Payment — ' + s.name, body: `<div class="field"><label class="label">Amount (${C.cur()})</label><input id="sp-amt" type="number" step="any" min="0" class="input" style="font-size:20px;font-weight:700" autofocus value="${b > 0 ? b : ''}"></div>
         <div class="field"><label class="label">Method</label><select id="sp-m" class="input"><option value="cash">Cash</option><option value="mobile">Mobile banking</option><option value="card">Card/Bank</option></select></div>
         <div class="field"><label class="label">Note</label><input id="sp-note" class="input"></div>`, foot: `<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" id="sp-ok">Confirm</button>` });
       m.querySelector('#sp-ok').onclick = () => { const a = num($('sp-amt').value); if (a <= 0) { toast('⚠️ Enter a valid amount'); return; }
@@ -173,7 +173,7 @@
       const m = Modal.open({ title: 'New purchase (stock in)', size: 'wide', static: true, body: `
         <div class="field"><label class="label">Supplier</label><div class="flex gap2"><select id="pu-sup" class="input"><option value="">— none —</option>${DB.suppliers.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select><button class="btn btn-soft" onclick="Buy.quickSup()"><i class="fas fa-plus"></i></button></div></div>
         <div id="pu-rows"></div><button class="btn btn-ghost btn-block mb3" onclick="Buy.addRow()"><i class="fas fa-plus"></i> Another product</button>
-        <div class="card pad-s"><div class="sumrow big" style="border:0;margin:0;padding:0"><span>Total</span><span class="ptext" id="pu-total">৳0</span></div></div>
+        <div class="card pad-s"><div class="sumrow big" style="border:0;margin:0;padding:0"><span>Total</span><span class="ptext" id="pu-total">${C.money(0)}</span></div></div>
         <div class="grid2 mt3"><div class="field"><label class="label">Payment now</label><input id="pu-paid" type="number" step="any" min="0" class="input" oninput="Buy.puCalc()"></div><div class="field"><label class="label">Due remaining</label><input id="pu-due" class="input" disabled value="৳0"></div></div>
         <div class="field"><label class="label">Note</label><input id="pu-note" class="input"></div>`,
         foot: `<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" onclick="Buy.savePurchase(this)">Save purchase</button>` });

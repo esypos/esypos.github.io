@@ -31,9 +31,20 @@
     return { play, isEnabled: () => enabled, setEnabled(v) { enabled = !!v; try { localStorage.setItem('esypos_sound', enabled ? '1' : '0'); } catch (_) {} if (enabled) play('click'); } };
   })();
   window.Sound = Sound;
+  // Haptics: short vibration on taps, success and warnings (Android). Respects reduced-motion and a Settings switch.
+  const Haptic = (function () {
+    let on = true; try { on = localStorage.getItem('esypos_haptic') !== '0'; } catch (_) {}
+    const can = () => on && typeof navigator.vibrate === 'function' && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+    return {
+      tap() { if (can()) navigator.vibrate(8); }, ok() { if (can()) navigator.vibrate([14, 50, 14]); }, warn() { if (can()) navigator.vibrate([32, 40, 32]); },
+      isEnabled: () => on, supported: () => typeof navigator.vibrate === 'function',
+      setEnabled(v) { on = !!v; try { localStorage.setItem('esypos_haptic', on ? '1' : '0'); } catch (_) {} if (on && navigator.vibrate) navigator.vibrate(12); }
+    };
+  })();
+  window.Haptic = Haptic;
   document.addEventListener('click', e => {
     const t = e.target.closest && e.target.closest('button, a, label, select, summary, [onclick], .pcard, .nav-link, .row, input[type=checkbox], input[type=radio]');
-    if (t && !t.disabled) Sound.play('click');
+    if (t && !t.disabled) { Sound.play('click'); Haptic.tap(); }
   }, true);
   let confirmEl = null;
   function closeConfirm() { if (confirmEl) { confirmEl.remove(); confirmEl = null; } }

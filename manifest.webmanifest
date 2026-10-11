@@ -77,7 +77,46 @@
       "name": "New sale",
       "short_name": "Sell",
       "description": "Open the sales counter",
-      "url": "./index.html",
+      "url": "./index.html?go=pos",
+      "icons": [
+        {
+          "src": "assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "short_name": "Products",
+      "description": "Manage products and stock",
+      "url": "./index.html?go=products",
+      "icons": [
+        {
+          "src": "assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Customers & due",
+      "short_name": "Customers",
+      "description": "Customer ledger and dues",
+      "url": "./index.html?go=customers",
+      "icons": [
+        {
+          "src": "assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "short_name": "Reports",
+      "description": "Sales and profit reports",
+      "url": "./index.html?go=reports",
       "icons": [
         {
           "src": "assets/icons/icon-192.png",

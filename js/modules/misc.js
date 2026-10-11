@@ -71,7 +71,7 @@
         ${rows.map((i, k) => `<div class="flex items-c gap3 mb2"><div class="grow"><div class="fw6 sm">${esc(i.name)}</div><div class="xs muted">${money(i.price)} · Returnable ${i.left}</div></div><input type="number" min="0" max="${i.left}" step="any" class="input rt-q" data-k="${k}" style="width:90px" value="0" oninput="Receipt.retCalc()"></div>`).join('')}
         <div class="field mt3"><label class="label">Refund type</label><select id="rt-type" class="input" onchange="Receipt.retCalc()"><option value="cash">Cash refund</option>${canDue ? '<option value="due" ' + (s.due > 0 ? 'selected' : '') + '>Deduct from customer due</option>' : ''}</select></div>
         <div class="field"><label class="label">Reason (optional)</label><input id="rt-note" class="input"></div>
-        <div class="card pad-s sumrow big" style="margin:0"><span>Return value</span><span class="ptext" id="rt-amt">৳0</span></div>`,
+        <div class="card pad-s sumrow big" style="margin:0"><span>Return value</span><span class="ptext" id="rt-amt">${C.money(0)}</span></div>`,
         foot: `<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-bad" id="rt-ok">Confirm return</button>` });
       m._rows = rows; m._sale = s; this._rm = m; this.retCalc();
       m.querySelector('#rt-ok').onclick = () => {
@@ -93,7 +93,8 @@
     }
   };
   const Hist = window.Hist = {
-    preset: 'today', from: '', to: '', q: '', st: 'all',
+    preset: 'today', from: '', to: '', q: '', st: 'all', lim: 100,
+    more() { this.lim += 100; this.render(); },
     range() { const t = C.todayKey(); return { today: [t, t], week: [C.addDays(t, -6), t], month: [C.monthStart(), t], all: ['', ''], custom: [this.from, this.to] }[this.preset]; },
     render() {
       const [f, t] = this.range();
@@ -117,9 +118,9 @@
     list() {
       const arr = this.rows(); const tot = r2(arr.reduce((s, x) => s + x.total, 0)); const due = r2(arr.reduce((s, x) => s + num(x.due), 0));
       $('h-stats').innerHTML = `<div class="stat"><div class="k">Bills</div><div class="v">${arr.length}</div></div><div class="stat"><div class="k">Gross Sales</div><div class="v">${money(tot)}</div></div><div class="stat"><div class="k">Due given</div><div class="v bad">${money(due)}</div></div>`;
-      $('h-list').innerHTML = arr.length ? arr.slice(0, 200).map(s => { const c = findCustomer(s.customerId); const ret = C.returnedAmount(s.id); return `<div class="row" onclick="Receipt.showId('${s.id}')"><div class="avatar"><i class="fas fa-receipt"></i></div>
+      const lim = this.lim || 100; $('h-list').innerHTML = arr.length ? arr.slice(0, lim).map(s => { const c = findCustomer(s.customerId); const ret = C.returnedAmount(s.id); return `<div class="row" onclick="Receipt.showId('${s.id}')"><div class="avatar"><i class="fas fa-receipt"></i></div>
         <div class="grow"><div class="t">#${C.invLabel(s)} · ${esc(c ? c.name : 'Walk-in')}</div><div class="s">${C.fmtDT(s.date)} · ${esc(s.items.map(i => i.name + '×' + i.qty).join(', '))}</div></div>
-        <div class="tr"><div class="fw7 ptext">${money(s.total)}</div><div class="flex gap1" style="justify-content:flex-end">${s.due > 0 ? `<span class="badge b-bad">Due ${money(s.due)}</span>` : `<span class="badge b-ok">${MN[s.paymentMethod] || 'Cash'}</span>`}${ret ? '<span class="badge b-warn">Returns</span>' : ''}</div></div></div>`; }).join('') : '<div class="empty"><i class="fas fa-receipt"></i>No sales</div>';
+        <div class="tr"><div class="fw7 ptext">${money(s.total)}</div><div class="flex gap1" style="justify-content:flex-end">${s.due > 0 ? `<span class="badge b-bad">Due ${money(s.due)}</span>` : `<span class="badge b-ok">${MN[s.paymentMethod] || 'Cash'}</span>`}${ret ? '<span class="badge b-warn">Returns</span>' : ''}</div></div></div>`; }).join('') + (arr.length > lim ? `<div class="tc mt3"><button class="btn btn-ghost" onclick="Hist.more()">Show more (${arr.length - lim} left)</button></div>` : '') : '<div class="empty"><i class="fas fa-receipt"></i>No sales</div>';
     },
     csv() { const arr = this.rows(); C.download('esypos-sales.csv', C.toCSV([['Receipt', 'Date', 'Customer', 'Subtotal', 'Discount', 'Tax', 'Total', 'Paid', 'Due', 'Payment', 'Product'], ...arr.map(s => { const c = findCustomer(s.customerId); return [C.invLabel(s), C.dkey(s.date), c ? c.name : '', s.subtotal, s.discount, s.tax, s.total, s.paid, s.due, MN[s.paymentMethod], s.items.map(i => i.name + '×' + i.qty).join('; ')]; })]), 'text/csv'); }
   };

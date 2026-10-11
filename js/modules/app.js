@@ -20,7 +20,8 @@
     go(v) {
       if (!Views[v]) v = 'pos';
       Modal.closeAll(); App.closeDrawers(); App.view = v; document.body.dataset.view = v;
-      document.querySelectorAll('.nav-link[data-v]').forEach(b => b.classList.toggle('active', b.dataset.v === v));
+      document.querySelectorAll('.nav-link[data-v],.tab[data-v]').forEach(b => b.classList.toggle('active', b.dataset.v === v));
+      const mt = document.querySelector('.tab.more'); if (mt) mt.classList.toggle('active', !document.querySelector('.tab[data-v="' + v + '"]'));
       try {
         const viewEl = document.getElementById('view');
         if (viewEl && Views[v] && typeof Views[v].render === 'function') Views[v].render();
@@ -133,10 +134,12 @@
       el.innerHTML = ['all', ...cats].map(c => `<button class="chip ${this.cat === c ? 'on' : ''}" onclick="POS.setCat(this.dataset.c)" data-c="${esc(c)}">${c === 'all' ? 'All' : esc(c)}</button>`).join('');
     },
     filtered() {
-      const q = this.q.trim().toLowerCase();
-      return DB.products.filter(p => (this.cat === 'all' || p.category === this.cat) &&
-        (!q || p.name.toLowerCase().includes(q) || (p.barcode || '').toLowerCase().includes(q) || (p.category || '').toLowerCase().includes(q)))
-        .sort((a, b) => a.name.localeCompare(b.name, 'bn'));
+      const q = this.q.trim().toLowerCase(); const key = C.rev() + '|' + this.cat + '|' + q;
+      if (this._fk === key) return this._fl;
+      if (this._sk !== C.rev()) { this._sorted = DB.products.slice().sort((a, b) => C.collator.compare(a.name, b.name)); this._sk = C.rev(); }
+      const out = this._sorted.filter(p => (this.cat === 'all' || p.category === this.cat) &&
+        (!q || p.name.toLowerCase().includes(q) || (p.barcode || '').toLowerCase().includes(q) || (p.category || '').toLowerCase().includes(q)));
+      this._fk = key; this._fl = out; return out;
     },
     renderGrid() {
       const g = $('pgrid'); if (!g) return;
@@ -148,7 +151,7 @@
         const exp = p.expiry && p.expiry < C.todayKey();
         return `<div class="pcard" data-id="${p.id}" onclick="POS.add('${p.id}')">
           <span class="pqty"></span><span class="added-fx"></span>
-          <div class="pimg">${p.image ? `<img src="${esc(p.image)}" alt="">` : '<i class="fas fa-box"></i>'}</div>
+          <div class="pimg">${p.image ? `<img src="${esc(C.imgSrc(p))}" alt="" loading="lazy" decoding="async" draggable="false">` : '<i class="fas fa-box"></i>'}</div>
           ${exp ? '<span class="ptag">Expired</span>' : (p.track !== false && p.stock <= 0 ? '<span class="ptag">Out of stock</span>' : (low ? '<span class="ptag" style="background:#d97706">Low Stock</span>' : ''))}
           <div class="pname">${esc(p.name)}</div>
           <div class="pmeta"><span class="pprice">${money(p.price)}</span><span class="${low ? 'bad fw6' : 'muted'}">${p.track === false ? '∞' : p.stock + ' ' + esc(C.unitLabel ? C.unitLabel(p.unit) : (p.unit || ''))}</span></div></div>`;
@@ -161,7 +164,7 @@
       const m = {}; DB.cart.forEach(c => { m[c.id] = c.qty; });
       document.querySelectorAll('#pgrid .pcard').forEach(el => { const q = m[el.dataset.id]; el.classList.toggle('sel', !!q); const b = el.querySelector('.pqty'); if (b) b.textContent = q ? '×' + q : ''; });
     },
-    search(v) { this.q = v; this.limit = 120; this.renderGrid(); },
+    search(v) { this.q = v; this.limit = 120; if (this._st) cancelAnimationFrame(this._st); clearTimeout(this._sd); this._sd = setTimeout(() => { this._st = requestAnimationFrame(() => this.renderGrid()); }, 90); },
     setCat(c) { this.cat = c; this.limit = 120; this.renderCats(); this.renderGrid(); },
     more() { this.limit += 120; this.renderGrid(); },
     findByBarcode(code) {
@@ -322,7 +325,7 @@
       $('co-paid').value = m === 'due' ? '' : t.total;
       const q = $('co-quick'); const opts = new Set([t.total]);
       if (m === 'cash') { [10, 50, 100, 500, 1000].forEach(s => { const v = Math.ceil(t.total / s) * s; if (v >= t.total) opts.add(v); }); }
-      q.innerHTML = m === 'due' ? '' : [...opts].slice(0, 5).map(v => `<button class="chip" onclick="document.getElementById('co-paid').value=${v};POS.coCalc()">${v === t.total ? 'Exact ' : ''}৳${fmt(v)}</button>`).join('');
+      q.innerHTML = m === 'due' ? '' : [...opts].slice(0, 5).map(v => `<button class="chip" onclick="document.getElementById('co-paid').value=${v};POS.coCalc()">${v === t.total ? 'Exact ' : ''}${C.cur()}${fmt(v)}</button>`).join('');
       this.coCalc();
     },
     coCalc() {
@@ -382,25 +385,26 @@
       this.list();
     },
     expiring() { const soon = C.addDays(C.todayKey(), 30); return DB.products.filter(p => p.expiry && p.expiry <= soon); },
-    setQ(v) { this.q = v; this.list(); }, setF(f) { this.filter = f; this.render(); },
+    setQ(v) { this.q = v; this.lim = 100; clearTimeout(this._qd); this._qd = setTimeout(() => this.list(), 100); }, setF(f) { this.filter = f; this.lim = 100; this.render(); },
+    more() { this.lim = (this.lim || 100) + 100; this.list(); },
     list() {
       const q = this.q.trim().toLowerCase(); const soon = C.addDays(C.todayKey(), 30);
       let arr = DB.products.filter(p => !q || p.name.toLowerCase().includes(q) || (p.barcode || '').toLowerCase().includes(q) || (p.category || '').toLowerCase().includes(q));
       if (this.filter === 'low') arr = arr.filter(p => p.track !== false && p.stock <= (p.minStock || 0));
       if (this.filter === 'out') arr = arr.filter(p => p.track !== false && p.stock <= 0);
       if (this.filter === 'exp') arr = arr.filter(p => p.expiry && p.expiry <= soon);
-      arr.sort((a, b) => a.name.localeCompare(b.name, 'bn'));
-      const el = $('prod-list'); if (!el) return;
+      arr.sort((a, b) => C.collator.compare(a.name, b.name));
+      const lim = this.lim || 100; const el = $('prod-list'); if (!el) return;
       if (!arr.length) { el.innerHTML = '<div class="empty"><i class="fas fa-box-open"></i>No products</div>'; return; }
-      el.innerHTML = arr.slice(0, 300).map(p => {
+      el.innerHTML = arr.slice(0, lim).map(p => {
         const low = p.track !== false && p.stock <= (p.minStock || 0);
         const exp = p.expiry ? (p.expiry < C.todayKey() ? '<span class="badge b-bad">Expired</span>' : (p.expiry <= soon ? '<span class="badge b-warn">Expiry ' + p.expiry + '</span>' : '')) : '';
         return `<div class="row" onclick="Products.edit('${p.id}')">
-          <div class="avatar" style="overflow:hidden">${p.image ? `<img src="${esc(p.image)}" style="width:100%;height:100%;object-fit:cover">` : '<i class="fas fa-box"></i>'}</div>
+          <div class="avatar" style="overflow:hidden">${p.image ? `<img src="${esc(C.imgSrc(p))}" loading="lazy" decoding="async" draggable="false" style="width:100%;height:100%;object-fit:cover">` : '<i class="fas fa-box"></i>'}</div>
           <div class="grow"><div class="t">${esc(p.name)} ${exp}</div><div class="s">${esc(p.category || 'No category')}${p.barcode ? ' · ' + esc(p.barcode) : ''} · Cost ${money(p.cost || 0)}</div></div>
           <div class="tr"><div class="fw7 ptext">${money(p.price)}</div><div class="xs ${low ? 'bad fw6' : 'muted'}">${p.track === false ? 'Not tracked' : p.stock + ' ' + esc(p.unit || '')}</div></div>
           <button class="icon-btn" onclick="event.stopPropagation();Products.del('${p.id}')"><i class="fas fa-trash bad"></i></button></div>`;
-      }).join('') + (arr.length > 300 ? `<div class="empty">Search to see remaining products (${arr.length - 300} more)</div>` : '');
+      }).join('') + (arr.length > lim ? `<div class="tc mt3"><button class="btn btn-ghost" onclick="Products.more()">Show more (${arr.length - lim} left)</button></div>` : '');
     },
     edit(id) {
       const p = id ? findProduct(id) : null; this.img = p ? (p.image || null) : null;
@@ -469,9 +473,26 @@
     }
   };
   Views.products = Products;
+  // Hide the bottom tab bar and cart bar while the on-screen keyboard is in use (like native apps).
+  (function keyboardAware() {
+    const field = el => !!el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && !/^(checkbox|radio|button|submit|file)$/.test(el.type || '');
+    document.addEventListener('focusin', e => { if (field(e.target)) document.body.classList.add('kb-open'); });
+    document.addEventListener('focusout', () => setTimeout(() => { if (!field(document.activeElement)) document.body.classList.remove('kb-open'); }, 120));
+  })();
+  // A failure in one screen should never freeze the whole shop: log it and show one calm message.
+  (function safety() {
+    let last = 0;
+    const warn = () => { const n = Date.now(); if (n - last > 8000) { last = n; try { toast('⚠️ Something went wrong. Your data is safe — please try again.'); } catch (_) {} } };
+    window.addEventListener('error', e => { console.error('EsyPOS error', e.message); if (e && e.message && !/ResizeObserver|Script error/.test(e.message)) warn(); });
+    window.addEventListener('unhandledrejection', e => { console.error('EsyPOS promise', e && e.reason); });
+  })();
   document.addEventListener('DOMContentLoaded', () => {
     C.load(); POS.taxInit(); buildNav();
-    const start = () => { App.go('pos'); checkPendingBackup(); POS.renderCart(); if (window.Cloud) Cloud.init(); };
+    const start = () => {
+      let first = 'pos'; try { const g = new URLSearchParams(location.search).get('go'); if (g && App.Views[g]) first = g; } catch (_) {}   // app-icon shortcuts: index.html?go=products
+      App.go(first); checkPendingBackup(); POS.renderCart(); if (window.Cloud) Cloud.init();
+      if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});   // ask the browser not to evict shop data
+    };
     if (window.Lock) Lock.init(start); else start();
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && window.Lock) Lock.onResume(); else if (window.Lock) Lock.onHide(); });
   });

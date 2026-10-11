@@ -27,7 +27,7 @@ EsyPOS is a free, open-source point-of-sale (POS) web app for small shops and gr
 
 ## Open Source
 
-EsyPOS is an open-source project. Anyone can run their own business with their own Google account. No third-party company or middleman is involved.
+EsyPOS is an open-source project released under the **[MIT License](LICENSE)**. Anyone can run their own business with their own Google account. No third-party company or middleman is involved. You are free to use, modify and distribute it, including commercially.
 
 
 ## Features
@@ -40,6 +40,8 @@ EsyPOS is an open-source project. Anyone can run their own business with their o
 - **Purchases, Returns & Expenses**
 - **Reports:** sales, profit, collections, dashboard
 - **Security:** PIN lock, automatic Google Drive backup
+- **Feels like a native app:** bottom tab bar, haptic feedback, back-button handling, app-icon shortcuts (long-press the icon), instant launch from an offline cache
+- **Smooth on low-end phones:** coalesced saves, cached product photos, paged lists, no heavy blur effects
 - **Camera scanning:** barcode scan with built-in permission help (Chrome on Android); USB and Bluetooth scanners work everywhere
 
 ## Quick Start
@@ -67,3 +69,7 @@ EsyPOS is an open-source project. Anyone can run their own business with their o
 ## Owner
 
 **Mehedi Hasan** · [Facebook](https://www.facebook.com/mehedi.exx)
+
+## License
+
+MIT © 2026 Mehedi Hasan. See [LICENSE](LICENSE). Bundled fonts and icons: see [fonts/LICENSES.txt](fonts/LICENSES.txt).

@@ -10,7 +10,7 @@
   const DEFAULTS = {
     shopName: 'My Shop', shopAddress: '', shopPhone: '', defaultTax: 0,
     footer: 'Thank you! Come again', paper: '58', btMode: 'image',
-    invPrefix: '', nextInvoice: 1, pinHash: '', pinSalt: '', lowStockDefault: 5
+    invPrefix: '', nextInvoice: 1, pinHash: '', pinSalt: '', lowStockDefault: 5, currency: '\u09F3'
   };
   const DB = { products: [], sales: [], customers: [], payments: [], suppliers: [], purchases: [],
                spayments: [], expenses: [], returns: [], hold: [], cart: [], settings: Object.assign({}, DEFAULTS) };
@@ -27,10 +27,10 @@
       return fallback;
     }
   }
-  function safeSave(key, value) {
+  let rev = 0;                                   // bumps on every data change (cheap cache key for lists)
+  function writeKey(key, value) {
     try {
       root.localStorage.setItem(key, JSON.stringify(value));
-      if (key !== K.cart) { root.localStorage.setItem('esypos_dirty', '1'); if (root.Cloud) root.Cloud.markDirty(); }
       return true;
     } catch (e) {
       console.error('Save failed:', key, e);
@@ -38,8 +38,37 @@
       return false;
     }
   }
-  function save(name) { return safeSave(K[name], name === 'settings' ? DB.settings : DB[name]); }
-  function saveAll() { Object.keys(K).forEach(save); }
+  function safeSave(key, value) {                // immediate write (used for restore/import paths)
+    const ok = writeKey(key, value);
+    if (ok && key !== K.cart) { try { root.localStorage.setItem('esypos_dirty', '1'); } catch (_) {} if (root.Cloud) root.Cloud.markDirty(); }
+    return ok;
+  }
+  // save(name): marks the collection dirty and writes it a moment later, so a tap never waits on JSON.stringify of
+  // a large list. Several saves in the same action are merged into one write each. flush() runs on hide/close.
+  const pending = new Set(); let saveTimer = null;
+  function flush() {
+    clearTimeout(saveTimer); saveTimer = null;
+    const names = Array.from(pending); pending.clear();
+    let synced = false;
+    names.forEach(name => {
+      const key = K[name]; const ok = writeKey(key, name === 'settings' ? DB.settings : DB[name]);
+      if (ok && name !== 'cart') synced = true;
+    });
+    if (synced) { try { root.localStorage.setItem('esypos_dirty', '1'); } catch (_) {} if (root.Cloud) root.Cloud.markDirty(); }
+  }
+  function save(name) {
+    rev++;
+    pending.add(name);
+    if (name !== 'cart') { try { root.localStorage.setItem('esypos_dirty', '1'); } catch (_) {} }   // crash-safe marker, tiny write
+    if (!saveTimer) saveTimer = setTimeout(flush, name === 'cart' ? 350 : 120);
+    return true;
+  }
+  function saveAll() { Object.keys(K).forEach(n => pending.delete(n)); clearTimeout(saveTimer); saveTimer = null; rev++; Object.keys(K).forEach(n => safeSave(K[n], n === 'settings' ? DB.settings : DB[n])); }
+  if (typeof root.addEventListener === 'function') {
+    root.addEventListener('pagehide', flush);
+    root.addEventListener('beforeunload', flush);
+    if (root.document) root.document.addEventListener('visibilitychange', () => { if (root.document.visibilityState === 'hidden') flush(); });
+  }
   function migrateBrandKeys() {
     try {
       const pairs = [
@@ -108,7 +137,24 @@
   /* Legacy unit names saved by older versions (escaped so the source stays pure ASCII) -> English units */
   const UNIT_MAP = { '\u09AA\u09BF\u09B8':'Pcs', '\u0995\u09C7\u099C\u09BF':'Kg', '\u0997\u09CD\u09B0\u09BE\u09AE':'g', '\u09B2\u09BF\u099F\u09BE\u09B0':'L', '\u09AE\u09BF\u099F\u09BE\u09B0':'m', '\u09A1\u099C\u09A8':'Dozen', '\u09AC\u0995\u09CD\u09B8':'Box', '\u09AA\u09CD\u09AF\u09BE\u0995\u09C7\u099F':'Packet', '\u09AC\u09CB\u09A4\u09B2':'Bottle', '\u099C\u09CB\u09A1\u09BC\u09BE':'Pair', '\u0995\u09BE\u09AA':'Cup' };
   const unitLabel = u => UNIT_MAP[u] || u || 'Pcs';
-  const money = n => '৳' + fmt(n);
+  const cur = () => (DB.settings && DB.settings.currency != null ? String(DB.settings.currency) : '\u09F3');
+  const money = n => cur() + fmt(n);
+  const collator = (typeof Intl !== 'undefined' && Intl.Collator) ? new Intl.Collator(undefined, { sensitivity: 'base', numeric: true }) : { compare: (a, b) => String(a).localeCompare(String(b)) };
+  const debounce = (fn, ms) => { let t = null; return function () { const a = arguments, c = this; clearTimeout(t); t = setTimeout(() => fn.apply(c, a), ms); }; };
+  // Product photos are stored as data URLs. Putting them straight into innerHTML re-parses megabytes on every keystroke,
+  // so each photo is converted once to a small blob: URL and reused.
+  const imgCache = new Map();
+  function imgSrc(p) {
+    const d = p && p.image; if (!d) return '';
+    if (typeof d !== 'string' || d.slice(0, 5) !== 'data:' || typeof Blob === 'undefined' || !root.URL || !root.URL.createObjectURL) return d;
+    const hit = imgCache.get(p.id); if (hit && hit.d === d) return hit.u;
+    try {
+      const i = d.indexOf(','); const mime = (d.slice(5, i).split(';')[0]) || 'image/jpeg'; const bin = root.atob(d.slice(i + 1));
+      const arr = new Uint8Array(bin.length); for (let k = 0; k < bin.length; k++) arr[k] = bin.charCodeAt(k);
+      if (hit) { try { root.URL.revokeObjectURL(hit.u); } catch (_) {} }
+      const u = root.URL.createObjectURL(new Blob([arr], { type: mime })); imgCache.set(p.id, { d, u }); return u;
+    } catch (_) { return d; }
+  }
   const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const z2 = x => String(x).padStart(2, '0');
   const dkey = d => { d = d instanceof Date ? d : new Date(d); return d.getFullYear() + '-' + z2(d.getMonth() + 1) + '-' + z2(d.getDate()); };
@@ -126,6 +172,7 @@
     if (!el) { el = document.createElement('div'); el.id = 'toast'; document.body.appendChild(el); }
     el.textContent = msg; el.classList.remove('hidden');
     if (root.Sound) root.Sound.play(/✓/.test(msg) ? 'success' : /⚠/.test(msg) ? 'warn' : null);
+    if (root.Haptic) { if (/✓/.test(msg)) root.Haptic.ok(); else if (/⚠/.test(msg)) root.Haptic.warn(); }
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => el.classList.add('hidden'), 2800);
   }
@@ -247,7 +294,7 @@
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
   }
-  const api = { K, DEFAULTS, DB, safeLoad, safeSave, save, saveAll, load, migrate, esc, num, r2, fmt, money, genId, z2, dkey, todayKey, addDays, monthStart,
+  const api = { K, DEFAULTS, DB, safeLoad, safeSave, save, saveAll, flush, rev: () => rev, collator, debounce, imgSrc, cur, load, migrate, esc, num, r2, fmt, money, genId, z2, dkey, todayKey, addDays, monthStart,
     fmtDate, fmtTime, fmtDT, invLabel, toast, unitLabel, findProduct, findCustomer, findSupplier, findSale, customerBalance, supplierBalance, totalCustomerDue,
     totalSupplierDue, returnedQty, returnedAmount, customerLedger, supplierLedger, buildReport, stockValue, toCSV, parseCSV, download, inRange };
   root.Core = api;
