@@ -20,7 +20,7 @@
         ${cust ? `<div class="rc-row rc-s"><span>Customer</span><span>${esc(cust.name)}${cust.phone ? ' · ' + esc(cust.phone) : ''}</span></div>` : ''}
         <div class="rc-row rc-s"><span>Payment</span><span>${MN[s.paymentMethod] || ''}</span></div>
         <div class="rc-hr"></div>
-        ${s.items.map(i => `<div class="rc-row"><span>${esc(i.name)}<br><span class="rc-s">${i.qty} × ${money(i.price)}</span></span><b>${money(i.price * i.qty)}</b></div>`).join('')}
+        ${s.items.map(i => `<div class="rc-row"><span>${esc(i.name)}${i.note ? `<br><span class="rc-s">+ ${esc(i.note)}</span>` : ''}<br><span class="rc-s">${i.qty} × ${money(i.price)}</span></span><b>${money(i.price * i.qty)}</b></div>`).join('')}
         <div class="rc-hr"></div>
         <div class="rc-row"><span>Subtotal</span><span>${money(s.subtotal)}</span></div>
         ${s.discount > 0 ? `<div class="rc-row"><span>Discount</span><span>-${money(s.discount)}</span></div>` : ''}
@@ -37,7 +37,7 @@
     text(s) {
       const sh = DB.settings; const cust = findCustomer(s.customerId);
       let t = `*${sh.shopName}*\n` + (sh.shopPhone ? 'Phone: ' + sh.shopPhone + '\n' : '') + `Receipt #${C.invLabel(s)} · ${C.fmtDT(s.date)}\n` + (cust ? 'Customer: ' + cust.name + '\n' : '') + '------------------\n';
-      s.items.forEach(i => { t += `${i.name} ${i.qty}×${fmt(i.price)} = ${fmt(i.price * i.qty)}\n`; });
+      s.items.forEach(i => { t += `${i.name}${i.note ? ' (+ ' + i.note + ')' : ''} ${i.qty}×${fmt(i.price)} = ${fmt(i.price * i.qty)}\n`; });
       t += '------------------\n';
       if (s.discount > 0) t += `Discount: -${fmt(s.discount)}\n`; if (s.tax > 0) t += `Tax: ${fmt(s.tax)}\n`;
       t += `*Total: ${money(s.total)}*\nPaid: ${money(s.paid)}\n`; if (s.due > 0) t += `*Due: ${money(s.due)}*\n`;
@@ -64,11 +64,11 @@
     share(kind) { const s = this.cur; const c = findCustomer(s.customerId); const ph = c ? c.phone : ''; if (kind === 'wa') shareWA(ph, this.text(s)); else shareSMS(ph, this.text(s)); },
     ret(saleId) {
       const s = C.findSale(saleId); if (!s) return;
-      const rows = s.items.map(i => ({ ...i, left: r2(i.qty - C.returnedQty(s.id, i.id)) })).filter(i => i.left > 0);
+      const rows = s.items.map(i => ({ ...i, left: r2(i.qty - C.returnedQty(s.id, i.id, i.key)) })).filter(i => i.left > 0);
       if (!rows.length) { toast('All items on this bill have already been returned'); return; }
       const canDue = !!s.customerId;
       const m = Modal.open({ title: 'Return items — #' + C.invLabel(s), body: `
-        ${rows.map((i, k) => `<div class="flex items-c gap3 mb2"><div class="grow"><div class="fw6 sm">${esc(i.name)}</div><div class="xs muted">${money(i.price)} · Returnable ${i.left}</div></div><input type="number" min="0" max="${i.left}" step="any" class="input rt-q" data-k="${k}" style="width:90px" value="0" oninput="Receipt.retCalc()"></div>`).join('')}
+        ${rows.map((i, k) => `<div class="flex items-c gap3 mb2"><div class="grow"><div class="fw6 sm">${esc(i.name)}</div>${i.note ? `<div class="xs muted">+ ${esc(i.note)}</div>` : ''}<div class="xs muted">${money(i.price)} · Returnable ${i.left}</div></div><input type="number" min="0" max="${i.left}" step="any" class="input rt-q" data-k="${k}" style="width:90px" value="0" oninput="Receipt.retCalc()"></div>`).join('')}
         <div class="field mt3"><label class="label">Refund type</label><select id="rt-type" class="input" onchange="Receipt.retCalc()"><option value="cash">Cash refund</option>${canDue ? '<option value="due" ' + (s.due > 0 ? 'selected' : '') + '>Deduct from customer due</option>' : ''}</select></div>
         <div class="field"><label class="label">Reason (optional)</label><input id="rt-note" class="input"></div>
         <div class="card pad-s sumrow big" style="margin:0"><span>Return value</span><span class="ptext" id="rt-amt">${C.money(0)}</span></div>`,
@@ -85,7 +85,7 @@
     },
     retCalc() {
       const m = this._rm; const s = m._sale; const items = [];
-      m.querySelectorAll('.rt-q').forEach(inp => { const r = m._rows[+inp.dataset.k]; let q = num(inp.value); if (q > r.left) { q = r.left; inp.value = q; } if (q > 0) items.push({ id: r.id, name: r.name, price: r.price, cost: r.cost || 0, qty: q }); });
+      m.querySelectorAll('.rt-q').forEach(inp => { const r = m._rows[+inp.dataset.k]; let q = num(inp.value); if (q > r.left) { q = r.left; inp.value = q; } if (q > 0) items.push({ id: r.id, key: r.key, name: r.name, price: r.price, cost: r.cost || 0, qty: q }); });
       const gross = items.reduce((t, i) => t + i.price * i.qty, 0);
       const amount = r2(gross * (s.subtotal ? s.total / s.subtotal : 1)); const revenue = r2(gross * (s.subtotal ? (s.subtotal - s.discount) / s.subtotal : 1));
       const cogs = r2(items.reduce((t, i) => t + i.cost * i.qty, 0)); $('rt-amt').textContent = money(amount);

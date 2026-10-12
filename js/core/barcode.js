@@ -104,30 +104,127 @@
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  // Minimal QR-like matrix for short data (not a real QR, visual placeholder + text)
-  // For real QR we keep it simple: show Code128 primarily; QR option uses a data-matrix style blocks for short codes
-  function simpleMatrixSvg(text, size) {
-    size = size || 120;
-    // Hash-based pseudo pattern so same text = same look
-    let h = 0;
-    for (let i = 0; i < text.length; i++) h = ((h << 5) - h + text.charCodeAt(i)) | 0;
-    const n = 21;
-    const cell = size / (n + 2);
-    let rects = '';
-    // finder patterns
-    function finder(ox, oy) {
-      for (let y = 0; y < 7; y++) for (let x = 0; x < 7; x++) {
-        const on = (x === 0 || x === 6 || y === 0 || y === 6 || (x >= 2 && x <= 4 && y >= 2 && y <= 4));
-        if (on) rects += `<rect x="${(ox + x + 1) * cell}" y="${(oy + y + 1) * cell}" width="${cell}" height="${cell}" fill="#000"/>`;
+  /* ---------- Real QR Code encoder (byte mode, ECC level M, versions 1-10, UTF-8) ----------
+     Offline, no dependencies. Output is a standard, scannable QR symbol. */
+  const QR_ECC_PER_BLOCK = [0, 10, 16, 26, 18, 24, 16, 18, 22, 22, 26];   // index = version
+  const QR_NUM_BLOCKS    = [0, 1, 1, 1, 2, 2, 4, 4, 4, 5, 5];
+  function qrRawModules(ver) {
+    const size = ver * 4 + 17; let r = size * size - 8 * 8 * 3 - (15 * 2 + 1) - (size - 16) * 2;
+    if (ver >= 2) { const na = Math.floor(ver / 7) + 2; r -= (na - 1) * (na - 1) * 25 + (na - 2) * 2 * 20; if (ver >= 7) r -= 36; }
+    return r;
+  }
+  const qrDataCodewords = ver => Math.floor(qrRawModules(ver) / 8) - QR_ECC_PER_BLOCK[ver] * QR_NUM_BLOCKS[ver];
+  function utf8Bytes(str) {
+    if (typeof TextEncoder !== 'undefined') return Array.from(new TextEncoder().encode(str));
+    const out = []; const e = unescape(encodeURIComponent(str)); for (let i = 0; i < e.length; i++) out.push(e.charCodeAt(i)); return out;
+  }
+  function gfMul(x, y) { let z = 0; for (let i = 7; i >= 0; i--) { z = (z << 1) ^ ((z >>> 7) * 0x11D); z ^= ((y >>> i) & 1) * x; } return z & 255; }
+  function rsDivisor(deg) {
+    const res = new Array(deg).fill(0); res[deg - 1] = 1; let root = 1;
+    for (let i = 0; i < deg; i++) { for (let j = 0; j < deg; j++) { res[j] = gfMul(res[j], root); if (j + 1 < deg) res[j] ^= res[j + 1]; } root = gfMul(root, 2); }
+    return res;
+  }
+  function rsRemainder(data, div) {
+    const res = new Array(div.length).fill(0);
+    data.forEach(b => { const f = b ^ res.shift(); res.push(0); div.forEach((c, i) => { res[i] ^= gfMul(c, f); }); });
+    return res;
+  }
+  function qrMatrix(text) {
+    const bytes = utf8Bytes(String(text == null ? '' : text));
+    let ver = 0;
+    for (let v = 1; v <= 10; v++) { const ccBits = v < 10 ? 8 : 16; if (4 + ccBits + bytes.length * 8 <= qrDataCodewords(v) * 8) { ver = v; break; } }
+    if (!ver) return null;                                       // too long for this encoder
+    const size = ver * 4 + 17, cap = qrDataCodewords(ver);
+    // bit stream
+    const bits = []; const put = (val, n) => { for (let i = n - 1; i >= 0; i--) bits.push((val >>> i) & 1); };
+    put(4, 4); put(bytes.length, ver < 10 ? 8 : 16); bytes.forEach(b => put(b, 8));
+    put(0, Math.min(4, cap * 8 - bits.length)); while (bits.length % 8) bits.push(0);
+    const data = []; for (let i = 0; i < bits.length; i += 8) { let v = 0; for (let j = 0; j < 8; j++) v = (v << 1) | bits[i + j]; data.push(v); }
+    for (let pad = 0xEC; data.length < cap; pad ^= 0xEC ^ 0x11) data.push(pad);
+    // error correction + interleave
+    const nb = QR_NUM_BLOCKS[ver], eccLen = QR_ECC_PER_BLOCK[ver], raw = Math.floor(qrRawModules(ver) / 8);
+    const shortLen = Math.floor(raw / nb), numShort = nb - raw % nb; const div = rsDivisor(eccLen); const blocks = [];
+    for (let i = 0, k = 0; i < nb; i++) {
+      const dat = data.slice(k, k + shortLen - eccLen + (i < numShort ? 0 : 1)); k += dat.length;
+      const ecc = rsRemainder(dat, div); if (i < numShort) dat.push(0); blocks.push(dat.concat(ecc));
+    }
+    const all = [];
+    for (let i = 0; i < blocks[0].length; i++) blocks.forEach((b, j) => { if (i !== shortLen - eccLen || j >= numShort) all.push(b[i]); });
+    // matrix
+    const M = [], F = []; for (let y = 0; y < size; y++) { M.push(new Array(size).fill(false)); F.push(new Array(size).fill(false)); }
+    const setF = (x, y, d) => { M[y][x] = !!d; F[y][x] = true; };
+    for (let i = 0; i < size; i++) { setF(6, i, i % 2 === 0); setF(i, 6, i % 2 === 0); }
+    const finder = (cx, cy) => { for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) { const d = Math.max(Math.abs(dx), Math.abs(dy)), x = cx + dx, y = cy + dy; if (x >= 0 && x < size && y >= 0 && y < size) setF(x, y, d !== 2 && d !== 4); } };
+    finder(3, 3); finder(size - 4, 3); finder(3, size - 4);
+    const pos = []; if (ver > 1) { const na = Math.floor(ver / 7) + 2, step = Math.ceil((ver * 4 + 4) / (na * 2 - 2)) * 2; pos.push(6); for (let p = size - 7; pos.length < na; p -= step) pos.splice(1, 0, p); }
+    pos.forEach((px, i) => pos.forEach((py, j) => {
+      if ((i === 0 && j === 0) || (i === 0 && j === pos.length - 1) || (i === pos.length - 1 && j === 0)) return;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) setF(px + dx, py + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+    }));
+    const formatBits = mask => {
+      const d = mask; let rem = d; for (let i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537);
+      const b = ((d << 10) | rem) ^ 0x5412, g = i => ((b >>> i) & 1) !== 0;                       // ECC level M => format data bits 00
+      for (let i = 0; i <= 5; i++) setF(8, i, g(i)); setF(8, 7, g(6)); setF(8, 8, g(7)); setF(7, 8, g(8));
+      for (let i = 9; i < 15; i++) setF(14 - i, 8, g(i));
+      for (let i = 0; i < 8; i++) setF(size - 1 - i, 8, g(i));
+      for (let i = 8; i < 15; i++) setF(8, size - 15 + i, g(i));
+      setF(8, size - 8, true);
+    };
+    formatBits(0);
+    if (ver >= 7) {
+      let rem = ver; for (let i = 0; i < 12; i++) rem = (rem << 1) ^ ((rem >>> 11) * 0x1F25);
+      const b = (ver << 12) | rem;
+      for (let i = 0; i < 18; i++) { const c = ((b >>> i) & 1) !== 0, a = size - 11 + i % 3, d = Math.floor(i / 3); setF(a, d, c); setF(d, a, c); }
+    }
+    // place codewords
+    let bi = 0;
+    for (let right = size - 1; right >= 1; right -= 2) {
+      if (right === 6) right = 5;
+      for (let vert = 0; vert < size; vert++) for (let j = 0; j < 2; j++) {
+        const x = right - j, up = ((right + 1) & 2) === 0, y = up ? size - 1 - vert : vert;
+        if (!F[y][x] && bi < all.length * 8) { M[y][x] = ((all[bi >>> 3] >>> (7 - (bi & 7))) & 1) !== 0; bi++; }
       }
     }
-    finder(0, 0); finder(n - 7, 0); finder(0, n - 7);
-    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-      if ((x < 8 && y < 8) || (x > n - 9 && y < 8) || (x < 8 && y > n - 9)) continue;
-      const bit = ((h ^ (x * 31 + y * 17 + text.length)) >>> (x % 8)) & 1;
-      if (bit) rects += `<rect x="${(x + 1) * cell}" y="${(y + 1) * cell}" width="${cell}" height="${cell}" fill="#000"/>`;
-    }
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size + 18}" viewBox="0 0 ${size} ${size + 18}">${rects}<text x="${size / 2}" y="${size + 14}" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10">${escXml(text.slice(0, 24))}</text></svg>`;
+    const applyMask = m => { for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      let inv; switch (m) {
+        case 0: inv = (x + y) % 2 === 0; break; case 1: inv = y % 2 === 0; break; case 2: inv = x % 3 === 0; break; case 3: inv = (x + y) % 3 === 0; break;
+        case 4: inv = (Math.floor(x / 3) + Math.floor(y / 2)) % 2 === 0; break; case 5: inv = x * y % 2 + x * y % 3 === 0; break;
+        case 6: inv = (x * y % 2 + x * y % 3) % 2 === 0; break; default: inv = ((x + y) % 2 + x * y % 3) % 2 === 0;
+      }
+      if (!F[y][x] && inv) M[y][x] = !M[y][x];
+    } };
+    const penalty = () => {
+      let pen = 0, dark = 0;
+      const line = get => { let run = 1; for (let i = 1; i < size; i++) { if (get(i) === get(i - 1)) { run++; if (run === 5) pen += 3; else if (run > 5) pen++; } else run = 1; } };
+      for (let y = 0; y < size; y++) { line(i => M[y][i]); line(i => M[i][y]); }
+      for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+        if (M[y][x]) dark++;
+        if (x + 1 < size && y + 1 < size && M[y][x] === M[y][x + 1] && M[y][x] === M[y + 1][x] && M[y][x] === M[y + 1][x + 1]) pen += 3;
+      }
+      const pat = [1, 0, 1, 1, 1, 0, 1]; const scan = get => { for (let i = 0; i + 7 <= size; i++) { let ok = true; for (let k = 0; k < 7; k++) if ((get(i + k) ? 1 : 0) !== pat[k]) { ok = false; break; } if (!ok) continue;
+        const lightL = i >= 4 && [1, 2, 3, 4].every(k => !get(i - k)), lightR = i + 11 <= size && [7, 8, 9, 10].every(k => !get(i + k)); if (lightL || lightR) pen += 40; } };
+      for (let y = 0; y < size; y++) { scan(i => M[y][i]); scan(i => M[i][y]); }
+      const total = size * size; pen += (Math.ceil(Math.abs(dark * 20 - total * 10) / total) - 1) * 10;
+      return pen;
+    };
+    let best = 0, bestPen = Infinity;
+    for (let m = 0; m < 8; m++) { applyMask(m); formatBits(m); const p = penalty(); if (p < bestPen) { bestPen = p; best = m; } applyMask(m); }
+    applyMask(best); formatBits(best);
+    return { size, version: ver, modules: M };
+  }
+  function qrSvg(text, opts) {
+    opts = opts || {};
+    const q = qrMatrix(text); if (!q) return null;
+    const mod = opts.module || 4, quiet = 4, n = q.size + quiet * 2, px = n * mod;
+    const label = opts.label || '', showText = opts.text !== false && opts.value;
+    let d = '';
+    for (let y = 0; y < q.size; y++) { let x = 0; while (x < q.size) { if (!q.modules[y][x]) { x++; continue; } let e = x; while (e < q.size && q.modules[y][e]) e++; d += `M${(x + quiet) * mod},${(y + quiet) * mod}h${(e - x) * mod}v${mod}h-${(e - x) * mod}z`; x = e; } }
+    const top = label ? 18 : 0, bottom = showText ? 16 : 0, H = px + top + bottom;
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${H}" viewBox="0 0 ${px} ${H}"><rect width="${px}" height="${H}" fill="#fff"/>`;
+    if (label) svg += `<text x="${px / 2}" y="14" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" font-weight="600">${escXml(label)}</text>`;
+    svg += `<path transform="translate(0,${top})" d="${d}" fill="#000"/>`;
+    if (showText) svg += `<text x="${px / 2}" y="${top + px - 2}" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10">${escXml(String(opts.value).slice(0, 28))}</text>`;
+    return svg + '</svg>';
   }
 
   function generate(value, format, opts) {
@@ -140,7 +237,7 @@
       return bitsToSvg(bits, Object.assign({ value: text, height: 50, barWidth: 1.8 }, opts));
     }
     if (format === 'qr' || format === 'qrcode') {
-      return simpleMatrixSvg(value, opts.size || 140);
+      return qrSvg(value, Object.assign({ module: 4, value }, opts)) || bitsToSvg(code128B(value.slice(0, 40)), Object.assign({ value: value.slice(0, 40), height: 55, barWidth: 1.4 }, opts));
     }
     // default code128
     const bits = code128B(value);
@@ -153,8 +250,17 @@
     return prefix + String(n).padStart(7, '0');
   }
 
+  const hasNonAscii = v => /[^\x20-\x7E]/.test(String(v || ''));
+  const isEan13Input = v => /^\d{12,13}$/.test(String(v || '').trim());
+  // Same key the POS uses to match scans: 12/13-digit codes are compared as 13 digits
+  const normKey = v => { v = String(v == null ? '' : v).trim(); return /^\d{12,13}$/.test(v) ? v.padStart(13, '0') : v; };
+
   root.BarcodeGen = {
     generate,
+    qrMatrix,
+    hasNonAscii,
+    isEan13Input,
+    normKey,
     ean13Check,
     uniqueCode,
     code128B,

@@ -198,9 +198,9 @@
   }
   const totalCustomerDue = () => r2(DB.customers.reduce((s, c) => s + Math.max(0, customerBalance(c.id)), 0));
   const totalSupplierDue = () => r2(DB.suppliers.reduce((s, c) => s + Math.max(0, supplierBalance(c.id)), 0));
-  function returnedQty(saleId, itemId) {
+  function returnedQty(saleId, itemId, key) {          // key = cart-line key (variant/add-on combo); older sales have none and match by product id
     let q = 0;
-    DB.returns.forEach(r => { if (r.saleId === saleId) r.items.forEach(i => { if (i.id === itemId) q += i.qty; }); });
+    DB.returns.forEach(r => { if (r.saleId === saleId) r.items.forEach(i => { if (key ? i.key === key : i.id === itemId) q += i.qty; }); });
     return q;
   }
   const returnedAmount = saleId => r2(DB.returns.filter(r => r.saleId === saleId).reduce((s, r) => s + num(r.amount), 0));
