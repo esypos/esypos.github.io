@@ -254,9 +254,21 @@
         <div class="field"><label class="label">Shop name</label><input id="st-name" class="input" value="${esc(s.shopName)}"></div>
         <div class="field"><label class="label">Address</label><input id="st-addr" class="input" value="${esc(s.shopAddress)}"></div>
         <div class="grid2"><div class="field"><label class="label">Phone</label><input id="st-phone" class="input" value="${esc(s.shopPhone)}"></div><div class="field"><label class="label">Default tax (%)</label><input id="st-tax" type="number" step="any" min="0" class="input" value="${s.defaultTax || 0}"></div></div>
+        <div class="field"><label class="label">Business type</label><select id="st-biz" class="input">
+          <option value="retail" ${(s.businessType||'retail')==='retail'?'selected':''}>Retail / General shop</option>
+          <option value="restaurant" ${s.businessType==='restaurant'?'selected':''}>Restaurant / Cafe / Fast food</option>
+          <option value="pharmacy" ${s.businessType==='pharmacy'?'selected':''}>Pharmacy / Medicine</option>
+          <option value="grocery" ${s.businessType==='grocery'?'selected':''}>Grocery / Supermarket</option>
+          <option value="electronics" ${s.businessType==='electronics'?'selected':''}>Electronics / Mobile</option>
+          <option value="clothing" ${s.businessType==='clothing'?'selected':''}>Clothing / Fashion</option>
+          <option value="wholesale" ${s.businessType==='wholesale'?'selected':''}>Wholesale / Distributor</option>
+        </select>
+        <p class="xs muted mt1">Product form shows extra fields for this business (sizes, add-ons, batch, brand…)</p></div>
         <div class="grid2"><div class="field"><label class="label">Currency symbol</label><input id="st-cur" class="input" maxlength="4" value="${esc(s.currency)}" placeholder="$"></div><div class="field"><label class="label">Example</label><div class="input" style="display:flex;align-items:center;background:var(--hover)">${esc(s.currency)}1,250.50</div></div></div>
         <div class="field"><label class="label">Receipt footer text</label><input id="st-foot" class="input" value="${esc(s.footer)}"></div>
         <div class="grid3"><div class="field"><label class="label">Invoice prefix</label><input id="st-pre" class="input" value="${esc(s.invPrefix)}" placeholder="INV-"></div><div class="field"><label class="label">Paper</label><select id="st-paper" class="input"><option value="58" ${s.paper === '58' ? 'selected' : ''}>58 mm</option><option value="80" ${s.paper === '80' ? 'selected' : ''}>80 mm</option></select></div><div class="field"><label class="label">Low stock (default)</label><input id="st-low" type="number" min="0" class="input" value="${s.lowStockDefault == null ? 5 : s.lowStockDefault}"></div></div>
+        <div class="grid2"><div class="field"><label class="label">Barcode prefix</label><input id="st-bcpre" class="input" maxlength="6" value="${esc(s.barcodePrefix||'ESY')}" placeholder="ESY"></div>
+          <div class="field"><label class="label">Default barcode format</label><select id="st-bcfmt" class="input"><option value="code128" ${(s.barcodeFormat||'code128')==='code128'?'selected':''}>Code 128</option><option value="ean13" ${s.barcodeFormat==='ean13'?'selected':''}>EAN-13</option><option value="qr" ${s.barcodeFormat==='qr'?'selected':''}>QR Code</option></select></div></div>
         <button class="btn btn-primary btn-block" onclick="Settings.save()"><i class="fas fa-floppy-disk"></i> Save</button></div>
       <div class="card pad mb3"><div class="sec-title"><i class="fas fa-palette ptext"></i> Appearance & sound</div>
         <div class="field"><label class="label">Theme</label><select id="theme-select" class="input" onchange="Theme.set(this.value)"><option value="auto">Auto (device setting)</option><option value="light">Light mode</option><option value="dark">Dark mode</option></select></div>
@@ -280,6 +292,9 @@
     save() {
       const s = DB.settings; s.shopName = $('st-name').value.trim() || 'My Shop'; s.shopAddress = $('st-addr').value.trim(); s.shopPhone = $('st-phone').value.trim();
       s.defaultTax = Math.max(0, num($('st-tax').value)); s.footer = $('st-foot').value.trim(); s.invPrefix = $('st-pre').value.trim(); s.currency = ($('st-cur').value || '').trim().slice(0, 4) || C.DEFAULTS.currency; s.paper = $('st-paper').value; const lw = parseFloat($('st-low').value); s.lowStockDefault = isFinite(lw) && lw >= 0 ? lw : 5;
+      s.businessType = ($('st-biz') && $('st-biz').value) || 'retail';
+      s.barcodePrefix = (($('st-bcpre') && $('st-bcpre').value) || 'ESY').replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 6) || 'ESY';
+      s.barcodeFormat = ($('st-bcfmt') && $('st-bcfmt').value) || 'code128';
       C.save('settings'); POS.taxInit(); POS.renderCart(); toast('Settings saved ✓');
     }
   };

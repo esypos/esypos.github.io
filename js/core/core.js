@@ -10,7 +10,8 @@
   const DEFAULTS = {
     shopName: 'My Shop', shopAddress: '', shopPhone: '', defaultTax: 0,
     footer: 'Thank you! Come again', paper: '58', btMode: 'image',
-    invPrefix: '', nextInvoice: 1, pinHash: '', pinSalt: '', lowStockDefault: 5, currency: '\u09F3'
+    invPrefix: '', nextInvoice: 1, pinHash: '', pinSalt: '', lowStockDefault: 5, currency: '\u09F3',
+    businessType: 'retail', barcodePrefix: 'ESY', nextBarcode: 1000001, barcodeFormat: 'code128'
   };
   const DB = { products: [], sales: [], customers: [], payments: [], suppliers: [], purchases: [],
                spayments: [], expenses: [], returns: [], hold: [], cart: [], settings: Object.assign({}, DEFAULTS) };

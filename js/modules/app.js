@@ -191,15 +191,23 @@
     add(id, quiet, opt) {
       opt = opt || {};
       const p = findProduct(id); if (!p) return;
+      const hasOpts = (p.variants && p.variants.length) || (p.addons && p.addons.length);
+      if (hasOpts && !opt.configured) {
+        Products.configureForSale(p, quiet);
+        return;
+      }
       const go = () => {
-        const ex = DB.cart.find(c => c.id === id);
+        const cartId = opt.cartKey || p.id;
+        const ex = DB.cart.find(c => c.id === cartId);
         if (p.track !== false) {
           if (p.stock <= 0) { toast('⚠️ Out of stock!'); return; }
           if (ex && ex.qty >= p.stock) { toast('⚠️ Insufficient stock!'); return; }
         }
-        if (ex) ex.qty++; else DB.cart.push({ id: p.id, name: p.name, price: p.price, cost: p.cost || 0, qty: 1, unit: p.unit });
-        C.save('cart'); this.lastAdded = { id: p.id, isNew: !ex }; this.renderCart(); Fx.added(p.id, quiet);
-        if (opt.picked) toast('✓ Product selected: ' + p.name);
+        const lineName = opt.lineName || p.name;
+        const linePrice = opt.linePrice != null ? opt.linePrice : p.price;
+        if (ex) ex.qty++; else DB.cart.push({ id: cartId, productId: p.id, name: lineName, price: linePrice, cost: p.cost || 0, qty: 1, unit: p.unit, note: opt.note || '' });
+        C.save('cart'); this.lastAdded = { id: cartId, isNew: !ex }; this.renderCart(); Fx.added(p.id, quiet);
+        if (opt.picked) toast('✓ Product selected: ' + lineName);
         else if (quiet) { try { window.Sound && window.Sound.play && window.Sound.play('beep'); } catch (_) {} }
       };
       if (p.expiry && p.expiry < C.todayKey()) askConfirm(`"${p.name}"  has expired. Sell anyway?`, go, { title: 'Expired product', danger: true, yes: 'Yes, add' });
@@ -207,7 +215,7 @@
     },
     qty(id, d) {
       const it = DB.cart.find(c => c.id === id); if (!it) return;
-      const p = findProduct(id); const n = it.qty + d;
+      const p = findProduct(it.productId || id); const n = it.qty + d;
       if (n <= 0) DB.cart = DB.cart.filter(c => c.id !== id);
       else if (p && p.track !== false && n > p.stock) { toast('⚠️ Insufficient stock!'); return; }
       else it.qty = n;
@@ -220,7 +228,7 @@
         <div class="field"><label class="label">Qty</label><input id="ei-qty" type="number" step="any" class="input" value="${it.qty}"></div></div>`,
         foot: `<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" id="ei-ok">Save</button>` });
       m.querySelector('#ei-ok').onclick = () => {
-        const pr = num($('ei-price').value), q = num($('ei-qty').value); const p = findProduct(id);
+        const pr = num($('ei-price').value), q = num($('ei-qty').value); const p = findProduct(it.productId || id);
         if (pr < 0 || q <= 0) { toast('⚠️ Enter a valid value'); return; }
         if (p && p.track !== false && q > p.stock) { toast('⚠️ Stock only ' + p.stock); return; }
         it.price = pr; it.qty = q; C.save('cart'); Modal.close(m); this.renderCart();
@@ -342,13 +350,13 @@
       const t = this.totals(); const { paid, change, due } = this.coCalc();
       if (!DB.cart.length) { this._busy = false; return; }
       if (due > 0 && !this.customerId) { this._busy = false; toast('⚠️ Select a customer for due'); this.coPick(); return; }
-      for (const it of DB.cart) { const p = findProduct(it.id); if (p && p.track !== false && p.stock < it.qty) { this._busy = false; toast('⚠️ ' + it.name + ' has insufficient stock!'); return; } }
+      for (const it of DB.cart) { const p = findProduct(it.productId || it.id); if (p && p.track !== false && p.stock < it.qty) { this._busy = false; toast('⚠️ ' + it.name + ' has insufficient stock!'); return; } }
       const cust = findCustomer(this.customerId);
       const proceed = () => {
-        DB.cart.forEach(it => { const p = findProduct(it.id); if (p && p.track !== false) p.stock = r2(p.stock - it.qty); });
+        DB.cart.forEach(it => { const p = findProduct(it.productId || it.id); if (p && p.track !== false) p.stock = r2(p.stock - it.qty); });
         const sale = {
           id: genId(), no: DB.settings.nextInvoice++, date: new Date().toISOString(), customerId: this.customerId || null,
-          items: DB.cart.map(c => ({ id: c.id, name: c.name, price: c.price, cost: (findProduct(c.id) || {}).cost || c.cost || 0, qty: c.qty, unit: c.unit })),
+          items: DB.cart.map(c => ({ id: c.productId || c.id, name: c.name, price: c.price, cost: (findProduct(c.productId || c.id) || {}).cost || c.cost || 0, qty: c.qty, unit: c.unit, note: c.note || '' })),
           subtotal: t.subtotal, discount: t.discount, tax: t.tax, total: t.total, paid, due, change,
           paymentMethod: this.payMethod === 'due' ? (paid > 0 ? 'cash' : 'due') : this.payMethod,
           note: ($('co-note') ? $('co-note').value.trim() : '')
@@ -407,11 +415,23 @@
     },
     edit(id) {
       const p = id ? findProduct(id) : null; this.img = p ? (p.image || null) : null;
+      this._variants = (p && p.variants) ? JSON.parse(JSON.stringify(p.variants)) : [];
+      this._addons = (p && p.addons) ? JSON.parse(JSON.stringify(p.addons)) : [];
       const cats = [...new Set(DB.products.map(x => x.category).filter(Boolean))];
+      const biz = DB.settings.businessType || 'retail';
+      const extra = this._extraFieldsHtml(biz, p);
       const m = Modal.open({ title: p ? 'Edit Product' : 'New Product', body: `
         <div class="flex gap3 mb3 items-c"><label style="cursor:pointer"><div class="avatar" id="pf-img" style="width:64px;height:64px;overflow:hidden">${this.img ? `<img src="${esc(this.img)}" style="width:100%;height:100%;object-fit:cover">` : '<i class="fas fa-camera"></i>'}</div><input type="file" accept="image/*" class="hidden" onchange="Products.pickImg(this)"></label>
           <div class="grow"><label class="label">Product name *</label><input id="pf-name" class="input" autofocus value="${esc(p ? p.name : '')}"></div></div>
-        <div class="field"><label class="label">Barcode</label><div class="flex gap2"><input id="pf-bc" class="input" value="${esc(p ? p.barcode : '')}" placeholder="Scan or type"><button class="btn btn-soft" onclick="Products.scanBC()"><i class="fas fa-barcode"></i></button></div></div>
+        <div class="field"><label class="label">Barcode</label><div class="flex gap2 flex-wrap">
+          <input id="pf-bc" class="input grow" value="${esc(p ? p.barcode : '')}" placeholder="Scan, type or generate" style="min-width:120px">
+          <button class="btn btn-soft" onclick="Products.scanBC()" title="Scan"><i class="fas fa-camera"></i></button>
+          <button class="btn btn-soft" onclick="Products.genBC()" title="Generate barcode"><i class="fas fa-wand-magic-sparkles"></i></button>
+          <button class="btn btn-soft" onclick="Products.printLabel()" title="Print / preview label"><i class="fas fa-print"></i></button>
+        </div>
+        <div class="flex gap2 mt2 items-c"><label class="label xs mb0">Format</label>
+          <select id="pf-bcfmt" class="input" style="width:auto;min-width:110px"><option value="code128">Code 128</option><option value="ean13">EAN-13</option><option value="qr">QR Code</option></select>
+          <span class="xs muted" id="pf-bc-hint">Auto-unique from settings</span></div></div>
         <div class="grid2"><div class="field"><label class="label">Category</label><input id="pf-cat" class="input" list="pf-cats" value="${esc(p ? p.category : '')}"><datalist id="pf-cats">${cats.map(c => `<option value="${esc(c)}">`).join('')}</datalist></div>
           <div class="field"><label class="label">Unit</label><input id="pf-unit" class="input" list="pf-units" value="${esc(p ? p.unit : 'Pcs')}"><datalist id="pf-units">${UNITS.map(u => `<option value="${u}">`).join('')}</datalist></div></div>
         <div class="grid2"><div class="field"><label class="label">Cost price</label><input id="pf-cost" type="number" step="any" min="0" class="input" value="${p ? p.cost || '' : ''}"></div>
@@ -419,8 +439,129 @@
         <div class="grid2"><div class="field"><label class="label">Current stock</label><input id="pf-stock" type="number" step="any" class="input" value="${p ? p.stock : 0}"></div>
           <div class="field"><label class="label">Low stock limit</label><input id="pf-min" type="number" step="any" min="0" class="input" value="${p ? (p.minStock === undefined ? 5 : p.minStock) : (DB.settings.lowStockDefault || 5)}"></div></div>
         <div class="field"><label class="label">Expiry date (optional)</label><input id="pf-exp" type="date" class="input" value="${esc(p ? p.expiry : '')}"></div>
-        <label class="switch"><span class="sm fw6">Track stock <span class="muted xs">(off for service/unlimited)</span></span><input type="checkbox" id="pf-track" ${!p || p.track !== false ? 'checked' : ''}></label>`,
+        <label class="switch"><span class="sm fw6">Track stock <span class="muted xs">(off for service/unlimited)</span></span><input type="checkbox" id="pf-track" ${!p || p.track !== false ? 'checked' : ''}></label>
+        ${extra}
+        <div id="pf-variants-box" class="${biz === 'restaurant' || biz === 'clothing' ? '' : 'hidden'}">
+          <div class="sec-title mt3"><i class="fas fa-layer-group ptext"></i> Sizes / Variants <button type="button" class="btn btn-sm btn-soft" onclick="Products.addVariantRow()">+ Add</button></div>
+          <div id="pf-variants" class="mb2"></div>
+          <p class="xs muted">e.g. Pizza 6″ / 9″ / 12″ with different prices</p>
+        </div>
+        <div id="pf-addons-box" class="${biz === 'restaurant' ? '' : 'hidden'}">
+          <div class="sec-title mt3"><i class="fas fa-plus-circle ptext"></i> Add-ons / Modifiers <button type="button" class="btn btn-sm btn-soft" onclick="Products.addAddonGroup()">+ Group</button></div>
+          <div id="pf-addons" class="mb2"></div>
+          <p class="xs muted">e.g. Sauce, Extra cheese, Toppings — shown when selling</p>
+        </div>
+        `,
         foot: `<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" onclick="Products.save('${id || ''}',this)">Save</button>` });
+      setTimeout(() => { Products.renderVariantRows(); Products.renderAddonGroups(); const fmt = DB.settings.barcodeFormat || 'code128'; const sel = $('pf-bcfmt'); if (sel) sel.value = fmt; }, 30);
+    },
+    _extraFieldsHtml(biz, p) {
+      p = p || {};
+      if (biz === 'pharmacy') {
+        return `<div class="sec-title mt3"><i class="fas fa-pills ptext"></i> Pharmacy details</div>
+          <div class="grid2"><div class="field"><label class="label">Manufacturer / Brand</label><input id="pf-mfr" class="input" value="${esc(p.manufacturer || '')}"></div>
+            <div class="field"><label class="label">Strength / Dosage</label><input id="pf-strength" class="input" value="${esc(p.strength || '')}" placeholder="e.g. 500mg"></div></div>
+          <div class="grid2"><div class="field"><label class="label">Form</label><input id="pf-form" class="input" list="pf-forms" value="${esc(p.form || '')}" placeholder="Tablet, Syrup…"><datalist id="pf-forms"><option value="Tablet"><option value="Capsule"><option value="Syrup"><option value="Injection"><option value="Cream"><option value="Drops"></datalist></div>
+            <div class="field"><label class="label">Batch no.</label><input id="pf-batch" class="input" value="${esc(p.batch || '')}"></div></div>
+          <label class="switch mt2"><span class="sm fw6">Prescription required (Rx)</span><input type="checkbox" id="pf-rx" ${p.rxRequired ? 'checked' : ''}></label>`;
+      }
+      if (biz === 'electronics') {
+        return `<div class="sec-title mt3"><i class="fas fa-microchip ptext"></i> Electronics details</div>
+          <div class="grid2"><div class="field"><label class="label">Brand</label><input id="pf-brand" class="input" value="${esc(p.brand || '')}"></div>
+            <div class="field"><label class="label">Model</label><input id="pf-model" class="input" value="${esc(p.model || '')}"></div></div>
+          <div class="grid2"><div class="field"><label class="label">Warranty (months)</label><input id="pf-warranty" type="number" min="0" class="input" value="${p.warrantyMonths != null ? p.warrantyMonths : ''}"></div>
+            <div class="field"><label class="label">Serial / IMEI (optional)</label><input id="pf-serial" class="input" value="${esc(p.serial || '')}"></div></div>`;
+      }
+      if (biz === 'clothing') {
+        return `<div class="sec-title mt3"><i class="fas fa-shirt ptext"></i> Clothing details</div>
+          <div class="grid2"><div class="field"><label class="label">Brand</label><input id="pf-brand" class="input" value="${esc(p.brand || '')}"></div>
+            <div class="field"><label class="label">Material</label><input id="pf-material" class="input" value="${esc(p.material || '')}"></div></div>
+          <div class="grid2"><div class="field"><label class="label">Default size</label><input id="pf-size" class="input" value="${esc(p.size || '')}" placeholder="M, L, 42…"></div>
+            <div class="field"><label class="label">Color</label><input id="pf-color" class="input" value="${esc(p.color || '')}"></div></div>`;
+      }
+      if (biz === 'grocery' || biz === 'wholesale') {
+        return `<div class="sec-title mt3"><i class="fas fa-boxes-stacked ptext"></i> Extra details</div>
+          <div class="grid2"><div class="field"><label class="label">Brand</label><input id="pf-brand" class="input" value="${esc(p.brand || '')}"></div>
+            <div class="field"><label class="label">SKU / Item code</label><input id="pf-sku" class="input" value="${esc(p.sku || '')}"></div></div>`;
+      }
+      if (biz === 'restaurant') {
+        return `<div class="sec-title mt3"><i class="fas fa-utensils ptext"></i> Food details</div>
+          <div class="grid2"><div class="field"><label class="label">Prep time (min)</label><input id="pf-prep" type="number" min="0" class="input" value="${p.prepMinutes != null ? p.prepMinutes : ''}"></div>
+            <div class="field"><label class="label">Allergens / notes</label><input id="pf-allergens" class="input" value="${esc(p.allergens || '')}" placeholder="Nuts, dairy…"></div></div>`;
+      }
+      return `<div class="sec-title mt3"><i class="fas fa-tags ptext"></i> Extra</div>
+        <div class="grid2"><div class="field"><label class="label">Brand</label><input id="pf-brand" class="input" value="${esc(p.brand || '')}"></div>
+          <div class="field"><label class="label">SKU</label><input id="pf-sku" class="input" value="${esc(p.sku || '')}"></div></div>`;
+    },
+    renderVariantRows() {
+      const el = $('pf-variants'); if (!el) return;
+      const rows = this._variants || [];
+      if (!rows.length) { el.innerHTML = '<p class="xs muted">No variants yet</p>'; return; }
+      el.innerHTML = rows.map((v, i) => `<div class="flex gap2 mb2 items-c">
+        <input class="input grow" placeholder="Size / name" value="${esc(v.name || '')}" onchange="Products._variants[${i}].name=this.value">
+        <input class="input" type="number" step="any" min="0" style="width:100px" placeholder="Price" value="${v.price != null ? v.price : ''}" onchange="Products._variants[${i}].price=parseFloat(this.value)||0">
+        <button type="button" class="icon-btn" onclick="Products._variants.splice(${i},1);Products.renderVariantRows()"><i class="fas fa-trash bad"></i></button></div>`).join('');
+    },
+    addVariantRow() {
+      if (!this._variants) this._variants = [];
+      this._variants.push({ name: '', price: 0 });
+      this.renderVariantRows();
+    },
+    renderAddonGroups() {
+      const el = $('pf-addons'); if (!el) return;
+      const groups = this._addons || [];
+      if (!groups.length) { el.innerHTML = '<p class="xs muted">No add-on groups</p>'; return; }
+      el.innerHTML = groups.map((g, gi) => {
+        const opts = (g.options || []).map((o, oi) => `<div class="flex gap2 mb1 items-c">
+          <input class="input grow" placeholder="Option" value="${esc(o.name || '')}" onchange="Products._addons[${gi}].options[${oi}].name=this.value">
+          <input class="input" type="number" step="any" style="width:90px" placeholder="+price" value="${o.price != null ? o.price : 0}" onchange="Products._addons[${gi}].options[${oi}].price=parseFloat(this.value)||0">
+          <button type="button" class="icon-btn" onclick="Products._addons[${gi}].options.splice(${oi},1);Products.renderAddonGroups()"><i class="fas fa-times"></i></button></div>`).join('');
+        return `<div class="card pad-s mb2"><div class="flex gap2 items-c mb2">
+          <input class="input grow" placeholder="Group name (e.g. Sauce)" value="${esc(g.name || '')}" onchange="Products._addons[${gi}].name=this.value">
+          <label class="xs"><input type="checkbox" ${g.required ? 'checked' : ''} onchange="Products._addons[${gi}].required=this.checked"> Required</label>
+          <button type="button" class="btn btn-sm btn-soft" onclick="Products._addons[${gi}].options=Products._addons[${gi}].options||[];Products._addons[${gi}].options.push({name:'',price:0});Products.renderAddonGroups()">+ Opt</button>
+          <button type="button" class="icon-btn" onclick="Products._addons.splice(${gi},1);Products.renderAddonGroups()"><i class="fas fa-trash bad"></i></button></div>${opts || '<p class="xs muted">No options</p>'}</div>`;
+      }).join('');
+    },
+    addAddonGroup() {
+      if (!this._addons) this._addons = [];
+      this._addons.push({ name: '', required: false, options: [{ name: '', price: 0 }] });
+      this.renderAddonGroups();
+    },
+    genBC() {
+      const fmt = ($('pf-bcfmt') && $('pf-bcfmt').value) || DB.settings.barcodeFormat || 'code128';
+      let code;
+      if (fmt === 'ean13') {
+        const base = String(DB.settings.nextBarcode || 1000001).slice(-12).padStart(12, '0');
+        code = window.BarcodeGen ? BarcodeGen.ean13Check(base) : base + '0';
+      } else {
+        code = window.BarcodeGen
+          ? BarcodeGen.uniqueCode(DB.settings.barcodePrefix || 'ESY', DB.settings.nextBarcode || 1000001)
+          : 'ESY' + String(DB.settings.nextBarcode || 1000001).padStart(7, '0');
+      }
+      const f = $('pf-bc'); if (f) f.value = code;
+      DB.settings.nextBarcode = (parseInt(DB.settings.nextBarcode, 10) || 1000001) + 1;
+      C.save('settings');
+      toast('✓ Barcode generated: ' + code);
+    },
+    printLabel() {
+      const name = ($('pf-name') && $('pf-name').value.trim()) || 'Product';
+      const price = parseFloat(($('pf-price') && $('pf-price').value) || 0);
+      const bc = ($('pf-bc') && $('pf-bc').value.trim()) || '';
+      const fmt = ($('pf-bcfmt') && $('pf-bcfmt').value) || 'code128';
+      if (!bc) { toast('⚠️ Enter or generate a barcode first'); return; }
+      if (!window.BarcodeGen) { toast('⚠️ Barcode engine not loaded'); return; }
+      const svg = BarcodeGen.generate(bc, fmt, { label: name + '  ' + money(price), value: bc });
+      const w = window.open('', '_blank', 'width=400,height=320');
+      if (!w) { toast('⚠️ Allow pop-ups to print label'); return; }
+      w.document.write(`<!DOCTYPE html><html><head><title>Barcode Label</title>
+        <style>body{font-family:system-ui,sans-serif;text-align:center;padding:16px;margin:0}
+        .label{display:inline-block;border:1px dashed #ccc;padding:12px 16px;border-radius:8px}
+        button{margin-top:12px;padding:8px 16px;font-size:14px;cursor:pointer}
+        @media print{button{display:none}.label{border:none}}</style></head>
+        <body><div class="label">${svg}<div style="margin-top:6px;font-size:13px">${esc(name)} · ${money(price)}</div></div>
+        <br><button onclick="window.print()">Print label</button></body></html>`);
+      w.document.close();
     },
     pickImg(input) {
       const f = input.files && input.files[0]; if (!f) return; const rd = new FileReader();
@@ -428,6 +569,53 @@
       rd.readAsDataURL(f);
     },
     scanBC() { Scanner.open(code => { const f = $('pf-bc'); if (f) { f.value = code; toast('✓ Barcode captured'); } }, { hint: 'Hold product barcode' }); },
+    configureForSale(p, quiet) {
+      const variants = p.variants || [];
+      const addons = p.addons || [];
+      let body = '';
+      if (variants.length) {
+        body += `<div class="field"><label class="label">Size / Variant</label><div class="chips" id="cfg-var">`;
+        variants.forEach((v, i) => {
+          body += `<button type="button" class="chip ${i === 0 ? 'on' : ''}" data-i="${i}" onclick="document.querySelectorAll('#cfg-var .chip').forEach(c=>c.classList.remove('on'));this.classList.add('on')">${esc(v.name)} · ${money(v.price)}</button>`;
+        });
+        body += `</div></div>`;
+      }
+      addons.forEach((g, gi) => {
+        body += `<div class="field"><label class="label">${esc(g.name || 'Option')}${g.required ? ' *' : ''}</label><div class="chips" id="cfg-ad-${gi}">`;
+        (g.options || []).forEach((o, oi) => {
+          body += `<button type="button" class="chip" data-gi="${gi}" data-oi="${oi}" onclick="this.classList.toggle('on')">${esc(o.name)}${o.price ? ' · +' + money(o.price) : ''}</button>`;
+        });
+        body += `</div></div>`;
+      });
+      const m = Modal.open({
+        title: p.name,
+        body: body || '<p class="muted">No options</p>',
+        foot: `<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" id="cfg-ok">Add to cart</button>`
+      });
+      m.querySelector('#cfg-ok').onclick = () => {
+        let lineName = p.name;
+        let linePrice = p.price;
+        let noteParts = [];
+        const varBtn = m.querySelector('#cfg-var .chip.on');
+        if (varBtn) {
+          const vi = parseInt(varBtn.getAttribute('data-i'), 10);
+          const v = variants[vi];
+          if (v) { lineName = p.name + ' (' + v.name + ')'; linePrice = num(v.price); noteParts.push(v.name); }
+        }
+        addons.forEach((g, gi) => {
+          const selected = m.querySelectorAll('#cfg-ad-' + gi + ' .chip.on');
+          if (g.required && !selected.length) { toast('⚠️ Select: ' + (g.name || 'option')); return; }
+          selected.forEach(btn => {
+            const oi = parseInt(btn.getAttribute('data-oi'), 10);
+            const o = (g.options || [])[oi];
+            if (o) { linePrice = r2(linePrice + num(o.price)); noteParts.push(o.name); }
+          });
+        });
+        const cartKey = p.id + '|' + noteParts.join('|');
+        Modal.close(m);
+        POS.add(p.id, quiet, { configured: true, lineName, linePrice, note: noteParts.join(', '), cartKey });
+      };
+    },
     save(id, btn) {
       const name = $('pf-name').value.trim(); const price = parseFloat($('pf-price').value);
       if (!name) { toast('⚠️ Enter product name'); return; } if (!isFinite(price) || price < 0) { toast('⚠️ Enter a valid sell price'); return; }
@@ -436,6 +624,30 @@
       const old = id ? findProduct(id) : null;
       const obj = { id: id || genId(), name, barcode: bc, category: $('pf-cat').value.trim(), unit: $('pf-unit').value.trim() || 'Pcs', cost: Math.max(0, num($('pf-cost').value)), price,
         stock: Math.max(0, num($('pf-stock').value)), minStock: Math.max(0, num($('pf-min').value)), expiry: $('pf-exp').value, track: $('pf-track').checked, image: this.img || null };
+      // business-specific fields
+      const biz = DB.settings.businessType || 'retail';
+      if ($('pf-mfr')) obj.manufacturer = $('pf-mfr').value.trim();
+      if ($('pf-strength')) obj.strength = $('pf-strength').value.trim();
+      if ($('pf-form')) obj.form = $('pf-form').value.trim();
+      if ($('pf-batch')) obj.batch = $('pf-batch').value.trim();
+      if ($('pf-rx')) obj.rxRequired = $('pf-rx').checked;
+      if ($('pf-brand')) obj.brand = $('pf-brand').value.trim();
+      if ($('pf-model')) obj.model = $('pf-model').value.trim();
+      if ($('pf-warranty')) obj.warrantyMonths = Math.max(0, num($('pf-warranty').value));
+      if ($('pf-serial')) obj.serial = $('pf-serial').value.trim();
+      if ($('pf-material')) obj.material = $('pf-material').value.trim();
+      if ($('pf-size')) obj.size = $('pf-size').value.trim();
+      if ($('pf-color')) obj.color = $('pf-color').value.trim();
+      if ($('pf-sku')) obj.sku = $('pf-sku').value.trim();
+      if ($('pf-prep')) obj.prepMinutes = Math.max(0, num($('pf-prep').value));
+      if ($('pf-allergens')) obj.allergens = $('pf-allergens').value.trim();
+      // variants & addons
+      obj.variants = (this._variants || []).filter(v => (v.name || '').trim()).map(v => ({ name: String(v.name).trim(), price: Math.max(0, num(v.price)) }));
+      obj.addons = (this._addons || []).filter(g => (g.name || '').trim()).map(g => ({
+        name: String(g.name).trim(),
+        required: !!g.required,
+        options: (g.options || []).filter(o => (o.name || '').trim()).map(o => ({ name: String(o.name).trim(), price: num(o.price) }))
+      }));
       if (old) Object.assign(old, obj); else DB.products.push(obj);
       C.save('products'); Modal.closeFrom(btn); toast(old ? 'Product updated ✓' : 'New product added ✓'); App.refresh();
     },
