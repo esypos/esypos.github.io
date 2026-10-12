@@ -557,7 +557,8 @@
       let f = fmt, note = '';
       if (f === 'ean13' && !BarcodeGen.isEan13Input(bc)) { f = 'code128'; note = 'EAN-13 needs 12–13 digits — shown as Code 128'; }
       if (f === 'code128' && BarcodeGen.hasNonAscii(bc)) { f = 'qr'; note = 'Code 128 cannot hold this text — shown as QR'; }
-      const svg = BarcodeGen.generate(bc, f, { value: bc });
+      // Thick modules + white bg for reliable scanning on thermal stickers
+      const svg = BarcodeGen.generate(bc, f, { value: bc, height: 56, barWidth: 2.2, quiet: 11, targetWidth: 180, text: true });
       return { note, html: `<div class="lbl"><div class="lbl-n">${esc(name)}</div>${svg}<div class="lbl-p">${esc(money(price))}</div></div>` };
     },
     printLabel() {
@@ -578,9 +579,13 @@
       m.querySelector('#lbl-print').onclick = () => {
         const r = draw(); const n = Math.min(200, Math.max(1, parseInt(m.querySelector('#lbl-n').value, 10) || 1));
         printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Barcode label</title><style>
-          @page{margin:4mm}body{margin:0;font-family:system-ui,sans-serif;color:#000}
-          .lbl{display:inline-block;width:52mm;box-sizing:border-box;padding:2mm;text-align:center;page-break-inside:avoid;vertical-align:top}
-          .lbl-n{font-size:11px;font-weight:700;line-height:1.2;max-height:2.4em;overflow:hidden}.lbl svg{width:100%;height:auto;display:block;margin:2px 0}.lbl-p{font-size:13px;font-weight:800}
+          @page{margin:3mm;size:auto}
+          *{-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
+          body{margin:0;font-family:system-ui,sans-serif;color:#000;background:#fff}
+          .lbl{display:inline-block;width:52mm;box-sizing:border-box;padding:2mm;text-align:center;page-break-inside:avoid;vertical-align:top;background:#fff}
+          .lbl-n{font-size:10pt;font-weight:700;line-height:1.2;max-height:2.4em;overflow:hidden}
+          .lbl svg{width:100%;height:auto;display:block;margin:2px 0;shape-rendering:crispEdges;image-rendering:pixelated}
+          .lbl-p{font-size:12pt;font-weight:800}
           </style></head><body>${r.html.repeat(n)}</body></html>`);
       };
     },

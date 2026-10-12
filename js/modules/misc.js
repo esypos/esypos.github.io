@@ -326,15 +326,23 @@
       if (!window.BarcodeGen) return { html: '', note: 'Engine missing' };
       if (f === 'ean13' && !BarcodeGen.isEan13Input(value)) { f = 'code128'; note = 'EAN-13 needs 12–13 digits — Code 128 used'; }
       if (f === 'code128' && BarcodeGen.hasNonAscii(value)) { f = 'qr'; note = 'Non-ASCII text — QR used'; }
-      const barH = this.state.barH || 18;
-      const barW = size.w >= 70 ? 1.6 : size.w >= 50 ? 1.35 : 1.15;
-      const svg = BarcodeGen.generate(value, f, {
+      // Physical height of bars in mm (from UI preset), leave room for name/price text
+      const barHmm = Math.max(8, Math.min(28, this.state.barH || 18));
+      const hasText = (this.state.showName && name) || (this.state.showPrice && price !== '' && price != null) || (this.state.showShop && (DB.settings.shopName || '').trim());
+      const usableHmm = Math.max(10, size.h - (hasText ? 8 : 3));
+      const barHeightPx = Math.round(Math.min(barHmm, usableHmm) * 3.78); // ~96dpi px for SVG
+      // Fit barcode across ~92% of label width so modules stay thick enough to scan
+      const targetW = Math.round(size.w * 0.92 * 3.78);
+      const svgOpts = {
         value,
-        height: Math.round(barH * 2.2),
-        barWidth: barW,
+        height: Math.max(36, barHeightPx),
         text: true,
-        module: size.w >= 60 ? 4 : 3
-      });
+        quiet: 11,
+        targetWidth: targetW,
+        module: size.w >= 60 ? 5 : 4
+      };
+      // For linear codes prefer targetWidth so thin bars never go below ~0.25mm when printed
+      const svg = BarcodeGen.generate(value, f, svgOpts);
       const shop = (DB.settings.shopName || '').trim();
       const parts = [];
       if (this.state.showShop && shop) parts.push(`<div class="bl-shop">${esc(shop)}</div>`);
@@ -404,17 +412,27 @@
       });
       const css = `
         @page{margin:2mm;size:auto}
-        *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-        body{margin:0;padding:0;font-family:system-ui,-apple-system,sans-serif;color:#000;background:#fff}
+        *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
+        html,body{margin:0;padding:0;font-family:system-ui,-apple-system,sans-serif;color:#000;background:#fff}
         .sheet{display:flex;flex-wrap:wrap;align-content:flex-start;gap:1mm}
-        .bl-label{width:${size.w}mm;height:${size.h}mm;display:flex;flex-direction:column;align-items:center;justify-content:center;
-          text-align:center;overflow:hidden;page-break-inside:avoid;border:0;padding:1.2mm 1.5mm}
-        .bl-shop{font-size:8px;font-weight:600;line-height:1.15;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;opacity:.85}
-        .bl-name{font-size:${size.h >= 40 ? 11 : 9}px;font-weight:700;line-height:1.15;max-width:100%;max-height:2.3em;overflow:hidden;margin-bottom:.5mm}
-        .bl-svg{width:100%;flex:1;display:flex;align-items:center;justify-content:center;min-height:0}
-        .bl-svg svg{width:100%!important;height:auto!important;max-height:100%;display:block}
-        .bl-price{font-size:${size.h >= 40 ? 13 : 11}px;font-weight:800;line-height:1.1;margin-top:.4mm}
-        @media print{body{margin:0}.bl-label{break-inside:avoid}}
+        .bl-label{
+          width:${size.w}mm;height:${size.h}mm;
+          display:flex;flex-direction:column;align-items:center;justify-content:center;
+          text-align:center;overflow:hidden;page-break-inside:avoid;border:0;
+          padding:1mm 1.5mm;background:#fff;color:#000
+        }
+        .bl-shop{font-size:7.5pt;font-weight:600;line-height:1.1;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+        .bl-name{font-size:${size.h >= 40 ? 9 : 7.5}pt;font-weight:700;line-height:1.15;max-width:100%;max-height:2.3em;overflow:hidden;margin-bottom:0.4mm}
+        .bl-svg{width:100%;flex:1 1 auto;display:flex;align-items:center;justify-content:center;min-height:0;overflow:hidden}
+        .bl-svg svg{
+          width:100%!important;height:auto!important;max-height:100%;
+          display:block;shape-rendering:crispEdges;image-rendering:pixelated
+        }
+        .bl-price{font-size:${size.h >= 40 ? 11 : 9}pt;font-weight:800;line-height:1.1;margin-top:0.3mm}
+        @media print{
+          body{margin:0}
+          .bl-label{break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+        }
       `;
       printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Barcode Labels</title><style>${css}</style></head><body><div class="sheet">${all.join('')}</div></body></html>`);
       toast('✓ Sent ' + all.length + ' label(s) to printer');
