@@ -426,7 +426,7 @@
         <div class="field"><label class="label">Barcode</label><div class="flex gap2 flex-wrap">
           <input id="pf-bc" class="input grow" value="${esc(p ? p.barcode : '')}" placeholder="Scan, type or generate" style="min-width:120px">
           <button class="btn btn-soft" onclick="Products.scanBC()" title="Scan"><i class="fas fa-camera"></i></button>
-          <button class="btn btn-soft" onclick="Products.genBC()" title="Generate barcode"><i class="fas fa-wand-magic-sparkles"></i></button>
+          <button class="btn btn-soft" onclick="Products.genBC()" title="Generate barcode"><i class="fas fa-plus"></i> Gen</button>
           <button class="btn btn-soft" onclick="Products.printLabel()" title="Print / preview label"><i class="fas fa-print"></i></button>
         </div>
         <div class="flex gap2 mt2 items-c"><label class="label xs mb0">Format</label>
