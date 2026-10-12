@@ -7,6 +7,7 @@
     { id: 'pos', label: 'Sales Counter', icon: 'fa-store' },
     { id: 'customers', label: 'Customers & Due', icon: 'fa-user-group' },
     { id: 'products', label: 'Products & Stock', icon: 'fa-box-open' },
+    { id: 'barcodes', label: 'Barcode Labels', icon: 'fa-barcode' },
     { id: 'purchases', label: 'Purchases & Suppliers', icon: 'fa-truck' },
     { id: 'expenses', label: 'Expenses', icon: 'fa-money-bill-wave' },
     { id: 'history', label: 'Sales History', icon: 'fa-file-invoice' },

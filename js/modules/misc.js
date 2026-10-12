@@ -215,3 +215,308 @@
     }
   };
 })();
+
+/* ---------- Standalone Barcode Labels generator (no product required) ---------- */
+(function () {
+  'use strict';
+  const C = Core, { DB, esc, money, toast } = C;
+  const $ = id => document.getElementById(id);
+
+  const SIZES = [
+    { id: '40x30', w: 40, h: 30, label: '40×30 mm' },
+    { id: '50x30', w: 50, h: 30, label: '50×30 mm' },
+    { id: '50x40', w: 50, h: 40, label: '50×40 mm' },
+    { id: '58x40', w: 58, h: 40, label: '58×40 mm' },
+    { id: '60x40', w: 60, h: 40, label: '60×40 mm' },
+    { id: '80x50', w: 80, h: 50, label: '80×50 mm' },
+    { id: '100x50', w: 100, h: 50, label: '100×50 mm' },
+    { id: 'custom', w: 50, h: 30, label: 'Custom' }
+  ];
+
+  const Barcodes = window.Barcodes = {
+    state: {
+      value: '', name: '', price: '', fmt: 'code128', size: '50x30',
+      customW: 50, customH: 30, copies: 1, showName: true, showPrice: true,
+      showShop: false, barH: 18, sequential: false, seqCount: 1
+    },
+
+    sizeObj() {
+      const s = this.state;
+      if (s.size === 'custom') return { w: Math.max(20, Math.min(200, +s.customW || 50)), h: Math.max(15, Math.min(150, +s.customH || 30)) };
+      return SIZES.find(x => x.id === s.size) || SIZES[1];
+    },
+
+    readForm() {
+      const s = this.state;
+      s.value = ($('bc-val') && $('bc-val').value.trim()) || '';
+      s.name = ($('bc-name') && $('bc-name').value.trim()) || '';
+      s.price = ($('bc-price') && $('bc-price').value) || '';
+      s.fmt = ($('bc-fmt') && $('bc-fmt').value) || 'code128';
+      s.size = ($('bc-size') && $('bc-size').value) || '50x30';
+      s.customW = ($('bc-cw') && parseFloat($('bc-cw').value)) || 50;
+      s.customH = ($('bc-ch') && parseFloat($('bc-ch').value)) || 30;
+      s.copies = Math.min(500, Math.max(1, parseInt(($('bc-copies') && $('bc-copies').value) || 1, 10) || 1));
+      s.showName = !!( $('bc-show-name') && $('bc-show-name').checked);
+      s.showPrice = !!( $('bc-show-price') && $('bc-show-price').checked);
+      s.showShop = !!( $('bc-show-shop') && $('bc-show-shop').checked);
+      s.barH = Math.min(40, Math.max(8, parseInt(($('bc-barh') && $('bc-barh').value) || 18, 10) || 18));
+      s.sequential = !!( $('bc-seq') && $('bc-seq').checked);
+      s.seqCount = Math.min(200, Math.max(1, parseInt(($('bc-seqn') && $('bc-seqn').value) || 1, 10) || 1));
+      const customRow = $('bc-custom-row');
+      if (customRow) customRow.classList.toggle('hidden', s.size !== 'custom');
+      const seqRow = $('bc-seq-row');
+      if (seqRow) seqRow.classList.toggle('hidden', !s.sequential);
+    },
+
+    genOne() {
+      if (!window.BarcodeGen) { toast('⚠️ Barcode engine not loaded'); return; }
+      this.readForm();
+      const fmt = this.state.fmt;
+      const used = new Set(DB.products.filter(p => p.barcode).map(p => BarcodeGen.normKey(p.barcode)));
+      let n = Math.max(1, parseInt(DB.settings.nextBarcode, 10) || 1000001);
+      let code = '', guard = 0;
+      do {
+        code = fmt === 'ean13'
+          ? BarcodeGen.ean13Check('2' + String(n).padStart(11, '0').slice(-11))
+          : BarcodeGen.uniqueCode(DB.settings.barcodePrefix || 'ESY', n);
+        n++;
+      } while (used.has(BarcodeGen.normKey(code)) && ++guard < 100000);
+      DB.settings.nextBarcode = n;
+      C.save('settings');
+      if ($('bc-val')) $('bc-val').value = code;
+      this.state.value = code;
+      this.preview();
+      toast('✓ Generated: ' + code);
+    },
+
+    pickProduct() {
+      const body = `<div class="field mb2"><input id="bc-pick-q" class="input" placeholder="Search product…" oninput="Barcodes._pickFilter()"></div>
+        <div id="bc-pick-list" style="max-height:50vh;overflow:auto"></div>`;
+      Modal.open({ title: 'Pick product for label', body, foot: `<button class="btn" onclick="Modal.closeFrom(this)">Close</button>` });
+      this._pickFilter();
+      setTimeout(() => { const i = $('bc-pick-q'); if (i) i.focus(); }, 80);
+    },
+
+    _pickFilter() {
+      const qq = (($('bc-pick-q') && $('bc-pick-q').value) || '').trim().toLowerCase();
+      let arr = DB.products.slice().sort((a, b) => C.collator.compare(a.name, b.name));
+      if (qq) arr = arr.filter(p => p.name.toLowerCase().includes(qq) || (p.barcode || '').toLowerCase().includes(qq));
+      const el = $('bc-pick-list');
+      if (!el) return;
+      if (!arr.length) { el.innerHTML = '<div class="empty">No products</div>'; return; }
+      el.innerHTML = arr.slice(0, 80).map(p =>
+        `<div class="row" style="cursor:pointer" onclick="Barcodes.applyProduct('${p.id}');Modal.closeAll()">
+          <div class="grow"><div class="t">${esc(p.name)}</div><div class="s">${p.barcode ? esc(p.barcode) : 'No barcode'} · ${money(p.price)}</div></div>
+          <i class="fas fa-chevron-right muted"></i></div>`).join('');
+    },
+
+    applyProduct(id) {
+      const p = DB.products.find(x => x.id === id);
+      if (!p) return;
+      if ($('bc-val')) $('bc-val').value = p.barcode || '';
+      if ($('bc-name')) $('bc-name').value = p.name || '';
+      if ($('bc-price')) $('bc-price').value = p.price != null ? p.price : '';
+      if (p.barcodeFormat && $('bc-fmt')) $('bc-fmt').value = p.barcodeFormat;
+      this.preview();
+      toast('✓ Loaded: ' + p.name);
+    },
+
+    buildLabel(value, name, price, fmt, size) {
+      let f = fmt, note = '';
+      if (!window.BarcodeGen) return { html: '', note: 'Engine missing' };
+      if (f === 'ean13' && !BarcodeGen.isEan13Input(value)) { f = 'code128'; note = 'EAN-13 needs 12–13 digits — Code 128 used'; }
+      if (f === 'code128' && BarcodeGen.hasNonAscii(value)) { f = 'qr'; note = 'Non-ASCII text — QR used'; }
+      const barH = this.state.barH || 18;
+      const barW = size.w >= 70 ? 1.6 : size.w >= 50 ? 1.35 : 1.15;
+      const svg = BarcodeGen.generate(value, f, {
+        value,
+        height: Math.round(barH * 2.2),
+        barWidth: barW,
+        text: true,
+        module: size.w >= 60 ? 4 : 3
+      });
+      const shop = (DB.settings.shopName || '').trim();
+      const parts = [];
+      if (this.state.showShop && shop) parts.push(`<div class="bl-shop">${esc(shop)}</div>`);
+      if (this.state.showName && name) parts.push(`<div class="bl-name">${esc(name)}</div>`);
+      parts.push(`<div class="bl-svg">${svg}</div>`);
+      if (this.state.showPrice && price !== '' && price != null) {
+        const pr = parseFloat(price);
+        parts.push(`<div class="bl-price">${isNaN(pr) ? esc(String(price)) : esc(money(pr))}</div>`);
+      }
+      return {
+        html: `<div class="bl-label" style="width:${size.w}mm;height:${size.h}mm">${parts.join('')}</div>`,
+        note, fmt: f
+      };
+    },
+
+    valuesList() {
+      this.readForm();
+      const s = this.state;
+      if (!s.value) return [];
+      if (!s.sequential || s.seqCount <= 1) return [s.value];
+      const m = s.value.match(/^(.*?)(\d+)$/);
+      if (!m) return Array(s.seqCount).fill(s.value);
+      const prefix = m[1];
+      let num = parseInt(m[2], 10);
+      const pad = m[2].length;
+      const out = [];
+      for (let i = 0; i < s.seqCount; i++) out.push(prefix + String(num + i).padStart(pad, '0'));
+      return out;
+    },
+
+    preview() {
+      this.readForm();
+      const box = $('bc-preview');
+      const noteEl = $('bc-note');
+      if (!box) return;
+      const vals = this.valuesList();
+      if (!vals.length) {
+        box.innerHTML = '<div class="bc-empty"><i class="fas fa-barcode"></i><p>Enter a code or generate one</p></div>';
+        if (noteEl) noteEl.textContent = '';
+        return;
+      }
+      const size = this.sizeObj();
+      const s = this.state;
+      let note = '';
+      const labels = vals.slice(0, 12).map(v => {
+        const r = this.buildLabel(v, s.name, s.price, s.fmt, size);
+        if (r.note) note = r.note;
+        return r.html;
+      });
+      const extra = vals.length > 12 ? `<div class="xs muted tc mt2">+${vals.length - 12} more on print</div>` : '';
+      box.innerHTML = `<div class="bc-sheet">${labels.join('')}</div>${extra}`;
+      if (noteEl) noteEl.textContent = note;
+    },
+
+    print() {
+      this.readForm();
+      const vals = this.valuesList();
+      if (!vals.length) { toast('⚠️ Enter or generate a barcode first'); return; }
+      if (!window.BarcodeGen) { toast('⚠️ Barcode engine not loaded'); return; }
+      const size = this.sizeObj();
+      const s = this.state;
+      const copies = s.sequential ? 1 : s.copies;
+      const all = [];
+      vals.forEach(v => {
+        const r = this.buildLabel(v, s.name, s.price, s.fmt, size);
+        for (let i = 0; i < copies; i++) all.push(r.html);
+      });
+      const css = `
+        @page{margin:2mm;size:auto}
+        *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+        body{margin:0;padding:0;font-family:system-ui,-apple-system,sans-serif;color:#000;background:#fff}
+        .sheet{display:flex;flex-wrap:wrap;align-content:flex-start;gap:1mm}
+        .bl-label{width:${size.w}mm;height:${size.h}mm;display:flex;flex-direction:column;align-items:center;justify-content:center;
+          text-align:center;overflow:hidden;page-break-inside:avoid;border:0;padding:1.2mm 1.5mm}
+        .bl-shop{font-size:8px;font-weight:600;line-height:1.15;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;opacity:.85}
+        .bl-name{font-size:${size.h >= 40 ? 11 : 9}px;font-weight:700;line-height:1.15;max-width:100%;max-height:2.3em;overflow:hidden;margin-bottom:.5mm}
+        .bl-svg{width:100%;flex:1;display:flex;align-items:center;justify-content:center;min-height:0}
+        .bl-svg svg{width:100%!important;height:auto!important;max-height:100%;display:block}
+        .bl-price{font-size:${size.h >= 40 ? 13 : 11}px;font-weight:800;line-height:1.1;margin-top:.4mm}
+        @media print{body{margin:0}.bl-label{break-inside:avoid}}
+      `;
+      printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Barcode Labels</title><style>${css}</style></head><body><div class="sheet">${all.join('')}</div></body></html>`);
+      toast('✓ Sent ' + all.length + ' label(s) to printer');
+    },
+
+    render() {
+      const s = this.state;
+      const sizeOpts = SIZES.map(x => `<option value="${x.id}"${s.size === x.id ? ' selected' : ''}>${x.label}</option>`).join('');
+      $('view').innerHTML = `
+      <div class="page-head">
+        <div><h2>Barcode Labels</h2><p>Generate &amp; print stickers — no product required · any printer</p></div>
+        <div class="flex gap2 flex-wrap">
+          <button type="button" class="btn btn-soft" onclick="Barcodes.pickProduct()"><i class="fas fa-box-open"></i> From product</button>
+          <button type="button" class="btn btn-primary" onclick="Barcodes.print()"><i class="fas fa-print"></i> Print labels</button>
+        </div>
+      </div>
+      <div class="bc-layout">
+        <div class="card pad bc-form">
+          <div class="sec-title"><i class="fas fa-barcode ptext"></i> Barcode value</div>
+          <div class="field">
+            <label class="label">Code / text</label>
+            <div class="flex gap2">
+              <input id="bc-val" class="input grow" placeholder="Scan, type, or generate…" value="${esc(s.value)}" oninput="Barcodes.preview()" autocomplete="off">
+              <button type="button" class="btn btn-soft" onclick="Barcodes.genOne()" title="Auto-generate unique code"><i class="fas fa-plus"></i></button>
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label class="label">Format</label>
+              <select id="bc-fmt" class="input" onchange="Barcodes.preview()">
+                <option value="code128"${s.fmt === 'code128' ? ' selected' : ''}>Code 128</option>
+                <option value="ean13"${s.fmt === 'ean13' ? ' selected' : ''}>EAN-13</option>
+                <option value="qr"${s.fmt === 'qr' ? ' selected' : ''}>QR Code</option>
+              </select>
+            </div>
+            <div class="field"><label class="label">Barcode height</label>
+              <select id="bc-barh" class="input" onchange="Barcodes.preview()">
+                <option value="12"${s.barH === 12 ? ' selected' : ''}>Compact</option>
+                <option value="18"${s.barH === 18 ? ' selected' : ''}>Normal</option>
+                <option value="24"${s.barH === 24 ? ' selected' : ''}>Tall</option>
+                <option value="32"${s.barH === 32 ? ' selected' : ''}>Extra tall</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="sec-title mt3"><i class="fas fa-tags ptext"></i> Label text <span class="muted xs fw4">(optional)</span></div>
+          <div class="grid2">
+            <div class="field"><label class="label">Product name</label>
+              <input id="bc-name" class="input" placeholder="Optional" value="${esc(s.name)}" oninput="Barcodes.preview()">
+            </div>
+            <div class="field"><label class="label">Price</label>
+              <input id="bc-price" type="number" step="any" min="0" class="input" placeholder="Optional" value="${esc(s.price)}" oninput="Barcodes.preview()">
+            </div>
+          </div>
+          <div class="flex gap3 flex-wrap mt1 bc-toggles">
+            <label class="check-pill"><input type="checkbox" id="bc-show-name"${s.showName ? ' checked' : ''} onchange="Barcodes.preview()"><span>Show name</span></label>
+            <label class="check-pill"><input type="checkbox" id="bc-show-price"${s.showPrice ? ' checked' : ''} onchange="Barcodes.preview()"><span>Show price</span></label>
+            <label class="check-pill"><input type="checkbox" id="bc-show-shop"${s.showShop ? ' checked' : ''} onchange="Barcodes.preview()"><span>Shop name</span></label>
+          </div>
+          <p class="xs muted mt1">Leave name &amp; price empty for pure barcode stickers.</p>
+
+          <div class="sec-title mt3"><i class="fas fa-sliders ptext"></i> Size &amp; quantity</div>
+          <div class="grid2">
+            <div class="field"><label class="label">Label size</label>
+              <select id="bc-size" class="input" onchange="Barcodes.preview()">${sizeOpts}</select>
+            </div>
+            <div class="field"><label class="label">Copies</label>
+              <input id="bc-copies" type="number" min="1" max="500" class="input" value="${s.copies}" oninput="Barcodes.preview()">
+            </div>
+          </div>
+          <div id="bc-custom-row" class="grid2${s.size === 'custom' ? '' : ' hidden'}">
+            <div class="field"><label class="label">Width (mm)</label>
+              <input id="bc-cw" type="number" min="20" max="200" class="input" value="${s.customW}" oninput="Barcodes.preview()">
+            </div>
+            <div class="field"><label class="label">Height (mm)</label>
+              <input id="bc-ch" type="number" min="15" max="150" class="input" value="${s.customH}" oninput="Barcodes.preview()">
+            </div>
+          </div>
+
+          <div class="field mt2">
+            <label class="check-pill"><input type="checkbox" id="bc-seq"${s.sequential ? ' checked' : ''} onchange="Barcodes.preview()"><span class="sm fw6">Sequential codes <span class="muted xs fw4">(ESY0001 → ESY0002…)</span></span></label>
+          </div>
+          <div id="bc-seq-row" class="field${s.sequential ? '' : ' hidden'}">
+            <label class="label">How many sequential</label>
+            <input id="bc-seqn" type="number" min="1" max="200" class="input" value="${s.seqCount}" oninput="Barcodes.preview()" style="max-width:140px">
+          </div>
+
+          <div class="flex gap2 mt3 flex-wrap">
+            <button type="button" class="btn btn-primary grow" onclick="Barcodes.print()"><i class="fas fa-print"></i> Print labels</button>
+            <button type="button" class="btn btn-soft" onclick="Barcodes.genOne()"><i class="fas fa-plus"></i> Generate</button>
+          </div>
+          <p class="xs muted mt2"><i class="fas fa-circle-question"></i> Works with any printer — thermal sticker, laser or inkjet. Match paper size in the print dialog.</p>
+        </div>
+
+        <div class="card pad bc-prev-card">
+          <div class="sec-title"><i class="fas fa-display ptext"></i> Preview</div>
+          <div id="bc-preview" class="bc-preview"></div>
+          <p class="xs warn tc mt2" id="bc-note"></p>
+        </div>
+      </div>`;
+      this.preview();
+    }
+  };
+
+  App.Views.barcodes = Barcodes;
+})();

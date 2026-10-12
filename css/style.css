@@ -612,3 +612,71 @@ body.kb-open .cart-bar{display:none!important}
 }
 .chip.on:hover{color:#fff}
 .pf-side .sec-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* ---------- v10.7.2: Barcode Labels page + UI polish ---------- */
+.bc-layout{display:grid;gap:16px;align-items:start}
+@media(min-width:900px){
+  .bc-layout{grid-template-columns:minmax(0,1fr) minmax(280px,.95fr);gap:20px}
+  .bc-prev-card{position:sticky;top:12px}
+}
+.bc-preview{
+  min-height:180px;padding:16px;border:1px dashed var(--border);border-radius:16px;
+  background:linear-gradient(180deg,#fff 0%,#f8f7fc 100%);color:#000;
+  display:flex;flex-direction:column;align-items:center;justify-content:center
+}
+html.dark .bc-preview{background:linear-gradient(180deg,#fafafa 0%,#f0f0f5 100%)}
+.bc-sheet{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:flex-start}
+.bc-preview .bl-label{
+  background:#fff;border:1px solid #e5e5e5;border-radius:6px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;overflow:hidden;padding:2mm 2.5mm;box-shadow:0 1px 4px rgba(0,0,0,.06)
+}
+.bc-preview .bl-shop{font-size:8px;font-weight:600;line-height:1.15;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;opacity:.8}
+.bc-preview .bl-name{font-size:10px;font-weight:700;line-height:1.2;max-width:100%;max-height:2.4em;overflow:hidden;margin-bottom:1px}
+.bc-preview .bl-svg{width:100%;display:flex;align-items:center;justify-content:center}
+.bc-preview .bl-svg svg{width:100%;height:auto;display:block;max-height:70px}
+.bc-preview .bl-price{font-size:12px;font-weight:800;line-height:1.1;margin-top:1px}
+.bc-empty{text-align:center;color:#9ca3af;padding:28px 12px}
+.bc-empty i{font-size:36px;display:block;margin-bottom:10px;opacity:.45}
+.bc-empty p{margin:0;font-size:13px}
+.bc-toggles{gap:8px}
+.check-pill{
+  display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:99px;
+  border:1px solid var(--border);background:var(--input);font-size:12.5px;font-weight:600;
+  cursor:pointer;user-select:none;transition:border-color .15s,background .15s,box-shadow .15s
+}
+.check-pill:hover{border-color:var(--primary2);background:var(--psoft)}
+.check-pill input{accent-color:var(--primary);width:15px;height:15px;margin:0;cursor:pointer}
+.check-pill:has(input:checked){border-color:var(--primary);background:var(--psoft);color:var(--ptext);box-shadow:0 0 0 3px var(--ring)}
+
+/* UI polish — cleaner spacing, cards, forms */
+.page-head{margin-bottom:18px}
+.page-head h2{letter-spacing:-.02em}
+.card{border-radius:var(--r-lg)}
+.card.pad{padding:18px}
+.sec-title{margin-bottom:12px;gap:8px}
+.field{margin-bottom:12px}
+.field .label{margin-bottom:5px;letter-spacing:.01em}
+.input,.btn{border-radius:12px}
+.btn{font-weight:600;letter-spacing:.01em}
+.btn-primary{box-shadow:0 1px 2px rgba(91,33,182,.15),0 4px 12px -4px rgba(91,33,182,.35)}
+.btn-primary:hover{filter:brightness(1.05)}
+.nav-link{border-radius:12px}
+.nav-link.active{font-weight:700}
+.stat{border-radius:16px}
+.row{border-radius:14px;transition:background .12s}
+.modal-sheet{border-radius:20px}
+.modal-sheet .modal-head{padding:16px 18px}
+.modal-sheet .modal-body{padding:16px 18px}
+.modal-sheet .modal-foot{padding:12px 18px;gap:10px}
+.empty{border-radius:16px}
+.sidebar .brand{padding:16px 14px}
+.sidebar .nav{padding:8px 10px;gap:2px}
+.topbar{backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+
+/* Tighter mobile forms */
+@media(max-width:699px){
+  .card.pad{padding:14px}
+  .page-head{margin-bottom:14px}
+  .bc-layout{gap:12px}
+}
