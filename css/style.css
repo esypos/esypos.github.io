@@ -586,3 +586,29 @@ body.kb-open .cart-bar{display:none!important}
 .lbl-prev .lbl-n{font-size:13px;font-weight:700;margin-bottom:2px}
 .lbl-prev .lbl-p{font-size:15px;font-weight:800}
 .lbl-prev svg{width:100%;height:auto;display:block}
+
+/* ---------- v10.7.1: desktop-grade layout for Configure sheet + product editor ---------- */
+.cfg-chip{position:relative}
+.cfg-chip.on::after{content:'✓';position:absolute;top:4px;right:9px;font-size:11px;font-weight:800;opacity:.95}
+.pf-layout{display:block}
+.pf-side .sec-title:first-child{margin-top:0}
+@media(min-width:700px){
+  .modal-sheet.xl{max-width:1040px}
+  .modal-sheet.wide .cfg-group{padding:16px 18px;border-radius:18px;margin-bottom:16px}
+  .cfg-title{font-size:15px;margin-bottom:12px}
+  .cfg-group .chips.wrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;overflow:visible}
+  .cfg-chip{flex-direction:row;justify-content:space-between;gap:10px;min-height:52px;padding:10px 26px 10px 16px;border-radius:14px;font-size:14px;text-align:left}
+  .cfg-chip small{font-size:12.5px}
+  .cfg-chip.on::after{top:50%;right:9px;transform:translateY(-50%)}
+  .cfg-total{margin:4px -16px -16px;padding:14px 20px}
+  .cfg-total b{font-size:24px}
+  .modal-sheet.wide .modal-foot .btn{padding:13px;font-size:15px}
+}
+@media(min-width:900px){
+  .pf-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}
+  .pf-side{padding:18px;border:1px solid var(--border);border-radius:18px;background:var(--input);position:sticky;top:0}
+  .pf-side:empty{display:none}
+  .modal-sheet.xl .modal-body{padding:20px 24px}
+}
+.chip.on:hover{color:#fff}
+.pf-side .sec-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap}

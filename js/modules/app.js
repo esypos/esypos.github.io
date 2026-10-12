@@ -192,7 +192,7 @@
     add(id, quiet, opt) {
       opt = opt || {};
       const p = findProduct(id); if (!p) return;
-      const hasOpts = (p.variants && p.variants.length) || (p.addons && p.addons.length);
+      const hasOpts = (p.variants && p.variants.length) || (p.addons && p.addons.some(g => g.options && g.options.length));
       if (hasOpts && !opt.configured) {
         if (p.track !== false && p.stock <= 0) { toast('⚠️ Out of stock!'); return; }
         Products.configureForSale(p, quiet, opt);
@@ -424,7 +424,8 @@
       const cats = [...new Set(DB.products.map(x => x.category).filter(Boolean))];
       const biz = DB.settings.businessType || 'retail';
       const extra = this._extraFieldsHtml(biz, p);
-      const m = Modal.open({ title: p ? 'Edit Product' : 'New Product', body: `
+      const m = Modal.open({ title: p ? 'Edit Product' : 'New Product', size: 'xl', body: `
+        <div class="pf-layout"><div class="pf-main">
         <div class="flex gap3 mb3 items-c"><label style="cursor:pointer"><div class="avatar" id="pf-img" style="width:64px;height:64px;overflow:hidden">${this.img ? `<img src="${esc(this.img)}" style="width:100%;height:100%;object-fit:cover">` : '<i class="fas fa-camera"></i>'}</div><input type="file" accept="image/*" class="hidden" onchange="Products.pickImg(this)"></label>
           <div class="grow"><label class="label">Product name *</label><input id="pf-name" class="input" autofocus value="${esc(p ? p.name : '')}"></div></div>
         <div class="field"><label class="label">Barcode</label><div class="flex gap2 flex-wrap">
@@ -444,17 +445,18 @@
           <div class="field"><label class="label">Low stock limit</label><input id="pf-min" type="number" step="any" min="0" class="input" value="${p ? (p.minStock === undefined ? 5 : p.minStock) : (DB.settings.lowStockDefault || 5)}"></div></div>
         <div class="field"><label class="label">Expiry date (optional)</label><input id="pf-exp" type="date" class="input" value="${esc(p ? p.expiry : '')}"></div>
         <label class="switch"><span class="sm fw6">Track stock <span class="muted xs">(off for service/unlimited)</span></span><input type="checkbox" id="pf-track" ${!p || p.track !== false ? 'checked' : ''}></label>
+        </div><div class="pf-side">
         ${extra}
         <div id="pf-variants-box" class="${biz === 'restaurant' || biz === 'clothing' || this._variants.length ? '' : 'hidden'}">
-          <div class="sec-title mt3"><i class="fas fa-layer-group ptext"></i> Sizes / Variants <button type="button" class="btn btn-sm btn-soft" onclick="Products.addVariantRow()">+ Add</button></div>
+          <div class="sec-title mt3"><i class="fas fa-sliders ptext"></i> Sizes / Variants <button type="button" class="btn btn-sm btn-soft" onclick="Products.addVariantRow()">+ Add</button></div>
           <div id="pf-variants" class="mb2"></div>
           <p class="xs muted">e.g. Pizza 6″ / 9″ / 12″ with different prices</p>
         </div>
         <div id="pf-addons-box" class="${biz === 'restaurant' || this._addons.length ? '' : 'hidden'}">
-          <div class="sec-title mt3"><i class="fas fa-plus-circle ptext"></i> Add-ons / Modifiers <button type="button" class="btn btn-sm btn-soft" onclick="Products.addAddonGroup()">+ Group</button></div>
+          <div class="sec-title mt3"><i class="fas fa-plus ptext"></i> Add-ons / Modifiers <button type="button" class="btn btn-sm btn-soft" onclick="Products.addAddonGroup()">+ Group</button></div>
           <div id="pf-addons" class="mb2"></div>
           <p class="xs muted">e.g. Sauce, Extra cheese, Toppings — shown when selling</p>
-        </div>
+        </div></div></div>
         `,
         foot: `<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" onclick="Products.save('${id || ''}',this)">Save</button>` });
       setTimeout(() => { Products.renderVariantRows(); Products.renderAddonGroups(); const fmt = (p && p.barcodeFormat) || DB.settings.barcodeFormat || 'code128'; const sel = $('pf-bcfmt'); if (sel) sel.value = fmt; Products.bcHint(); }, 30);
@@ -462,7 +464,7 @@
     _extraFieldsHtml(biz, p) {
       p = p || {};
       if (biz === 'pharmacy') {
-        return `<div class="sec-title mt3"><i class="fas fa-pills ptext"></i> Pharmacy details</div>
+        return `<div class="sec-title mt3"><i class="fas fa-tags ptext"></i> Pharmacy details</div>
           <div class="grid2"><div class="field"><label class="label">Manufacturer / Brand</label><input id="pf-mfr" class="input" value="${esc(p.manufacturer || '')}"></div>
             <div class="field"><label class="label">Strength / Dosage</label><input id="pf-strength" class="input" value="${esc(p.strength || '')}" placeholder="e.g. 500mg"></div></div>
           <div class="grid2"><div class="field"><label class="label">Form</label><input id="pf-form" class="input" list="pf-forms" value="${esc(p.form || '')}" placeholder="Tablet, Syrup…"><datalist id="pf-forms"><option value="Tablet"><option value="Capsule"><option value="Syrup"><option value="Injection"><option value="Cream"><option value="Drops"></datalist></div>
@@ -470,26 +472,26 @@
           <label class="switch mt2"><span class="sm fw6">Prescription required (Rx)</span><input type="checkbox" id="pf-rx" ${p.rxRequired ? 'checked' : ''}></label>`;
       }
       if (biz === 'electronics') {
-        return `<div class="sec-title mt3"><i class="fas fa-microchip ptext"></i> Electronics details</div>
+        return `<div class="sec-title mt3"><i class="fas fa-tags ptext"></i> Electronics details</div>
           <div class="grid2"><div class="field"><label class="label">Brand</label><input id="pf-brand" class="input" value="${esc(p.brand || '')}"></div>
             <div class="field"><label class="label">Model</label><input id="pf-model" class="input" value="${esc(p.model || '')}"></div></div>
           <div class="grid2"><div class="field"><label class="label">Warranty (months)</label><input id="pf-warranty" type="number" min="0" class="input" value="${p.warrantyMonths != null ? p.warrantyMonths : ''}"></div>
             <div class="field"><label class="label">Serial / IMEI (optional)</label><input id="pf-serial" class="input" value="${esc(p.serial || '')}"></div></div>`;
       }
       if (biz === 'clothing') {
-        return `<div class="sec-title mt3"><i class="fas fa-shirt ptext"></i> Clothing details</div>
+        return `<div class="sec-title mt3"><i class="fas fa-tags ptext"></i> Clothing details</div>
           <div class="grid2"><div class="field"><label class="label">Brand</label><input id="pf-brand" class="input" value="${esc(p.brand || '')}"></div>
             <div class="field"><label class="label">Material</label><input id="pf-material" class="input" value="${esc(p.material || '')}"></div></div>
           <div class="grid2"><div class="field"><label class="label">Default size</label><input id="pf-size" class="input" value="${esc(p.size || '')}" placeholder="M, L, 42…"></div>
             <div class="field"><label class="label">Color</label><input id="pf-color" class="input" value="${esc(p.color || '')}"></div></div>`;
       }
       if (biz === 'grocery' || biz === 'wholesale') {
-        return `<div class="sec-title mt3"><i class="fas fa-boxes-stacked ptext"></i> Extra details</div>
+        return `<div class="sec-title mt3"><i class="fas fa-tags ptext"></i> Extra details</div>
           <div class="grid2"><div class="field"><label class="label">Brand</label><input id="pf-brand" class="input" value="${esc(p.brand || '')}"></div>
             <div class="field"><label class="label">SKU / Item code</label><input id="pf-sku" class="input" value="${esc(p.sku || '')}"></div></div>`;
       }
       if (biz === 'restaurant') {
-        return `<div class="sec-title mt3"><i class="fas fa-utensils ptext"></i> Food details</div>
+        return `<div class="sec-title mt3"><i class="fas fa-tags ptext"></i> Food details</div>
           <div class="grid2"><div class="field"><label class="label">Prep time (min)</label><input id="pf-prep" type="number" min="0" class="input" value="${p.prepMinutes != null ? p.prepMinutes : ''}"></div>
             <div class="field"><label class="label">Allergens / notes</label><input id="pf-allergens" class="input" value="${esc(p.allergens || '')}" placeholder="Nuts, dairy…"></div></div>`;
       }
@@ -519,12 +521,12 @@
         const opts = (g.options || []).map((o, oi) => `<div class="flex gap2 mb1 items-c">
           <input class="input grow" placeholder="Option" value="${esc(o.name || '')}" oninput="Products._addons[${gi}].options[${oi}].name=this.value">
           <input class="input" type="number" step="any" style="width:90px" placeholder="+price" value="${o.price != null ? o.price : 0}" oninput="Products._addons[${gi}].options[${oi}].price=parseFloat(this.value)||0">
-          <button type="button" class="icon-btn" onclick="Products._addons[${gi}].options.splice(${oi},1);Products.renderAddonGroups()"><i class="fas fa-times"></i></button></div>`).join('');
+          <button type="button" class="icon-btn" onclick="Products._addons[${gi}].options.splice(${oi},1);Products.renderAddonGroups()"><i class="fas fa-xmark"></i></button></div>`).join('');
         return `<div class="card pad-s mb2"><div class="flex gap2 items-c mb2">
           <input class="input grow" placeholder="Group name (e.g. Sauce)" value="${esc(g.name || '')}" oninput="Products._addons[${gi}].name=this.value">
           <label class="xs"><input type="checkbox" ${g.required ? 'checked' : ''} onchange="Products._addons[${gi}].required=this.checked"> Required</label>
           <button type="button" class="btn btn-sm btn-soft" onclick="Products._addons[${gi}].options=Products._addons[${gi}].options||[];Products._addons[${gi}].options.push({name:'',price:0});Products.renderAddonGroups()">+ Opt</button>
-          <button type="button" class="icon-btn" onclick="Products._addons.splice(${gi},1);Products.renderAddonGroups()"><i class="fas fa-trash bad"></i></button></div>${opts || '<p class="xs muted">No options</p>'}</div>`;
+          <button type="button" class="icon-btn" onclick="Products._addons.splice(${gi},1);Products.renderAddonGroups()"><i class="fas fa-trash bad"></i></button></div>${opts || '<p class="xs bad fw6">No options yet — tap “+ Opt” to add one</p>'}</div>`;
       }).join('');
     },
     addAddonGroup() {
@@ -588,7 +590,7 @@
     },
     scanBC() { Scanner.open(code => { const f = $('pf-bc'); if (f) { f.value = code; toast('✓ Barcode captured'); } }, { hint: 'Hold product barcode' }); },
     configureForSale(p, quiet, opt0) {
-      const variants = p.variants || [], addons = p.addons || [];
+      const variants = p.variants || [], addons = (p.addons || []).filter(g => g.options && g.options.length);
       let body = '';
       if (variants.length) {
         body += `<div class="cfg-group" id="cfg-g-var"><div class="cfg-title">Size / Variant <span class="cfg-hint">Choose one</span></div><div class="chips wrap" id="cfg-var">`;
@@ -601,7 +603,7 @@
         body += `</div></div>`;
       });
       const m = Modal.open({
-        title: p.name,
+        title: p.name, size: 'wide',
         body: `${body}<div class="cfg-total"><span>Total</span><b id="cfg-total"></b></div>`,
         foot: `<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" id="cfg-ok"><i class="fas fa-bag-shopping"></i> Add to cart</button>`
       });
