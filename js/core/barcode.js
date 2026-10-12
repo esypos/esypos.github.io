@@ -75,26 +75,49 @@
 
   function bitsToSvg(bits, opts) {
     opts = opts || {};
-    const h = opts.height || 60;
-    const barW = opts.barWidth || 1.5;
+    const h = Math.max(20, opts.height || 60);
+    // Module (bar) width: prefer explicit barWidth; if targetWidth given, fit barcode into it
+    let barW = opts.barWidth || 2;
+    const quietMods = Math.max(10, opts.quiet || 10); // Code128 needs ≥10 modules quiet zone
+    const modules = bits.length + quietMods * 2;
+    if (opts.targetWidth && modules > 0) {
+      barW = Math.max(1.2, opts.targetWidth / modules); // never thinner than 1.2 CSS px per module
+    }
+    barW = Math.max(1.2, barW);
     const showText = opts.text !== false;
     const label = opts.label || '';
-    const quiet = 10;
+    const quiet = quietMods * barW;
+    // Build crisp rects (no anti-aliased path strokes) — critical for scanner readability
     let x = quiet;
-    let paths = '';
-    for (let i = 0; i < bits.length; i++) {
-      if (bits[i] === '1') paths += `M${x},0h${barW}v${h}h-${barW}z`;
-      x += barW;
+    let rects = '';
+    let i = 0;
+    while (i < bits.length) {
+      if (bits[i] === '1') {
+        let j = i;
+        while (j < bits.length && bits[j] === '1') j++;
+        const bw = (j - i) * barW;
+        // snap to 0.1 to reduce sub-pixel blur when scaled in print
+        const rx = Math.round(x * 10) / 10;
+        const rw = Math.round(bw * 10) / 10;
+        rects += `<rect x="${rx}" y="0" width="${rw}" height="${h}" fill="#000"/>`;
+        x += bw;
+        i = j;
+      } else {
+        x += barW;
+        i++;
+      }
     }
-    const w = x + quiet;
-    const textH = showText ? 16 : 0;
-    const totalH = h + textH + (label ? 18 : 0);
-    let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${totalH}" viewBox="0 0 ${w} ${totalH}">`;
-    if (label) svg += `<text x="${w / 2}" y="14" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" font-weight="600">${escXml(label)}</text>`;
-    const yOff = label ? 18 : 0;
-    svg += `<g transform="translate(0,${yOff})"><path d="${paths}" fill="#000"/></g>`;
+    const w = Math.ceil(x + quiet);
+    const textH = showText ? 18 : 0;
+    const topH = label ? 18 : 0;
+    const totalH = h + textH + topH;
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${totalH}" viewBox="0 0 ${w} ${totalH}" shape-rendering="crispEdges">`;
+    svg += `<rect width="${w}" height="${totalH}" fill="#fff"/>`; // solid white — scanners need contrast
+    if (label) svg += `<text x="${w / 2}" y="14" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#000">${escXml(label)}</text>`;
+    const yOff = topH;
+    svg += `<g transform="translate(0,${yOff})">${rects}</g>`;
     if (showText && opts.value) {
-      svg += `<text x="${w / 2}" y="${yOff + h + 13}" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11">${escXml(opts.value)}</text>`;
+      svg += `<text x="${w / 2}" y="${yOff + h + 14}" text-anchor="middle" font-family="ui-monospace,monospace" font-size="12" font-weight="600" fill="#000">${escXml(opts.value)}</text>`;
     }
     svg += '</svg>';
     return svg;
@@ -232,16 +255,17 @@
     format = (format || 'code128').toLowerCase();
     value = String(value || '').trim();
     if (!value) value = '0';
+    // Defaults tuned for thermal/inkjet sticker printers (≥0.25 mm module when scaled)
     if (format === 'ean13') {
       const { bits, text } = ean13Bits(value);
-      return bitsToSvg(bits, Object.assign({ value: text, height: 50, barWidth: 1.8 }, opts));
+      return bitsToSvg(bits, Object.assign({ value: text, height: 60, barWidth: 2.2, quiet: 11 }, opts));
     }
     if (format === 'qr' || format === 'qrcode') {
-      return qrSvg(value, Object.assign({ module: 4, value }, opts)) || bitsToSvg(code128B(value.slice(0, 40)), Object.assign({ value: value.slice(0, 40), height: 55, barWidth: 1.4 }, opts));
+      return qrSvg(value, Object.assign({ module: 5, value }, opts)) || bitsToSvg(code128B(value.slice(0, 40)), Object.assign({ value: value.slice(0, 40), height: 60, barWidth: 2 }, opts));
     }
     // default code128
     const bits = code128B(value);
-    return bitsToSvg(bits, Object.assign({ value, height: 55, barWidth: 1.4 }, opts));
+    return bitsToSvg(bits, Object.assign({ value, height: 60, barWidth: 2, quiet: 11 }, opts));
   }
 
   function uniqueCode(prefix, nextNum) {
