@@ -304,7 +304,7 @@
     else {
       ok = false;
       mod = n >= 1 ? n * dot : Math.max(0.05, maxW / modsW);
-      note = (note ? note + ' · ' : '') + 'Label is too small for this code — bars are thin and may not scan. Use a bigger label, a shorter code, or QR.';
+      note = (note ? note + ' · ' : '') + (qr ? 'Label is too small for this QR — modules are tiny and may not scan. Use a bigger label or a shorter text.' : 'Label is too small for this code — bars are thin and may not scan. Use a bigger label, a shorter code, or QR.');
     }
     let svg, sym;
     if (qr) {

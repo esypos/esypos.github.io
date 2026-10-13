@@ -211,6 +211,10 @@ ol.guide{padding-left:20px;margin:0;line-height:1.75}ol.guide li{margin-bottom:6
 .search-wrap:focus-within{box-shadow:0 0 0 3px var(--ring)}
 .scan-ready{display:none;align-items:center;gap:6px;font-size:12px;color:var(--muted);padding:4px 10px;border-radius:99px;background:var(--input);border:1px solid var(--border);white-space:nowrap}
 .scan-ready i{color:var(--ok);font-size:11px}
+.scan-ready{transition:background .2s,border-color .2s,color .2s}
+.scan-ready.hit{background:var(--oksoft);border-color:var(--ok);color:var(--ok);font-weight:600}
+.scan-ready.miss{background:var(--badsoft);border-color:var(--bad);color:var(--bad);font-weight:600}
+.scan-ready.miss i{color:var(--bad)}
 .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:8px}
 .pcard{background:var(--card);border:1px solid var(--border);border-radius:var(--r-lg);padding:8px;cursor:pointer;box-shadow:var(--shadow);position:relative;overflow:hidden;-webkit-user-select:none;user-select:none;
   animation:rise .38s var(--ease) backwards;transition:transform .2s var(--ease),box-shadow .25s,border-color .2s,background .2s}

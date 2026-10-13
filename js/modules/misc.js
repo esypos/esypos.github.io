@@ -360,7 +360,7 @@
     /* Send labels to the printer: straight to a connected label printer (exact paper size, whole-dot bars) when a
        printer profile with direct printing is set up; otherwise through the browser print dialog (sized from the profile). */
     async output(jobs, size) {
-      if (window.LP && LP.canDirect()) {
+      if (window.LP && LP.canDirect() && (DB.settings.labelMode || 'roll') !== 'sheet') {
         try { await LP.printJobs(jobs, size); return true; }
         catch (e) { console.error(e); toast('⚠️ Direct print failed: ' + (e && e.message || e) + ' — using browser print'); }
       }
@@ -412,7 +412,7 @@
       const extra = vals.length > 12 ? `<div class="xs muted tc mt2">+${vals.length - 12} more on print</div>` : '';
       const zoom = Math.max(1, Math.min(2, Math.round(((box.clientWidth || 320) - 36) / (size.w * 3.7795) * 20) / 20));
       box.innerHTML = `<div class="bc-sheet" style="zoom:${zoom}">${labels.join('')}</div>${extra}`;
-      if (noteEl) noteEl.textContent = note;
+      if (noteEl) { noteEl.textContent = note; const tooSmall = vals.some(v => !BarcodeGen.render(v, s.fmt, { maxW: size.w - 2, maxH: Math.max(8, size.h - 2), dpi: DB.settings.printerDpi || 203 }).ok); noteEl.classList.toggle('bad', tooSmall); noteEl.classList.toggle('warn', !tooSmall); }
     },
 
     print() {

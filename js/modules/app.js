@@ -169,7 +169,9 @@
     more() { this.limit += 120; this.renderGrid(); },
     findByBarcode(code) {
       const key = window.BarcodeGen ? BarcodeGen.normKey : (x => { x = String(x == null ? '' : x).trim(); return /^\d{12,13}$/.test(x) ? x.padStart(13, '0') : x.toUpperCase(); });
-      const k = key(code); if (!k) return null;
+      let c = String(code == null ? '' : code).replace(/[\u0000-\u001F\u007F]/g, '').trim();
+      c = c.replace(/^\][A-Za-z][0-9A-Za-z]/, '');            // AIM symbology identifier (e.g. "]C1") that some scanners prepend
+      const k = key(c); if (!k) return null;
       return DB.products.find(p => p.barcode && key(p.barcode) === k) || null;
     },
     enter() {
@@ -178,7 +180,7 @@
       const list = this.filtered();
       const p = exact || (list.length === 1 ? list[0] : null);
       if (p) { this.add(p.id); this.q = ''; const s = $('pos-search'); if (s) { s.value = ''; s.focus(); } this.renderGrid(); }
-      else toast('Multiple or no match');
+      else toast(list.length ? list.length + ' products match — type more or tap one' : '⚠️ No product found: ' + q);
     },
     scan() {
       if (!window.Scanner || Scanner.isOpen()) return;
@@ -768,64 +770,79 @@
     }
   });
   (function setupWedgeScanner() {
-    let buf = '', last = 0, timer = null;
-    const GAP = 150, MIN_LEN = 3, RESET = 120;   // Bluetooth scanners can pause >80 ms between characters
-    function isTypingTarget(el) {
+    /* A USB / Bluetooth scanner "types" the code like a very fast keyboard (a few ms per character), usually ending with Enter or Tab.
+       Some scanners send NO ending key, so a scan is also finished after a short silence. Human typing is never treated as a scan:
+       only a burst whose average speed is far faster than a person can type counts. When the code matches a product it is added to
+       the cart straight away — no click, no Enter — wherever the cursor happens to be on the POS screen. */
+    const MAX_GAP = 120, FAST_AVG = 70, IDLE = 90, MIN_LEN = 3;
+    let buf = '', t0 = 0, last = 0, timer = null, startEl = null, startVal = '';
+    const $s = () => document.getElementById('pos-search');
+    const blocked = () => !!document.querySelector('.modal-back, .ui-confirm-backdrop, .lock, .scan');
+    const isText = el => !!el && el.tagName === 'INPUT' && /^(text|search|number|tel|email|url|password|)$/i.test(el.type || '');
+    function isTypingTarget(el) {                       // fields where a person is really typing (the search box is NOT one: scans go there)
       if (!el) return false;
       const t = (el.tagName || '').toLowerCase();
-      if (t === 'textarea' || t === 'select') return true;
-      if (t === 'input') {
-        const ty = (el.type || '').toLowerCase();
-        if (el.id === 'pos-search') return false;
-        return ty !== 'button' && ty !== 'checkbox' && ty !== 'radio' && ty !== 'submit';
-      }
-      if (el.isContentEditable) return true;
+      if (t === 'textarea' || t === 'select' || el.isContentEditable) return true;
+      if (t === 'input') { if (el.id === 'pos-search') return false; const ty = (el.type || '').toLowerCase(); return ty !== 'button' && ty !== 'checkbox' && ty !== 'radio' && ty !== 'submit'; }
       return false;
     }
-    function flush() {
-      let code = buf.trim(); buf = '';
-      const ps = document.getElementById('pos-search');
-      // when the search box has focus it already holds the complete scan (even if the key timing was irregular)
-      if (ps && document.activeElement === ps && ps.value.trim().length >= code.length) code = ps.value.trim();
-      if (timer) { clearTimeout(timer); timer = null; }
-      if (code.length < MIN_LEN) return;
-      if (App.view !== 'pos') return;
-      if (window.Scanner && Scanner.isOpen && Scanner.isOpen()) return;
-      if (document.querySelector('.modal-back, .ui-confirm-backdrop, .scan')) return;
-      const p = POS.findByBarcode(code);
+    const fastBurst = () => buf.length >= MIN_LEN && (last - t0) / (buf.length - 1) <= FAST_AVG;
+    function indicator(kind, code) {
+      const el = document.querySelector('.scan-ready'); if (!el) return;
+      el.classList.remove('hit', 'miss'); void el.offsetWidth; el.classList.add(kind);
+      el.title = (kind === 'hit' ? 'Scanned: ' : 'Not found: ') + code;
+      clearTimeout(indicator._t); indicator._t = setTimeout(() => el.classList.remove('hit', 'miss'), 1400);
+    }
+    function reset() { buf = ''; t0 = last = 0; startEl = null; startVal = ''; if (timer) { clearTimeout(timer); timer = null; } }
+    function finish(viaKey) {
+      const fast = fastBurst(), typed = buf, el = startEl, before = startVal, ps = $s();
+      reset();
+      if (!fast || App.view !== 'pos' || blocked() || (window.Scanner && Scanner.isOpen && Scanner.isOpen())) return false;
+      // candidate codes: the burst itself, what the search box gained during the burst, then the whole box (irregular key timing)
+      const cands = [typed.trim()];
+      if (el && el.value !== undefined && el.value.startsWith(before) && el.value.length > before.length) cands.push(el.value.slice(before.length).trim());
+      if (ps && document.activeElement === ps) cands.push(ps.value.trim());
+      let p = null, used = typed.trim();
+      for (const c of cands) { if (c.length >= MIN_LEN && (p = POS.findByBarcode(c))) { used = c; break; } }
       if (p) {
+        if (el && el !== ps && isText(el)) { el.value = before; try { el.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {} }   // undo the digits typed into another field
+        POS.q = ''; if (ps) ps.value = '';
         POS.add(p.id, true, { picked: true });
-        POS.q = '';
-        const s = document.getElementById('pos-search');
-        if (s) s.value = '';
-        try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (_) {}
+        POS.renderGrid();
+        if (ps && window.matchMedia && matchMedia('(hover:hover)').matches) { try { ps.focus(); } catch (_) {} }   // desktop: stay ready for the next scan; phones: no keyboard pop-up
+        else { try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (_) {} }
         try { window.Sound && window.Sound.play && window.Sound.play('ok'); } catch (_) {}
-      } else {
-        toast('⚠️ Barcode not found: ' + code);
-        try { window.Sound && window.Sound.play && window.Sound.play('err'); } catch (_) {}
+        indicator('hit', used);
+        return true;
       }
+      // Looks like a barcode (has a digit, no spaces) but matches no product → report it. Anything else (a product NAME typed
+      // quickly) is left alone so the normal search / Enter behaviour still works.
+      if (/^(?=.*\d)[\w\-./]{4,}$/.test(used) && (viaKey || used.length >= 6)) {
+        if (ps && ps.value) { ps.value = ''; POS.q = ''; POS.renderGrid(); }
+        toast('⚠️ Barcode not found: ' + used);
+        try { window.Sound && window.Sound.play && window.Sound.play('err'); } catch (_) {}
+        indicator('miss', used);
+        return false;
+      }
+      return viaKey ? 'pass' : false;
     }
     document.addEventListener('keydown', e => {
-      if (App.view !== 'pos') return;
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-      if (isTypingTarget(document.activeElement) && document.activeElement && document.activeElement.id !== 'pos-search') return;
-      if (document.querySelector('.modal-back, .ui-confirm-backdrop, .scan')) return;
-      const now = Date.now();
-      if (now - last > GAP) buf = '';
-      last = now;
-      if (e.key === 'Enter') {
-        if (buf.length >= MIN_LEN) {
-          e.preventDefault();
-          e.stopPropagation();
-          flush();
-        }
+      if (App.view !== 'pos' || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
+      const ae = document.activeElement;
+      if (blocked()) { reset(); return; }
+      const now = performance.now();
+      if (buf && now - last > MAX_GAP) reset();
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        if (fastBurst()) { const r = finish(true); if (r !== 'pass') { e.preventDefault(); e.stopPropagation(); } } else reset();
         return;
       }
-      if (e.key.length === 1) {
-        buf += e.key;
-        if (timer) clearTimeout(timer);
-        timer = setTimeout(() => { buf = ''; }, RESET * 3);
-      }
+      if (!e.key || e.key.length !== 1) return;
+      if (isTypingTarget(ae) && !isText(ae)) { reset(); return; }               // textarea / select / contenteditable: never a scan
+      if (!buf) { t0 = now; startEl = isText(ae) ? ae : null; startVal = startEl ? startEl.value : ''; }
+      buf += e.key; last = now;
+      if (e.key === ' ' && buf.length > 2 && fastBurst()) e.preventDefault();       // a space inside a code must not "click" a focused button
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => { if (fastBurst()) finish(false); else reset(); }, IDLE);
     }, true);
   })();
 })();

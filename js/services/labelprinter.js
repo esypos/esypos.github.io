@@ -1,4 +1,4 @@
-/* EsyPOS Printer profile + direct label printing (v10.7.5)
+/* EsyPOS Printer profile + direct label printing (v10.7.6)
    A web page cannot ask the operating system "which paper is loaded?", so EsyPOS keeps a PRINTER PROFILE:
      1. connect the printer once (USB or Bluetooth) → the model is recognised and sensible defaults are filled in
         (type, resolution, paper size; Zebra printers also report their configured label length);
@@ -75,11 +75,23 @@
     }
   };
   const BT = {
+    chunk: 0,
     ok() { return !!navigator.bluetooth; },
     async write(bytes) {
       if (!window.Printer) throw new Error('Bluetooth module missing');
       if (!Printer.isConnected()) { const ok = await Printer.connect(); if (!ok) throw new Error('Bluetooth printer not connected'); }
-      await Printer.write(bytes);
+      const ch = Printer.ch; let size = BT.chunk || 100, i = 0;
+      while (i < bytes.length) {
+        const part = bytes.slice(i, i + size);
+        try {
+          if (ch.properties.writeWithoutResponse) await ch.writeValueWithoutResponse(part); else await ch.writeValue(part);
+        } catch (e) {
+          if (size > 20) { size = size > 100 ? 100 : 20; BT.chunk = size; continue; }   // retry the same part with a smaller chunk
+          throw e;
+        }
+        i += part.length;
+        await new Promise(r => setTimeout(r, size > 20 ? 18 : 30));
+      }
     }
   };
   const transport = p => (p && p.transport === 'usb' ? USB : p && p.transport === 'bt' ? BT : null);
@@ -102,7 +114,7 @@
     return out.map(l => fit(ctx, l, maxPx));
   }
   function raster(spec, dpi, size) {
-    const k = dpi / 25.4, W = Math.round(size.w * k), H = Math.round(size.h * k);
+    const k = (Math.round(dpi) === 203 ? 203.2 : dpi) / 25.4, W = Math.ceil(Math.round(size.w * k) / 8) * 8, H = Math.round(size.h * k);   // width = whole bytes, so no stray padding bits
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = '#000'; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'center';
     const r = spec.r, sym = r.sym;
@@ -148,9 +160,13 @@
   const cat = parts => { const n = parts.reduce((a, b) => a + b.length, 0), o = new Uint8Array(n); let i = 0; parts.forEach(b => { o.set(b, i); i += b.length; }); return o; };
   function mono(cv, black) {        // -> {wb, H, rows:Uint8Array} with bit=1 where `black` says so
     const W = cv.width, H = cv.height, wb = Math.ceil(W / 8), id = cv.getContext('2d').getImageData(0, 0, W, H).data, out = new Uint8Array(wb * H);
+    // `black` = the bit value that prints a dot. Start every bit at the WHITE value (so right-edge padding bits never print),
+    // then set/clear the bit for each black pixel.
+    if (!black) out.fill(0xFF);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const o = (y * W + x) * 4, lum = (id[o] * 0.299 + id[o + 1] * 0.587 + id[o + 2] * 0.114), isBlack = lum < 140 && id[o + 3] > 40;
-      if (isBlack === black) out[y * wb + (x >> 3)] |= 0x80 >> (x & 7);
+      if (!isBlack) continue;
+      if (black) out[y * wb + (x >> 3)] |= 0x80 >> (x & 7); else out[y * wb + (x >> 3)] &= ~(0x80 >> (x & 7));
     }
     return { wb, H, rows: out };
   }
@@ -263,7 +279,7 @@
           <div id="lp-rc-box" class="field hidden"><label class="label">Receipt paper width</label><select id="lp-paper" class="input"><option value="58" ${+d.paper === 58 ? 'selected' : ''}>58 mm</option><option value="80" ${+d.paper === 80 ? 'selected' : ''}>80 mm</option></select></div>
           <div class="field"><label class="label">Sending method</label><select id="lp-direct" class="input"><option value="1" ${d.direct && d.transport !== 'browser' ? 'selected' : ''}>Direct to printer — exact size, sharpest bars (recommended)</option><option value="0" ${d.direct && d.transport !== 'browser' ? '' : 'selected'}>Browser print dialog (uses this paper size)</option></select></div>
           <label class="check-pill mb2"><input type="checkbox" id="lp-inv" ${d.invert ? 'checked' : ''}><span class="xs">Labels print inverted or blank on test → tick this</span></label>
-          <p class="xs muted">Tip: after saving, press <b>Test print</b> and scan the sticker with your scanner.</p>`,
+          <div class="field"><label class="label">Scan check <span class="muted xs fw4">(after Test print, scan the sticker here)</span></label><input id="lp-scan" class="input" autocomplete="off" placeholder="Click here, then scan the test sticker"><p class="xs mt1" id="lp-scan-res"></p></div>`,
         foot: '<button class="btn" data-x>Close</button><button class="btn btn-soft" id="lp-test">Test print</button><button class="btn btn-primary" id="lp-save"><i class="fas fa-floppy-disk"></i> Save</button>'
       });
       const g = id => m.querySelector('#' + id);
@@ -289,6 +305,15 @@
         await Barcodes.output([{ r, copies: 1 }], size);
       };
       m.querySelector('[data-x]').onclick = () => Modal.close(m);
+      const sc = g('lp-scan'), scr = g('lp-scan-res'); let st = null;
+      const check = () => {
+        const v = sc.value.trim(); if (!v) { scr.textContent = ''; return; }
+        const ok = BarcodeGen.normKey(v) === BarcodeGen.normKey('TEST123456');
+        scr.className = 'xs mt1 ' + (ok ? 'ok' : 'bad');
+        scr.textContent = ok ? '✓ Scanner reads the sticker correctly (TEST123456)' : '✗ Scanner read "' + v + '" — expected TEST123456. Try a bigger label, 300 dpi, or tick the inverted option.';
+      };
+      sc.oninput = () => { clearTimeout(st); st = setTimeout(check, 250); };
+      sc.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(st); check(); } };
     }
   };
 })();

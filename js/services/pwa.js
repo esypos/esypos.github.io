@@ -1,7 +1,7 @@
 /* PWA: versioned offline cache, safe updates (never interrupts a sale), install + offline badge */
 (function () {
   'use strict';
-  const CACHE_VERSION = 'v10.7.1';   // keep in sync with sw.js
+  const CACHE_VERSION = 'v10.7.6';   // MUST equal sw.js — if they differ, clearOldCaches() deletes the live offline cache
   // Delete caches from OLDER versions only — the current offline cache must survive.
   async function clearOldCaches() {
     if (!('caches' in window)) return;
