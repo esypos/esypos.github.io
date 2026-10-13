@@ -234,6 +234,7 @@
   ];
 
   const Barcodes = window.Barcodes = {
+    SIZES,
     state: {
       value: '', name: '', price: '', fmt: 'code128', size: '50x30',
       customW: 50, customH: 30, copies: 1, showName: true, showPrice: true,
@@ -321,41 +322,42 @@
       toast('✓ Loaded: ' + p.name);
     },
 
-    buildLabel(value, name, price, fmt, size) {
-      let f = fmt, note = '';
+    /* One sticker. Everything is laid out in real millimetres so the barcode is printed at an exact size:
+       the barcode gets whatever height/width is left after the optional shop/name/price lines. */
+    buildLabel(value, name, price, fmt, size, opt) {
       if (!window.BarcodeGen) return { html: '', note: 'Engine missing' };
-      if (f === 'ean13' && !BarcodeGen.isEan13Input(value)) { f = 'code128'; note = 'EAN-13 needs 12–13 digits — Code 128 used'; }
-      if (f === 'code128' && BarcodeGen.hasNonAscii(value)) { f = 'qr'; note = 'Non-ASCII text — QR used'; }
-      // Physical height of bars in mm (from UI preset), leave room for name/price text
-      const barHmm = Math.max(8, Math.min(28, this.state.barH || 18));
-      const hasText = (this.state.showName && name) || (this.state.showPrice && price !== '' && price != null) || (this.state.showShop && (DB.settings.shopName || '').trim());
-      const usableHmm = Math.max(10, size.h - (hasText ? 8 : 3));
-      const barHeightPx = Math.round(Math.min(barHmm, usableHmm) * 3.78); // ~96dpi px for SVG
-      // Fit barcode across ~92% of label width so modules stay thick enough to scan
-      const targetW = Math.round(size.w * 0.92 * 3.78);
-      const svgOpts = {
-        value,
-        height: Math.max(36, barHeightPx),
-        text: true,
-        quiet: 11,
-        targetWidth: targetW,
-        module: size.w >= 60 ? 5 : 4
-      };
-      // For linear codes prefer targetWidth so thin bars never go below ~0.25mm when printed
-      const svg = BarcodeGen.generate(value, f, svgOpts);
+      const o = Object.assign({}, this.state, opt || {});
       const shop = (DB.settings.shopName || '').trim();
+      const showShop = !!(o.showShop && shop), showName = !!(o.showName && name);
+      const showPrice = !!(o.showPrice && price !== '' && price != null);
+      const nameLines = size.h >= 40 ? 2 : 1;
+      let used = 2;                                              // 1 mm padding top + bottom
+      if (showShop) used += 3;
+      if (showName) used += 3.2 * nameLines;
+      if (showPrice) used += 3.8;
+      const r = BarcodeGen.render(value, fmt, {
+        maxW: size.w - 2, maxH: Math.max(8, size.h - used), barH: o.barH || 18,
+        dpi: DB.settings.printerDpi || 203, text: true
+      });
       const parts = [];
-      if (this.state.showShop && shop) parts.push(`<div class="bl-shop">${esc(shop)}</div>`);
-      if (this.state.showName && name) parts.push(`<div class="bl-name">${esc(name)}</div>`);
-      parts.push(`<div class="bl-svg">${svg}</div>`);
-      if (this.state.showPrice && price !== '' && price != null) {
+      if (showShop) parts.push(`<div class="bl-shop">${esc(shop)}</div>`);
+      if (showName) parts.push(`<div class="bl-name" style="${nameLines > 1 ? 'max-height:6.4mm' : 'height:3.2mm;white-space:nowrap;text-overflow:ellipsis'}">${esc(name)}</div>`);
+      parts.push(`<div class="bl-svg">${r.svg}</div>`);
+      if (showPrice) {
         const pr = parseFloat(price);
         parts.push(`<div class="bl-price">${isNaN(pr) ? esc(String(price)) : esc(money(pr))}</div>`);
       }
       return {
         html: `<div class="bl-label" style="width:${size.w}mm;height:${size.h}mm">${parts.join('')}</div>`,
-        note, fmt: f
+        note: r.note, fmt: r.fmt, ok: r.ok
       };
+    },
+
+    savePrint() {
+      const m = $('bc-mode'), d = $('bc-dpi');
+      if (m) DB.settings.labelMode = m.value === 'sheet' ? 'sheet' : 'roll';
+      if (d) DB.settings.printerDpi = parseInt(d.value, 10) || 203;
+      C.save('settings'); this.preview();
     },
 
     valuesList() {
@@ -393,7 +395,8 @@
         return r.html;
       });
       const extra = vals.length > 12 ? `<div class="xs muted tc mt2">+${vals.length - 12} more on print</div>` : '';
-      box.innerHTML = `<div class="bc-sheet">${labels.join('')}</div>${extra}`;
+      const zoom = Math.max(1, Math.min(2, Math.round(((box.clientWidth || 320) - 36) / (size.w * 3.7795) * 20) / 20));
+      box.innerHTML = `<div class="bc-sheet" style="zoom:${zoom}">${labels.join('')}</div>${extra}`;
       if (noteEl) noteEl.textContent = note;
     },
 
@@ -406,35 +409,14 @@
       const s = this.state;
       const copies = s.sequential ? 1 : s.copies;
       const all = [];
+      let warn = '';
       vals.forEach(v => {
         const r = this.buildLabel(v, s.name, s.price, s.fmt, size);
+        if (r.note && !r.ok) warn = r.note;
         for (let i = 0; i < copies; i++) all.push(r.html);
       });
-      const css = `
-        @page{margin:2mm;size:auto}
-        *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
-        html,body{margin:0;padding:0;font-family:system-ui,-apple-system,sans-serif;color:#000;background:#fff}
-        .sheet{display:flex;flex-wrap:wrap;align-content:flex-start;gap:1mm}
-        .bl-label{
-          width:${size.w}mm;height:${size.h}mm;
-          display:flex;flex-direction:column;align-items:center;justify-content:center;
-          text-align:center;overflow:hidden;page-break-inside:avoid;border:0;
-          padding:1mm 1.5mm;background:#fff;color:#000
-        }
-        .bl-shop{font-size:7.5pt;font-weight:600;line-height:1.1;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-        .bl-name{font-size:${size.h >= 40 ? 9 : 7.5}pt;font-weight:700;line-height:1.15;max-width:100%;max-height:2.3em;overflow:hidden;margin-bottom:0.4mm}
-        .bl-svg{width:100%;flex:1 1 auto;display:flex;align-items:center;justify-content:center;min-height:0;overflow:hidden}
-        .bl-svg svg{
-          width:100%!important;height:auto!important;max-height:100%;
-          display:block;shape-rendering:crispEdges;image-rendering:pixelated
-        }
-        .bl-price{font-size:${size.h >= 40 ? 11 : 9}pt;font-weight:800;line-height:1.1;margin-top:0.3mm}
-        @media print{
-          body{margin:0}
-          .bl-label{break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-        }
-      `;
-      printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Barcode Labels</title><style>${css}</style></head><body><div class="sheet">${all.join('')}</div></body></html>`);
+      printHTML(BarcodeGen.printDoc(all.join(''), size.w, size.h, DB.settings.labelMode || 'roll'));
+      if (warn) toast('⚠️ ' + warn);
       toast('✓ Sent ' + all.length + ' label(s) to printer');
     },
 
@@ -511,6 +493,22 @@
             </div>
           </div>
 
+          <div class="grid2">
+            <div class="field"><label class="label">Print on</label>
+              <select id="bc-mode" class="input" onchange="Barcodes.savePrint()">
+                <option value="roll"${(DB.settings.labelMode || 'roll') === 'roll' ? ' selected' : ''}>Sticker roll (1 label per page)</option>
+                <option value="sheet"${DB.settings.labelMode === 'sheet' ? ' selected' : ''}>A4 sheet (many per page)</option>
+              </select>
+            </div>
+            <div class="field"><label class="label">Printer resolution</label>
+              <select id="bc-dpi" class="input" onchange="Barcodes.savePrint()">
+                <option value="203"${(DB.settings.printerDpi || 203) == 203 ? ' selected' : ''}>203 dpi (most sticker printers)</option>
+                <option value="300"${DB.settings.printerDpi == 300 ? ' selected' : ''}>300 dpi</option>
+                <option value="600"${DB.settings.printerDpi == 600 ? ' selected' : ''}>600 dpi (laser / inkjet)</option>
+              </select>
+            </div>
+          </div>
+
           <div class="field mt2">
             <label class="check-pill"><input type="checkbox" id="bc-seq"${s.sequential ? ' checked' : ''} onchange="Barcodes.preview()"><span class="sm fw6">Sequential codes <span class="muted xs fw4">(ESY0001 → ESY0002…)</span></span></label>
           </div>
@@ -523,7 +521,7 @@
             <button type="button" class="btn btn-primary grow" onclick="Barcodes.print()"><i class="fas fa-print"></i> Print labels</button>
             <button type="button" class="btn btn-soft" onclick="Barcodes.genOne()"><i class="fas fa-plus"></i> Generate</button>
           </div>
-          <p class="xs muted mt2"><i class="fas fa-circle-question"></i> Works with any printer — thermal sticker, laser or inkjet. Match paper size in the print dialog.</p>
+          <p class="xs muted mt2"><i class="fas fa-circle-question"></i> In the print dialog choose your label size as paper, set <b>Margins: None</b> and <b>Scale: 100%</b> (not "Fit to page"). The preview is only for checking the layout — scan the printed sticker.</p>
         </div>
 
         <div class="card pad bc-prev-card">

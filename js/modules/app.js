@@ -168,7 +168,7 @@
     setCat(c) { this.cat = c; this.limit = 120; this.renderCats(); this.renderGrid(); },
     more() { this.limit += 120; this.renderGrid(); },
     findByBarcode(code) {
-      const key = x => { x = String(x == null ? '' : x).trim(); return /^\d{12,13}$/.test(x) ? x.padStart(13, '0') : x; };
+      const key = window.BarcodeGen ? BarcodeGen.normKey : (x => { x = String(x == null ? '' : x).trim(); return /^\d{12,13}$/.test(x) ? x.padStart(13, '0') : x.toUpperCase(); });
       const k = key(code); if (!k) return null;
       return DB.products.find(p => p.barcode && key(p.barcode) === k) || null;
     },
@@ -537,7 +537,7 @@
     },
     bcHint() {
       const h = $('pf-bc-hint'); if (!h) return; const f = ($('pf-bcfmt') && $('pf-bcfmt').value) || 'code128';
-      h.textContent = f === 'ean13' ? 'EAN-13: 13 digits, check digit added automatically' : f === 'qr' ? 'QR: any text, scannable by phone camera' : 'Code 128: letters + numbers, prefix from Settings';
+      h.textContent = f === 'ean13' ? 'EAN-13: needs a valid 13-digit number (use Gen). Any other number is printed as Code 128 so it scans back exactly as stored' : f === 'qr' ? 'QR: any text, scannable by phone camera' : 'Code 128: letters + numbers, prefix from Settings';
     },
     usedBarcodes() { const me = this._editId || ''; return new Set(DB.products.filter(x => x.id !== me && x.barcode).map(x => BarcodeGen.normKey(x.barcode))); },
     genBC() {
@@ -553,40 +553,39 @@
       DB.settings.nextBarcode = n; C.save('settings');
       toast('✓ Barcode generated: ' + code);
     },
-    labelHTML(name, price, bc, fmt) {
-      let f = fmt, note = '';
-      if (f === 'ean13' && !BarcodeGen.isEan13Input(bc)) { f = 'code128'; note = 'EAN-13 needs 12–13 digits — shown as Code 128'; }
-      if (f === 'code128' && BarcodeGen.hasNonAscii(bc)) { f = 'qr'; note = 'Code 128 cannot hold this text — shown as QR'; }
-      // Thick modules + white bg for reliable scanning on thermal stickers
-      const svg = BarcodeGen.generate(bc, f, { value: bc, height: 56, barWidth: 2.2, quiet: 11, targetWidth: 180, text: true });
-      return { note, html: `<div class="lbl"><div class="lbl-n">${esc(name)}</div>${svg}<div class="lbl-p">${esc(money(price))}</div></div>` };
-    },
     printLabel() {
       const name = ($('pf-name') && $('pf-name').value.trim()) || 'Product';
       const price = parseFloat(($('pf-price') && $('pf-price').value) || 0) || 0;
       const bc = ($('pf-bc') && $('pf-bc').value.trim()) || '';
       const fmt0 = ($('pf-bcfmt') && $('pf-bcfmt').value) || 'code128';
       if (!bc) { toast('⚠️ Enter or generate a barcode first'); return; }
-      if (!window.BarcodeGen) { toast('⚠️ Barcode engine not loaded'); return; }
+      if (!window.BarcodeGen || !window.Barcodes) { toast('⚠️ Barcode engine not loaded'); return; }
+      const sizes = Barcodes.SIZES.filter(x => x.id !== 'custom'), sz0 = DB.settings.labelSize || '50x30';
+      const dpi0 = DB.settings.printerDpi || 203, mode0 = DB.settings.labelMode || 'roll';
       const m = Modal.open({ title: 'Barcode label', body: `
-        <div class="lbl-prev" id="lbl-prev"></div><p class="xs warn tc mt2" id="lbl-note"></p>
+        <div class="lbl-prev" id="lbl-prev" style="overflow:auto"></div><p class="xs warn tc mt2" id="lbl-note"></p>
         <div class="grid2 mt3"><div class="field"><label class="label">Format</label><select id="lbl-fmt" class="input"><option value="code128">Code 128</option><option value="ean13">EAN-13</option><option value="qr">QR Code</option></select></div>
-          <div class="field"><label class="label">Copies</label><input id="lbl-n" type="number" min="1" max="200" value="1" class="input"></div></div>`,
+          <div class="field"><label class="label">Label size</label><select id="lbl-size" class="input">${sizes.map(x => `<option value="${x.id}">${x.label}</option>`).join('')}</select></div></div>
+        <div class="grid2"><div class="field"><label class="label">Copies</label><input id="lbl-n" type="number" min="1" max="200" value="1" class="input"></div>
+          <div class="field"><label class="label">Print on</label><select id="lbl-mode" class="input"><option value="roll">Sticker roll (1 per page)</option><option value="sheet">A4 sheet (many per page)</option></select></div></div>
+        <div class="field"><label class="label">Printer resolution</label><select id="lbl-dpi" class="input"><option value="203">203 dpi (most sticker printers)</option><option value="300">300 dpi</option><option value="600">600 dpi (laser / inkjet)</option></select></div>
+        <p class="xs muted">In the print dialog choose your label size as paper, <b>Margins: None</b>, <b>Scale: 100%</b>. Scan the printed sticker, not the screen preview.</p>`,
         foot: `<button class="btn" onclick="Modal.closeFrom(this)">Close</button><button class="btn btn-primary" id="lbl-print"><i class="fas fa-print"></i> Print</button>` });
-      const fs = m.querySelector('#lbl-fmt'); fs.value = fmt0;
-      const draw = () => { const r = Products.labelHTML(name, price, bc, fs.value); m.querySelector('#lbl-prev').innerHTML = r.html; m.querySelector('#lbl-note').textContent = r.note; return r; };
-      fs.onchange = draw; draw();
+      const fs = m.querySelector('#lbl-fmt'), sel = m.querySelector('#lbl-size'), md = m.querySelector('#lbl-mode'), dp = m.querySelector('#lbl-dpi');
+      fs.value = fmt0; sel.value = sizes.some(x => x.id === sz0) ? sz0 : '50x30'; md.value = mode0; dp.value = String(dpi0);
+      const draw = () => {
+        DB.settings.labelSize = sel.value; DB.settings.labelMode = md.value; DB.settings.printerDpi = parseInt(dp.value, 10) || 203;
+        const size = sizes.find(x => x.id === sel.value) || sizes[1];
+        const r = Barcodes.buildLabel(bc, name, price, fs.value, size, { showName: true, showPrice: true, showShop: false, barH: 18 });
+        const z = Math.max(1, Math.min(2, Math.round(((m.querySelector('#lbl-prev').clientWidth || 300) - 36) / (size.w * 3.7795) * 20) / 20));
+        m.querySelector('#lbl-prev').innerHTML = `<div style="zoom:${z}">${r.html}</div>`; m.querySelector('#lbl-note').textContent = r.note || '';
+        return { r, size };
+      };
+      [fs, sel, md, dp].forEach(el => el.onchange = () => { draw(); C.save('settings'); }); draw();
       m.querySelector('#lbl-print').onclick = () => {
-        const r = draw(); const n = Math.min(200, Math.max(1, parseInt(m.querySelector('#lbl-n').value, 10) || 1));
-        printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Barcode label</title><style>
-          @page{margin:3mm;size:auto}
-          *{-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
-          body{margin:0;font-family:system-ui,sans-serif;color:#000;background:#fff}
-          .lbl{display:inline-block;width:52mm;box-sizing:border-box;padding:2mm;text-align:center;page-break-inside:avoid;vertical-align:top;background:#fff}
-          .lbl-n{font-size:10pt;font-weight:700;line-height:1.2;max-height:2.4em;overflow:hidden}
-          .lbl svg{width:100%;height:auto;display:block;margin:2px 0;shape-rendering:crispEdges;image-rendering:pixelated}
-          .lbl-p{font-size:12pt;font-weight:800}
-          </style></head><body>${r.html.repeat(n)}</body></html>`);
+        const { r, size } = draw(); const n = Math.min(200, Math.max(1, parseInt(m.querySelector('#lbl-n').value, 10) || 1));
+        printHTML(BarcodeGen.printDoc(r.html.repeat(n), size.w, size.h, md.value));
+        if (r.note && !r.ok) toast('⚠️ ' + r.note);
       };
     },
     pickImg(input) {
@@ -770,7 +769,7 @@
   });
   (function setupWedgeScanner() {
     let buf = '', last = 0, timer = null;
-    const GAP = 80, MIN_LEN = 4, RESET = 120;
+    const GAP = 150, MIN_LEN = 3, RESET = 120;   // Bluetooth scanners can pause >80 ms between characters
     function isTypingTarget(el) {
       if (!el) return false;
       const t = (el.tagName || '').toLowerCase();
@@ -784,7 +783,10 @@
       return false;
     }
     function flush() {
-      const code = buf.trim(); buf = '';
+      let code = buf.trim(); buf = '';
+      const ps = document.getElementById('pos-search');
+      // when the search box has focus it already holds the complete scan (even if the key timing was irregular)
+      if (ps && document.activeElement === ps && ps.value.trim().length >= code.length) code = ps.value.trim();
       if (timer) { clearTimeout(timer); timer = null; }
       if (code.length < MIN_LEN) return;
       if (App.view !== 'pos') return;

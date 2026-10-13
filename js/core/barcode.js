@@ -1,9 +1,14 @@
-/* EsyPOS Barcode Generator — pure JS Code128B + simple EAN-13 check + QR-like fallback SVG
-   No external deps. Generates SVG barcodes for labels and product forms. */
+/* EsyPOS Barcode engine — Code 128 (auto subset B/C), EAN-13/UPC-A, QR. Pure JS, offline, no dependencies.
+   v10.7.4 — scan-reliability rewrite:
+   • Code 128 now switches to the compact "subset C" for digit runs (about 15-45% fewer bars → thicker bars on small stickers).
+   • Bars are drawn on an integer module grid and sized in real millimetres, as a whole number of PRINTER DOTS per module
+     (203 dpi thermal → 2 dots = 0.25 mm). Fractional dots are what makes thermal printers smear bars and scanners fail.
+   • EAN-13 is only drawn when the number is a VALID EAN-13/UPC-A. The old code silently re-computed the check digit, so the
+     sticker said one number while the product stored another → "scans but product not found". Invalid numbers now use
+     Code 128 which carries the exact stored text. */
 (function (root) {
   'use strict';
 
-  // Code128B character set (ASCII 32-127) patterns: startB=104, stop=106
   // Each value: 11-module pattern as binary string (1=bar, 0=space)
   const C128 = [
     '11011001100','11001101100','11001100110','10010011000','10010001100','10001001100','10011001000','10011000100','10001100100','11001001000',
@@ -18,31 +23,42 @@
     '11011110110','11110110110','10101111000','10100011110','10001011110','10111101000','10111100010','11110101000','11110100010','10111011110',
     '10111101110','11101011110','11110101110','11010000100','11010010000','11010011100','11000111010'
   ];
-  const START_B = 104, STOP = 106;
+  const START_B = 104, START_C = 105, CODE_B = 100, CODE_C = 99, STOP = 106;
 
-  function code128B(text) {
-    text = String(text || '');
-    if (!text) return '';
-    // Keep printable ASCII
+  /* Optimal Code 128 symbol sequence (dynamic programming over subsets B / C). Printable ASCII only. */
+  function code128Codes(s) {
+    const n = s.length, INF = 1e9;
+    const isD = i => i < n && s.charCodeAt(i) >= 48 && s.charCodeAt(i) <= 57;
+    const cost = [new Array(n + 2).fill(INF), new Array(n + 2).fill(INF)];
+    const dir = [new Array(n + 2).fill(1), new Array(n + 2).fill(1)];   // 1 = encode here, 0 = switch subset first
+    cost[0][n] = 0; cost[1][n] = 0;
+    for (let i = n - 1; i >= 0; i--) {
+      const b = 1 + cost[0][i + 1];                                   // one char in subset B
+      const c = (isD(i) && isD(i + 1)) ? 1 + cost[1][i + 2] : INF;    // a digit pair in subset C
+      if (b <= 1 + c) { cost[0][i] = b; dir[0][i] = 1; } else { cost[0][i] = 1 + c; dir[0][i] = 0; }
+      if (c <= 1 + b) { cost[1][i] = c; dir[1][i] = 1; } else { cost[1][i] = 1 + b; dir[1][i] = 0; }
+    }
+    let mode = cost[0][0] <= cost[1][0] ? 0 : 1, i = 0;
+    const codes = [mode ? START_C : START_B];
+    while (i < n) {
+      if (mode === 0) { if (dir[0][i]) { codes.push(s.charCodeAt(i) - 32); i++; } else { codes.push(CODE_C); mode = 1; } }
+      else { if (dir[1][i]) { codes.push(parseInt(s.substr(i, 2), 10)); i += 2; } else { codes.push(CODE_B); mode = 0; } }
+    }
+    return codes;
+  }
+
+  function code128(text) {
+    text = String(text == null ? '' : text);
     let s = '';
-    for (let i = 0; i < text.length; i++) {
-      const c = text.charCodeAt(i);
-      s += (c >= 32 && c <= 126) ? text[i] : '?';
-    }
+    for (let i = 0; i < text.length; i++) { const c = text.charCodeAt(i); s += (c >= 32 && c <= 126) ? text[i] : '?'; }
     if (!s) s = '0';
-    let sum = START_B;
-    const codes = [START_B];
-    for (let i = 0; i < s.length; i++) {
-      const v = s.charCodeAt(i) - 32;
-      codes.push(v);
-      sum += v * (i + 1);
-    }
-    codes.push(sum % 103);
-    codes.push(STOP);
+    const codes = code128Codes(s);
+    let sum = codes[0];
+    for (let k = 1; k < codes.length; k++) sum += codes[k] * k;
+    codes.push(sum % 103); codes.push(STOP);
     let bits = '';
     codes.forEach(c => { bits += C128[c] || C128[0]; });
-    bits += '11'; // termination bar
-    return bits;
+    return bits + '11';                                                // stop pattern is 13 modules: 11 + final bar
   }
 
   function ean13Check(d12) {
@@ -51,80 +67,63 @@
     for (let i = 0; i < 12; i++) sum += parseInt(d12[i], 10) * (i % 2 === 0 ? 1 : 3);
     return d12 + String((10 - (sum % 10)) % 10);
   }
+  // A number may be drawn as EAN-13 only when its check digit is already correct (13 digits, or a 12-digit UPC-A).
+  function ean13Normalize(v) {
+    v = String(v == null ? '' : v).trim();
+    if (/^\d{13}$/.test(v)) return ean13Check(v.slice(0, 12)) === v ? v : null;
+    if (/^\d{12}$/.test(v)) { const c = '0' + v; return ean13Check(c.slice(0, 12)) === c ? c : null; }
+    return null;
+  }
 
-  // Simple EAN-13 left/right patterns (L & R) — enough for visual labels
   const EAN_L = ['0001101','0011001','0010011','0111101','0100011','0110001','0101111','0111011','0110111','0001011'];
   const EAN_G = ['0100111','0110011','0011011','0100001','0011101','0111001','0000101','0010001','0001001','0010111'];
   const EAN_R = ['1110010','1100110','1101100','1000010','1011100','1001110','1010000','1000100','1001000','1110100'];
   const EAN_PARITY = ['LLLLLL','LLGLGG','LLGGLG','LLGGGL','LGLLGG','LGGLLG','LGGGLL','LGLGLG','LGLGGL','LGGLGL'];
 
-  function ean13Bits(code) {
-    code = ean13Check(code);
-    const first = parseInt(code[0], 10);
-    const parity = EAN_PARITY[first];
+  function ean13Bits(code13) {
+    const first = parseInt(code13[0], 10), parity = EAN_PARITY[first];
     let bits = '101';
-    for (let i = 1; i <= 6; i++) {
-      const d = parseInt(code[i], 10);
-      bits += (parity[i - 1] === 'L' ? EAN_L : EAN_G)[d];
-    }
+    for (let i = 1; i <= 6; i++) bits += (parity[i - 1] === 'L' ? EAN_L : EAN_G)[parseInt(code13[i], 10)];
     bits += '01010';
-    for (let i = 7; i <= 12; i++) bits += EAN_R[parseInt(code[i], 10)];
-    bits += '101';
-    return { bits, text: code };
-  }
-
-  function bitsToSvg(bits, opts) {
-    opts = opts || {};
-    const h = Math.max(20, opts.height || 60);
-    // Module (bar) width: prefer explicit barWidth; if targetWidth given, fit barcode into it
-    let barW = opts.barWidth || 2;
-    const quietMods = Math.max(10, opts.quiet || 10); // Code128 needs ≥10 modules quiet zone
-    const modules = bits.length + quietMods * 2;
-    if (opts.targetWidth && modules > 0) {
-      barW = Math.max(1.2, opts.targetWidth / modules); // never thinner than 1.2 CSS px per module
-    }
-    barW = Math.max(1.2, barW);
-    const showText = opts.text !== false;
-    const label = opts.label || '';
-    const quiet = quietMods * barW;
-    // Build crisp rects (no anti-aliased path strokes) — critical for scanner readability
-    let x = quiet;
-    let rects = '';
-    let i = 0;
-    while (i < bits.length) {
-      if (bits[i] === '1') {
-        let j = i;
-        while (j < bits.length && bits[j] === '1') j++;
-        const bw = (j - i) * barW;
-        // snap to 0.1 to reduce sub-pixel blur when scaled in print
-        const rx = Math.round(x * 10) / 10;
-        const rw = Math.round(bw * 10) / 10;
-        rects += `<rect x="${rx}" y="0" width="${rw}" height="${h}" fill="#000"/>`;
-        x += bw;
-        i = j;
-      } else {
-        x += barW;
-        i++;
-      }
-    }
-    const w = Math.ceil(x + quiet);
-    const textH = showText ? 18 : 0;
-    const topH = label ? 18 : 0;
-    const totalH = h + textH + topH;
-    let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${totalH}" viewBox="0 0 ${w} ${totalH}" shape-rendering="crispEdges">`;
-    svg += `<rect width="${w}" height="${totalH}" fill="#fff"/>`; // solid white — scanners need contrast
-    if (label) svg += `<text x="${w / 2}" y="14" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" font-weight="600" fill="#000">${escXml(label)}</text>`;
-    const yOff = topH;
-    svg += `<g transform="translate(0,${yOff})">${rects}</g>`;
-    if (showText && opts.value) {
-      svg += `<text x="${w / 2}" y="${yOff + h + 14}" text-anchor="middle" font-family="ui-monospace,monospace" font-size="12" font-weight="600" fill="#000">${escXml(opts.value)}</text>`;
-    }
-    svg += '</svg>';
-    return svg;
+    for (let i = 7; i <= 12; i++) bits += EAN_R[parseInt(code13[i], 10)];
+    return bits + '101';
   }
 
   function escXml(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  const r4 = x => Math.round(x * 10000) / 10000;
+
+  /* Human-readable line, sized so it never runs wider than the symbol. Units are module units. */
+  function textLine(value, cx, y, fs, maxW) {
+    value = String(value);
+    const w = value.length * fs * 0.62;
+    if (w > maxW) fs = maxW / (value.length * 0.62);
+    return `<text x="${r4(cx)}" y="${r4(y)}" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="${r4(fs)}" font-weight="600" fill="#000">${escXml(value)}</text>`;
+  }
+
+  /* 1-D symbol. Geometry is an integer module grid (viewBox units = modules); real size comes from width/height.
+     o.mod = size of one module in o.unit ('mm' or 'px'); o.barH, o.textH in the same unit. */
+  function linearSvg(bits, o) {
+    const unit = o.unit || 'px', mod = o.mod, q = Math.max(10, o.quiet || 10);
+    const modsW = bits.length + q * 2;
+    const showText = o.text !== false && o.value != null && o.value !== '';
+    const barHU = r4(o.barH / mod), textHU = showText ? r4((o.textH || o.barH * 0.3) / mod) : 0;
+    let d = '', i = 0;
+    while (i < bits.length) {
+      if (bits[i] === '1') { let j = i; while (j < bits.length && bits[j] === '1') j++; d += `M${q + i},0h${j - i}v${barHU}h-${j - i}z`; i = j; } else i++;
+    }
+    const totH = r4(barHU + textHU);
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${r4(modsW * mod)}${unit}" height="${r4(totH * mod)}${unit}" viewBox="0 0 ${modsW} ${totH}" shape-rendering="crispEdges" preserveAspectRatio="none" data-mods="${modsW}">`;
+    svg += `<rect width="${modsW}" height="${totH}" fill="#fff"/><path d="${d}" fill="#000"/>`;
+    if (showText) svg += textLine(o.value, modsW / 2, barHU + textHU * 0.82, textHU * 0.82, modsW * 0.96);
+    return svg + '</svg>';
+  }
+
+  function bitsToSvg(bits, opts) {          // legacy helper (screen preview): integer pixels per module
+    opts = opts || {};
+    const mod = Math.max(1, Math.round(opts.barWidth || 2));
+    return linearSvg(bits, { unit: 'px', mod, barH: Math.max(20, opts.height || 60), textH: 18, text: opts.text, value: opts.value, quiet: opts.quiet });
   }
 
   /* ---------- Real QR Code encoder (byte mode, ECC level M, versions 1-10, UTF-8) ----------
@@ -235,37 +234,118 @@
     applyMask(best); formatBits(best);
     return { size, version: ver, modules: M };
   }
-  function qrSvg(text, opts) {
-    opts = opts || {};
+
+  /* QR symbol on an integer module grid (same sizing rules as linearSvg). */
+  function qrSvgU(text, o) {
     const q = qrMatrix(text); if (!q) return null;
-    const mod = opts.module || 4, quiet = 4, n = q.size + quiet * 2, px = n * mod;
-    const label = opts.label || '', showText = opts.text !== false && opts.value;
+    const unit = o.unit || 'px', mod = o.mod, quiet = 4, n = q.size + quiet * 2;
+    const showText = o.text !== false && o.value;
+    const textHU = showText ? r4((o.textH || 14) / mod) : 0, totH = r4(n + textHU);
     let d = '';
-    for (let y = 0; y < q.size; y++) { let x = 0; while (x < q.size) { if (!q.modules[y][x]) { x++; continue; } let e = x; while (e < q.size && q.modules[y][e]) e++; d += `M${(x + quiet) * mod},${(y + quiet) * mod}h${(e - x) * mod}v${mod}h-${(e - x) * mod}z`; x = e; } }
-    const top = label ? 18 : 0, bottom = showText ? 16 : 0, H = px + top + bottom;
-    let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${H}" viewBox="0 0 ${px} ${H}"><rect width="${px}" height="${H}" fill="#fff"/>`;
-    if (label) svg += `<text x="${px / 2}" y="14" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" font-weight="600">${escXml(label)}</text>`;
-    svg += `<path transform="translate(0,${top})" d="${d}" fill="#000"/>`;
-    if (showText) svg += `<text x="${px / 2}" y="${top + px - 2}" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10">${escXml(String(opts.value).slice(0, 28))}</text>`;
+    for (let y = 0; y < q.size; y++) { let x = 0; while (x < q.size) { if (!q.modules[y][x]) { x++; continue; } let e = x; while (e < q.size && q.modules[y][e]) e++; d += `M${x + quiet},${y + quiet}h${e - x}v1h-${e - x}z`; x = e; } }
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${r4(n * mod)}${unit}" height="${r4(totH * mod)}${unit}" viewBox="0 0 ${n} ${totH}" shape-rendering="crispEdges" preserveAspectRatio="none" data-mods="${n}">`;
+    svg += `<rect width="${n}" height="${totH}" fill="#fff"/><path d="${d}" fill="#000"/>`;
+    if (showText) svg += textLine(String(o.value).slice(0, 40), n / 2, n + textHU * 0.75, textHU * 0.8, n * 0.98);
     return svg + '</svg>';
   }
+  function qrSvg(text, opts) {               // legacy helper (screen preview)
+    opts = opts || {};
+    return qrSvgU(text, { unit: 'px', mod: Math.max(2, Math.round(opts.module || 4)), text: opts.text, value: opts.value, textH: 16 });
+  }
 
+  const hasNonAscii = v => /[^\x20-\x7E]/.test(String(v || ''));
+  const isEan13Input = v => ean13Normalize(v) !== null;
+  // Same key the POS uses to match scans: 12/13-digit codes compare as 13 digits; text codes compare case-insensitively
+  // (a scanner with Caps Lock on, or a keyboard-layout quirk, can change the letter case but never the characters).
+  const normKey = v => { v = String(v == null ? '' : v).trim(); return /^\d{12,13}$/.test(v) ? v.padStart(13, '0') : v.toUpperCase(); };
+
+  /* Decide which symbology can carry this value exactly. */
+  function resolveFormat(value, format) {
+    let f = (format || 'code128').toLowerCase(), note = '';
+    if (f === 'qrcode') f = 'qr';
+    if (f === 'ean13' && !isEan13Input(value)) {
+      f = hasNonAscii(value) ? 'qr' : 'code128';
+      note = /^\d{12,13}$/.test(value)
+        ? 'Not a valid EAN-13 (check digit wrong) — Code 128 used so the scanner reads exactly this number'
+        : 'EAN-13 needs a valid 13-digit number — Code 128 used';
+    }
+    if (f === 'code128' && hasNonAscii(value)) { f = 'qr'; note = 'Code 128 cannot hold this text — QR used'; }
+    if (f === 'qr' && !qrMatrix(value)) {
+      if (hasNonAscii(value)) { note = 'Text too long for QR here'; } else { f = 'code128'; note = 'Text too long for QR — Code 128 used'; }
+    }
+    return { f, note };
+  }
+
+  /* Scan-safe symbol sized in millimetres.
+     o.maxW / o.maxH  space available (mm) for the whole symbol incl. quiet zone (+ text line)
+     o.barH           preferred bar height (mm, 1-D only)
+     o.dpi            printer resolution (203 thermal default, 300, 600 …). One module = a whole number of dots.
+     Returns { svg, fmt, note, moduleMm, widthMm, heightMm, ok } */
+  function render(value, format, o) {
+    o = o || {};
+    value = String(value == null ? '' : value).trim(); if (!value) value = '0';
+    const rf = resolveFormat(value, format), f = rf.f;
+    let dpi = Math.max(72, +o.dpi || 203); if (dpi === 203) dpi = 203.2;   // "203 dpi" heads are 8 dots/mm
+    const dot = 25.4 / dpi;
+    const maxW = o.maxW || 50, maxH = o.maxH || 30, showText = o.text !== false;
+    const textH = showText ? (o.textH || 3.2) : 0;
+    const MIN_MOD = o.minMod || 0.19, MAX_MOD = o.maxMod || 0.5;
+    let bits = null, modsW, modsH, text = value, qr = false;
+    if (f === 'qr') { qr = true; const m = qrMatrix(value); modsW = m.size + 8; modsH = m.size + 8; }
+    else if (f === 'ean13') { const c = ean13Normalize(value); bits = ean13Bits(c); text = c; modsW = bits.length + 22; }
+    else { bits = code128(value); modsW = bits.length + 22; }
+    // largest whole-dot module that fits the space
+    let nFit = Math.floor(maxW / (modsW * dot) + 1e-9);
+    if (qr) nFit = Math.min(nFit, Math.floor((maxH - textH) / (modsH * dot) + 1e-9));
+    const nMax = Math.max(1, Math.floor(MAX_MOD / dot + 1e-9)), nMin = Math.max(1, Math.ceil(MIN_MOD / dot - 1e-9));
+    let n = Math.min(nFit, nMax), note = rf.note, ok = true;
+    let mod;
+    if (n >= nMin) mod = n * dot;
+    else {
+      ok = false;
+      mod = n >= 1 ? n * dot : Math.max(0.05, maxW / modsW);
+      note = (note ? note + ' · ' : '') + 'Label is too small for this code — bars are thin and may not scan. Use a bigger label, a shorter code, or QR.';
+    }
+    let svg;
+    if (qr) svg = qrSvgU(value, { unit: 'mm', mod, text: showText, value, textH });
+    else {
+      const barH = Math.max(5, Math.min(o.barH || 15, (maxH - textH)));
+      svg = linearSvg(bits, { unit: 'mm', mod, barH, textH, text: showText, value: text, quiet: 11 });
+    }
+    const wm = /width="([\d.]+)mm"/.exec(svg), hm = /height="([\d.]+)mm"/.exec(svg);
+    return { svg, fmt: f, note, moduleMm: mod, widthMm: wm ? +wm[1] : 0, heightMm: hm ? +hm[1] : 0, ok };
+  }
+
+  /* Print page for stickers. mode 'roll' = one label per page at the exact label size (thermal/sticker printers);
+     mode 'sheet' = many labels per A4 page (laser/inkjet label sheets). */
+  function printDoc(labelsHtml, w, h, mode) {
+    const roll = mode !== 'sheet';
+    const css = roll
+      ? `@page{size:${w}mm ${h}mm;margin:0}html,body{margin:0;padding:0;width:${w}mm;background:#fff}
+         .bl-label{page-break-after:always;break-after:page}.bl-label:last-child{page-break-after:auto;break-after:auto}`
+      : `@page{size:A4;margin:8mm}html,body{margin:0;padding:0;background:#fff}
+         .sheet{display:flex;flex-wrap:wrap;align-content:flex-start;gap:1mm}.bl-label{break-inside:avoid;page-break-inside:avoid}`;
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Barcode Labels</title><style>
+      *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      body{font-family:system-ui,-apple-system,"Noto Sans Bengali",sans-serif;color:#000}
+      ${css}
+      .bl-label{flex:none;width:${w}mm;height:${h}mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden;padding:1mm;background:#fff;color:#000}
+      .bl-shop{font-size:7pt;font-weight:600;line-height:3mm;height:3mm;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+      .bl-name{font-size:7.5pt;font-weight:700;line-height:3.2mm;max-width:100%;overflow:hidden}
+      .bl-svg{flex:none;display:block;line-height:0}
+      .bl-svg svg{display:block;max-width:none}
+      .bl-price{font-size:9pt;font-weight:800;line-height:3.8mm;height:3.8mm;white-space:nowrap}
+      </style></head><body><div class="sheet">${labelsHtml}</div></body></html>`;
+  }
+
+  /* Legacy entry point (screen preview, fixed integer-pixel modules). */
   function generate(value, format, opts) {
     opts = opts || {};
-    format = (format || 'code128').toLowerCase();
-    value = String(value || '').trim();
-    if (!value) value = '0';
-    // Defaults tuned for thermal/inkjet sticker printers (≥0.25 mm module when scaled)
-    if (format === 'ean13') {
-      const { bits, text } = ean13Bits(value);
-      return bitsToSvg(bits, Object.assign({ value: text, height: 60, barWidth: 2.2, quiet: 11 }, opts));
-    }
-    if (format === 'qr' || format === 'qrcode') {
-      return qrSvg(value, Object.assign({ module: 5, value }, opts)) || bitsToSvg(code128B(value.slice(0, 40)), Object.assign({ value: value.slice(0, 40), height: 60, barWidth: 2 }, opts));
-    }
-    // default code128
-    const bits = code128B(value);
-    return bitsToSvg(bits, Object.assign({ value, height: 60, barWidth: 2, quiet: 11 }, opts));
+    value = String(value || '').trim(); if (!value) value = '0';
+    const rf = resolveFormat(value, format), f = rf.f;
+    if (f === 'qr') return qrSvg(value, Object.assign({ module: 4, value }, opts));
+    if (f === 'ean13') { const c = ean13Normalize(value); return bitsToSvg(ean13Bits(c), Object.assign({ value: c, height: 60, barWidth: 2, quiet: 11 }, opts)); }
+    return bitsToSvg(code128(value), Object.assign({ value, height: 60, barWidth: 2, quiet: 11 }, opts));
   }
 
   function uniqueCode(prefix, nextNum) {
@@ -274,20 +354,10 @@
     return prefix + String(n).padStart(7, '0');
   }
 
-  const hasNonAscii = v => /[^\x20-\x7E]/.test(String(v || ''));
-  const isEan13Input = v => /^\d{12,13}$/.test(String(v || '').trim());
-  // Same key the POS uses to match scans: 12/13-digit codes are compared as 13 digits
-  const normKey = v => { v = String(v == null ? '' : v).trim(); return /^\d{12,13}$/.test(v) ? v.padStart(13, '0') : v; };
-
   root.BarcodeGen = {
-    generate,
-    qrMatrix,
-    hasNonAscii,
-    isEan13Input,
-    normKey,
-    ean13Check,
-    uniqueCode,
-    code128B,
+    generate, render, printDoc, resolveFormat,
+    qrMatrix, hasNonAscii, isEan13Input, ean13Normalize, normKey, ean13Check, uniqueCode,
+    code128, code128B: code128, code128Codes,
     formats: ['code128', 'ean13', 'qr']
   };
 })(typeof window !== 'undefined' ? window : globalThis);
