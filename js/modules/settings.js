@@ -51,9 +51,13 @@
       o = o || {};
       if (this.el || this.opening) return;
       const retry = () => this.open(cb, o);
-      if (!('BarcodeDetector' in window)) { toast('⚠️ Camera scan is not supported in this browser. Use Chrome on Android, or a USB/Bluetooth scanner.'); return; }
+      /* camera reader: native BarcodeDetector when the browser has it (Chrome/Android), else our offline reader (iPhone, Firefox, desktop) */
       if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { this.help('insecure'); return; }
-      let det; try { det = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf', 'qr_code'] }); } catch (_) { try { det = new BarcodeDetector(); } catch (e2) { toast('⚠️ Camera scan not available in this browser'); return; } }
+      let det = null;
+      if ('BarcodeDetector' in window) { try { det = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf', 'qr_code'] }); } catch (_) { try { det = new BarcodeDetector(); } catch (e2) { det = null; } } }
+      if (!det && window.Linear) det = Linear.createDetector();
+      if (!det) { toast('⚠️ Camera scan is not available in this browser. Type the code or use a USB/Bluetooth scanner.'); return; }
+      const fallback = !!det.fallback;
       const tok = ++this.tok; this.opening = true;
       let stream;
       try { stream = await this.getStream(); }
@@ -67,10 +71,32 @@
       if (tok !== this.tok) { stream.getTracks().forEach(t => t.stop()); return; }   // Back/Close was pressed while the camera was starting
       this.stream = stream;
       const el = document.createElement('div'); el.className = 'scan';
-      el.innerHTML = `<video playsinline muted autoplay></video><div class="frame"><i></i><i></i><i></i><i></i><span class="beam"></span></div><div class="bar-top"><b>Barcode scan</b><button type="button" class="btn btn-sm" id="sc-x">Close</button></div><div class="sc-msg hidden" id="sc-msg"></div><div class="bar-bot">${esc(o.hint || 'Hold barcode inside the frame')}</div>`;
+      el.innerHTML = `<video playsinline muted autoplay></video><div class="frame"><i></i><i></i><i></i><i></i><span class="beam"></span></div><div class="bar-top"><b>Barcode scan</b><button type="button" class="btn btn-sm" id="sc-x">Close</button></div><div class="sc-msg hidden" id="sc-msg"></div><div class="sc-tools"><button type="button" class="sc-btn hidden" id="sc-torch" title="Torch"><i class="fas fa-sun"></i></button><input type="range" id="sc-zoom" class="hidden" aria-label="Zoom"><button type="button" class="sc-btn" id="sc-keep" title="Keep scanning"><i class="fas fa-rotate-right"></i> Keep scanning</button><button type="button" class="sc-btn" id="sc-type" title="Type code"><i class="fas fa-pen"></i> Type code</button></div><div class="sc-typebox hidden" id="sc-typebox"><input id="sc-code" class="input" placeholder="Type barcode…" autocomplete="off" inputmode="text"><button type="button" class="btn btn-primary" id="sc-ok">OK</button></div><div class="bar-bot">${esc(o.hint || 'Hold barcode inside the frame')}${fallback ? '<br><span class="sc-sub">Reads EAN / UPC / Code 128 · for QR use Chrome</span>' : ''}</div>`;
       document.body.appendChild(el); this.el = el; this.last = ''; this.lastT = 0; this.busy = false; syncLock();
       const v = el.querySelector('video'); v.srcObject = stream; try { await v.play(); } catch (_) {}
       el.querySelector('#sc-x').onclick = () => this.close();
+      const got = (code, typed) => {
+        const now = Date.now();
+        if (!typed && code === this.last && now - this.lastT < 1800) return;
+        this.last = code; this.lastT = now; window.Sound && window.Sound.play && window.Sound.play('beep'); if (navigator.vibrate) navigator.vibrate(40);
+        const keep = cb(code);
+        const stay = !o.once && (o.continuous || this.keep);
+        if (!stay && keep !== false) this.close();
+      };
+      // torch / zoom when the phone offers them
+      try {
+        const tr = stream.getVideoTracks()[0], cap = (tr && tr.getCapabilities && tr.getCapabilities()) || {};
+        if (cap.torch) { const tb = el.querySelector('#sc-torch'); tb.classList.remove('hidden'); let on = false; tb.onclick = async () => { on = !on; try { await tr.applyConstraints({ advanced: [{ torch: on }] }); tb.classList.toggle('on', on); } catch (_) { on = !on; } }; }
+        if (cap.zoom && cap.zoom.max > cap.zoom.min) { const z = el.querySelector('#sc-zoom'); z.min = cap.zoom.min; z.max = cap.zoom.max; z.step = cap.zoom.step || 0.1; z.value = (tr.getSettings && tr.getSettings().zoom) || cap.zoom.min; z.classList.remove('hidden'); z.oninput = () => { try { tr.applyConstraints({ advanced: [{ zoom: +z.value }] }); } catch (_) {} }; }
+      } catch (_) {}
+      const kb = el.querySelector('#sc-keep'); kb.classList.toggle('on', !!this.keep && !o.once);
+      if (o.once || o.continuous) kb.classList.add('hidden');
+      kb.onclick = () => { this.keep = !this.keep; kb.classList.toggle('on', this.keep); this.flash(this.keep ? 'Keep scanning: ON' : 'Keep scanning: OFF', 'ok'); };
+      const tb2 = el.querySelector('#sc-typebox'), ti = el.querySelector('#sc-code');
+      const submit = () => { const v = ti.value.trim(); if (!v) return; ti.value = ''; got(v, true); };
+      el.querySelector('#sc-type').onclick = () => { tb2.classList.toggle('hidden'); if (!tb2.classList.contains('hidden')) setTimeout(() => ti.focus(), 30); };
+      el.querySelector('#sc-ok').onclick = submit;
+      ti.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); submit(); } };
       this.timer = setInterval(async () => {
         if (!this.el || this.busy || v.readyState < 2) return;
         this.busy = true;
@@ -78,13 +104,19 @@
           const codes = await det.detect(v);
           if (!this.el || tok !== this.tok || !codes.length) return;
           const code = String(codes[0].rawValue || '').trim(); if (!code) return;
-          const now = Date.now();
-          if (code === this.last && now - this.lastT < 1800) return;
-          this.last = code; this.lastT = now; window.Sound && window.Sound.play && window.Sound.play('beep'); if (navigator.vibrate) navigator.vibrate(40);
-          const keep = cb(code);
-          if (!o.continuous && keep !== false) this.close();
+          got(code, false);
         } catch (_) {} finally { this.busy = false; }
-      }, 220);
+      }, fallback ? 260 : 220);
+    },
+    /* unknown barcode → a bar with an "Add product" button (works over the camera and on normal screens) */
+    unknown(code, msg) {
+      document.querySelectorAll('.addbar').forEach(e => e.remove());
+      const bar = document.createElement('div'); bar.className = 'addbar' + (this.el ? ' in-scan' : '');
+      bar.innerHTML = `<span class="ab-t"><i class="fas fa-triangle-exclamation"></i> ${esc(msg || 'Barcode not found')}<b>${esc(code)}</b></span><button type="button" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Add product</button><button type="button" class="ab-x" aria-label="Dismiss"><i class="fas fa-xmark"></i></button>`;
+      (this.el || document.body).appendChild(bar);
+      const gone = () => { clearTimeout(bar._t); bar.remove(); };
+      bar.querySelector('.btn').onclick = () => { gone(); if (window.Products) Products.addWithBarcode(code); };
+      bar.querySelector('.ab-x').onclick = gone; bar._t = setTimeout(gone, 9000);
     },
     flash(msg, kind) {
       const m = this.el && this.el.querySelector('#sc-msg'); if (!m) { toast(msg); return; }
@@ -92,6 +124,7 @@
       clearTimeout(this.msgT); this.msgT = setTimeout(() => { if (m) m.classList.add('hidden'); }, 2200);
     },
     close() {
+      document.querySelectorAll('.addbar.in-scan').forEach(e => e.remove());
       this.tok++; this.opening = false; clearInterval(this.timer); this.timer = null; clearTimeout(this.msgT);
       if (this.stream) { this.stream.getTracks().forEach(t => t.stop()); this.stream = null; }
       if (this.el) { const v = this.el.querySelector('video'); if (v) v.srcObject = null; this.el.remove(); this.el = null; }

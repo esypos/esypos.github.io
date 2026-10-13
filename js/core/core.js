@@ -172,6 +172,7 @@
     let el = document.getElementById('toast');
     if (!el) { el = document.createElement('div'); el.id = 'toast'; document.body.appendChild(el); }
     el.textContent = msg; el.classList.remove('hidden');
+    el.classList.toggle('t-ok', /✓/.test(msg)); el.classList.toggle('t-warn', /⚠/.test(msg));
     if (root.Sound) root.Sound.play(/✓/.test(msg) ? 'success' : /⚠/.test(msg) ? 'warn' : null);
     if (root.Haptic) { if (/✓/.test(msg)) root.Haptic.ok(); else if (/⚠/.test(msg)) root.Haptic.warn(); }
     clearTimeout(toastTimer);

@@ -1,4 +1,4 @@
-/* EsyPOS Printer profile + direct label printing (v10.7.6)
+/* EsyPOS Printer profile + direct label printing (v10.8.0)
    A web page cannot ask the operating system "which paper is loaded?", so EsyPOS keeps a PRINTER PROFILE:
      1. connect the printer once (USB or Bluetooth) → the model is recognised and sensible defaults are filled in
         (type, resolution, paper size; Zebra printers also report their configured label length);

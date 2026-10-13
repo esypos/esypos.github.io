@@ -172,12 +172,46 @@
       People.pr = [{ pid: '', qty: 1, cost: 0 }];
       const m = Modal.open({ title: 'New purchase (stock in)', size: 'wide', static: true, body: `
         <div class="field"><label class="label">Supplier</label><div class="flex gap2"><select id="pu-sup" class="input"><option value="">— none —</option>${DB.suppliers.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select><button class="btn btn-soft" onclick="Buy.quickSup()"><i class="fas fa-plus"></i></button></div></div>
+        <div class="field"><label class="label">Scan or search product</label><div class="flex gap2"><div class="relative grow"><i class="fas fa-barcode search-ico"></i><input id="pu-scan" class="input has-ico" placeholder="Scan barcode or type name…" autocomplete="off" oninput="Buy.scanSug(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();Buy.scanEnter(this.value)}"></div><button class="btn btn-soft" onclick="Buy.scanCam()" title="Camera scan"><i class="fas fa-camera"></i></button></div><div id="pu-sug" class="pu-sug"></div></div>
         <div id="pu-rows"></div><button class="btn btn-ghost btn-block mb3" onclick="Buy.addRow()"><i class="fas fa-plus"></i> Another product</button>
         <div class="card pad-s"><div class="sumrow big" style="border:0;margin:0;padding:0"><span>Total</span><span class="ptext" id="pu-total">${C.money(0)}</span></div></div>
         <div class="grid2 mt3"><div class="field"><label class="label">Payment now</label><input id="pu-paid" type="number" step="any" min="0" class="input" oninput="Buy.puCalc()"></div><div class="field"><label class="label">Due remaining</label><input id="pu-due" class="input" disabled value="৳0"></div></div>
         <div class="field"><label class="label">Note</label><input id="pu-note" class="input"></div>`,
         foot: `<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" onclick="Buy.savePurchase(this)">Save purchase</button>` });
       this.rows();
+    },
+    /* ----- scan / search to add stock-in rows ----- */
+    addScanned(p) {
+      const rows = People.pr, hit = rows.find(x => x.pid === p.id);
+      if (hit) hit.qty = num(hit.qty) + 1;
+      else { const empty = rows.find(x => !x.pid); if (empty) { empty.pid = p.id; empty.qty = 1; empty.cost = p.cost || 0; } else rows.push({ pid: p.id, qty: 1, cost: p.cost || 0 }); }
+      this.rows(); toast('+1 ' + p.name);
+    },
+    nameMatches(v) { const q = String(v || '').trim().toLowerCase(); if (!q) return []; return DB.products.filter(p => p.name.toLowerCase().includes(q) || (p.barcode || '').toLowerCase().includes(q)).slice(0, 5); },
+    scanSug(v) {
+      const box = $('pu-sug'); if (!box) return;
+      const list = this.nameMatches(v);
+      box.innerHTML = list.map(p => `<button type="button" class="pu-sug-i" onclick="Buy.pickSug('${p.id}')"><b>${esc(p.name)}</b><span class="muted xs">${esc(p.barcode || '')}</span></button>`).join('');
+    },
+    pickSug(id) { const p = findProduct(id); if (!p) return; this.addScanned(p); const i = $('pu-scan'); if (i) { i.value = ''; i.focus(); } const b = $('pu-sug'); if (b) b.innerHTML = ''; },
+    scanEnter(v) {
+      v = String(v || '').trim(); if (!v) return;
+      const r = window.Wedge ? Wedge.match(v) : { product: null, ambiguous: [], code: v };
+      const done = p => { this.addScanned(p); const i = $('pu-scan'); if (i) i.value = ''; const b = $('pu-sug'); if (b) b.innerHTML = ''; };
+      if (r.product) return done(r.product);
+      if (r.ambiguous.length) { toast('⚠️ ' + r.ambiguous.length + ' products share barcode ' + r.code + ' — fix it in Products'); return; }
+      const list = this.nameMatches(v);
+      if (list.length === 1) return done(list[0]);
+      if (list.length) { toast(list.length + ' products match — tap one below'); return; }
+      if (/^(?=.*\d)[\w\-./]{4,}$/.test(v) && window.Scanner) Scanner.unknown(v); else toast('⚠️ No product found: ' + v);
+    },
+    scanCam() {
+      if (!window.Scanner || Scanner.isOpen()) return;
+      Scanner.open(code => {
+        const r = window.Wedge ? Wedge.match(code) : { product: null, ambiguous: [] };
+        if (!r.product) { if (r.ambiguous.length) Scanner.flash('⚠️ ' + r.ambiguous.length + ' products share this barcode', 'bad'); else Scanner.unknown(code); return false; }
+        this.addScanned(r.product); Scanner.flash('✓ ' + r.product.name + ' added', 'ok'); return false;   // camera stays open for the next item
+      }, { hint: 'Scan each product to stock in', continuous: true });
     },
     quickSup() { Buy.editSup(null, id => { const sel = $('pu-sup'); if (sel) { sel.innerHTML += `<option value="${id}">${esc(findSupplier(id).name)}</option>`; sel.value = id; } }); },
     rows() {
@@ -218,4 +252,15 @@
     }
   };
   App.Views.purchases = { render: () => Buy.render() };
+  if (window.Wedge) Wedge.register({
+    id: 'purchase',
+    when: () => !!$('pu-rows') && !$('pf-bc') && !document.querySelector('.ui-confirm-backdrop, .lock, .scan'),
+    handle(code) {
+      const r = Wedge.match(code);
+      if (r.product) { Buy.addScanned(r.product); return true; }
+      if (r.ambiguous.length) { toast('⚠️ ' + r.ambiguous.length + ' products share barcode ' + r.code); return true; }
+      if (/^(?=.*\d)[\w\-./]{4,}$/.test(r.code) && window.Scanner) { Scanner.unknown(r.code); return true; }
+      return false;
+    }
+  });
 })();

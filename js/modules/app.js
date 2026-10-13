@@ -167,13 +167,8 @@
     search(v) { this.q = v; this.limit = 120; if (this._st) cancelAnimationFrame(this._st); clearTimeout(this._sd); this._sd = setTimeout(() => { this._st = requestAnimationFrame(() => this.renderGrid()); }, 90); },
     setCat(c) { this.cat = c; this.limit = 120; this.renderCats(); this.renderGrid(); },
     more() { this.limit += 120; this.renderGrid(); },
-    findByBarcode(code) {
-      const key = window.BarcodeGen ? BarcodeGen.normKey : (x => { x = String(x == null ? '' : x).trim(); return /^\d{12,13}$/.test(x) ? x.padStart(13, '0') : x.toUpperCase(); });
-      let c = String(code == null ? '' : code).replace(/[\u0000-\u001F\u007F]/g, '').trim();
-      c = c.replace(/^\][A-Za-z][0-9A-Za-z]/, '');            // AIM symbology identifier (e.g. "]C1") that some scanners prepend
-      const k = key(c); if (!k) return null;
-      return DB.products.find(p => p.barcode && key(p.barcode) === k) || null;
-    },
+    resolve(code) { return window.Wedge ? Wedge.match(code) : { code: String(code || '').trim(), product: null, ambiguous: [] }; },
+    findByBarcode(code) { return this.resolve(code).product; },   // null when unknown OR when two products share the code (never guess)
     enter() {
       const q = this.q.trim(); if (!q) return;
       const exact = this.findByBarcode(q);
@@ -185,10 +180,12 @@
     scan() {
       if (!window.Scanner || Scanner.isOpen()) return;
       Scanner.open(code => {
-        const p = this.findByBarcode(code);
-        if (!p) { Scanner.flash('⚠️ Barcode not found: ' + code, 'bad'); return false; }   // camera stays open so the user can retry
-        Scanner.close();                                         // product found: close the camera right away
-        this.add(p.id, true, { picked: true });                  // add to cart + "Product selected" message
+        const r = this.resolve(code), p = r.product;
+        if (!p) {                                                  // camera stays open so the user can retry — or tap "Add product"
+          if (r.ambiguous.length) Scanner.flash('⚠️ ' + r.ambiguous.length + ' products share this barcode: ' + r.code, 'bad'); else Scanner.unknown(code);
+          return false;
+        }
+        this.add(p.id, true, { picked: true });                   // add to cart + "Product selected" message (the camera closes unless "Keep scanning" is on)
       }, { hint: 'Hold product barcode in frame' });
     },
     inCart(pid) { return DB.cart.reduce((n, c) => (c.productId || c.id) === pid ? n + c.qty : n, 0); },   // total qty of one product over all its cart lines (variants/add-on combos)
@@ -432,11 +429,12 @@
         <div class="flex gap3 mb3 items-c"><label style="cursor:pointer"><div class="avatar" id="pf-img" style="width:64px;height:64px;overflow:hidden">${this.img ? `<img src="${esc(this.img)}" style="width:100%;height:100%;object-fit:cover">` : '<i class="fas fa-camera"></i>'}</div><input type="file" accept="image/*" class="hidden" onchange="Products.pickImg(this)"></label>
           <div class="grow"><label class="label">Product name *</label><input id="pf-name" class="input" autofocus value="${esc(p ? p.name : '')}"></div></div>
         <div class="field"><label class="label">Barcode</label><div class="flex gap2 flex-wrap">
-          <input id="pf-bc" class="input grow" value="${esc(p ? p.barcode : '')}" placeholder="Scan, type or generate" style="min-width:120px">
+          <input id="pf-bc" class="input grow" value="${esc(p ? p.barcode : '')}" placeholder="Scan, type or generate" style="min-width:120px" oninput="Products.bcCheck()" autocomplete="off">
           <button class="btn btn-soft" onclick="Products.scanBC()" title="Scan"><i class="fas fa-camera"></i></button>
           <button class="btn btn-soft" onclick="Products.genBC()" title="Generate barcode"><i class="fas fa-plus"></i> Gen</button>
           <button class="btn btn-soft" onclick="Products.printLabel()" title="Print / preview label"><i class="fas fa-print"></i></button>
         </div>
+        <div id="pf-bc-warn" class="bc-warn hidden"></div>
         <div class="flex gap2 mt2 items-c"><label class="label xs mb0">Format</label>
           <select id="pf-bcfmt" class="input" style="width:auto;min-width:110px" onchange="Products.bcHint()"><option value="code128">Code 128</option><option value="ean13">EAN-13</option><option value="qr">QR Code</option></select>
           <span class="xs muted" id="pf-bc-hint">Auto-unique from settings</span></div></div>
@@ -595,7 +593,24 @@
       rd.onload = e => { const im = new Image(); im.onload = () => { const r = Math.min(1, 320 / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * r); c.height = Math.round(im.height * r); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); this.img = c.toDataURL('image/jpeg', .7); $('pf-img').innerHTML = `<img src="${this.img}" style="width:100%;height:100%;object-fit:cover">`; }; im.src = e.target.result; };
       rd.readAsDataURL(f);
     },
-    scanBC() { Scanner.open(code => { const f = $('pf-bc'); if (f) { f.value = code; toast('✓ Barcode captured'); } }, { hint: 'Hold product barcode' }); },
+    scanBC() { Scanner.open(code => { const f = $('pf-bc'); if (f) { f.value = code; this.bcCheck(); toast('✓ Barcode captured'); } }, { hint: 'Hold product barcode', once: true }); },
+    bcCheck() {                                                  // live duplicate / damaged-barcode warning while typing or scanning
+      const f = $('pf-bc'), w = $('pf-bc-warn'); if (!f || !w) return;
+      const v = f.value.trim(); let msg = '';
+      if (v) {
+        const me = this._editId || '', k = BarcodeGen.normKey(v);
+        const hit = DB.products.filter(x => x.id !== me && x.barcode && BarcodeGen.normKey(x.barcode) === k);
+        if (hit.length) msg = '⚠️ Already used by "' + hit[0].name + '"' + (hit.length > 1 ? ' (+' + (hit.length - 1) + ' more)' : '') + ' — it cannot be saved twice';
+        else if (window.Wedge && Wedge.isSciNotation(v)) msg = '⚠️ This looks like an Excel-damaged number (E+). Enter the real barcode.';
+      }
+      w.textContent = msg; w.classList.toggle('hidden', !msg); f.classList.toggle('bc-dup', !!msg);
+    },
+    addWithBarcode(code) {                                       // "Add product" bar: open a new-product form with this barcode filled in
+      try { if (window.Scanner && Scanner.isOpen()) Scanner.close(); } catch (_) {}
+      document.querySelectorAll('.addbar').forEach(e => e.remove());
+      this.edit('');
+      setTimeout(() => { const f = $('pf-bc'); if (f) { f.value = code; this.bcCheck(); } const n = $('pf-name'); if (n) n.focus(); }, 60);
+    },
     configureForSale(p, quiet, opt0) {
       const variants = p.variants || [], addons = (p.addons || []).filter(g => g.options && g.options.length);
       let body = '';
@@ -706,14 +721,17 @@
       rd.onload = e => {
         let rows = C.parseCSV(e.target.result); if (!rows.length) { toast('⚠️ File is empty'); return; }
         if (/^\s*(Name|name)\s*$/i.test(rows[0][0] || '')) rows = rows.slice(1);
-        let add = 0, upd = 0, bad = 0;
+        let add = 0, upd = 0, bad = 0, sci = 0;
         rows.forEach(r => {
           const name = (r[0] || '').trim(); const price = parseFloat(r[4]); if (!name || !isFinite(price) || price < 0) { bad++; return; }
-          const bc = (r[1] || '').trim(); let p = (bc && DB.products.find(x => x.barcode === bc)) || DB.products.find(x => x.name === name);
-          const data = { name, barcode: bc, category: (r[2] || '').trim(), cost: Math.max(0, num(r[3])), price, stock: Math.max(0, num(r[5])), unit: (r[6] || '').trim() || 'Pcs', minStock: r[7] === undefined || r[7] === '' ? (DB.settings.lowStockDefault || 5) : Math.max(0, num(r[7])), expiry: (r[8] || '').trim() };
-          if (p) { Object.assign(p, data); upd++; } else { DB.products.push(Object.assign({ id: genId(), track: true, image: null }, data)); add++; }
+          let bc = (r[1] || '').trim();
+          if (bc && window.Wedge && Wedge.isSciNotation(bc)) { sci++; bc = ''; }   // Excel turned the barcode into 8.9E+12 — unusable, never store it
+          let p = (bc && DB.products.find(x => x.barcode && (window.Wedge ? Wedge.key(x.barcode) === Wedge.key(bc) : x.barcode === bc))) || DB.products.find(x => x.name === name);
+          const data = { name, category: (r[2] || '').trim(), cost: Math.max(0, num(r[3])), price, stock: Math.max(0, num(r[5])), unit: (r[6] || '').trim() || 'Pcs', minStock: r[7] === undefined || r[7] === '' ? (DB.settings.lowStockDefault || 5) : Math.max(0, num(r[7])), expiry: (r[8] || '').trim() };
+          if (bc) data.barcode = bc;                                                  // an empty barcode cell must NEVER erase the barcode already saved
+          if (p) { Object.assign(p, data); upd++; } else { DB.products.push(Object.assign({ id: genId(), track: true, image: null, barcode: '' }, data)); add++; }
         });
-        C.save('products'); Modal.closeAll(); toast(`✓ ${add} new, ${upd} updated${bad ? ', ' + bad + ' excluded' : ''}`); App.refresh();
+        C.save('products'); Modal.closeAll(); toast(`✓ ${add} new, ${upd} updated${bad ? ', ' + bad + ' excluded' : ''}${sci ? ' · ⚠️ ' + sci + ' barcode(s) were damaged by Excel (like 8.9E+12) and skipped — format the Barcode column as Text' : ''}`); App.refresh();
       };
       rd.readAsText(f);
     }
@@ -770,79 +788,88 @@
     }
   });
   (function setupWedgeScanner() {
-    /* A USB / Bluetooth scanner "types" the code like a very fast keyboard (a few ms per character), usually ending with Enter or Tab.
-       Some scanners send NO ending key, so a scan is also finished after a short silence. Human typing is never treated as a scan:
-       only a burst whose average speed is far faster than a person can type counts. When the code matches a product it is added to
-       the cart straight away — no click, no Enter — wherever the cursor happens to be on the POS screen. */
-    const MAX_GAP = 120, FAST_AVG = 70, IDLE = 90, MIN_LEN = 3;
-    let buf = '', t0 = 0, last = 0, timer = null, startEl = null, startVal = '';
-    const $s = () => document.getElementById('pos-search');
-    const blocked = () => !!document.querySelector('.modal-back, .ui-confirm-backdrop, .lock, .scan');
-    const isText = el => !!el && el.tagName === 'INPUT' && /^(text|search|number|tel|email|url|password|)$/i.test(el.type || '');
-    function isTypingTarget(el) {                       // fields where a person is really typing (the search box is NOT one: scans go there)
-      if (!el) return false;
-      const t = (el.tagName || '').toLowerCase();
-      if (t === 'textarea' || t === 'select' || el.isContentEditable) return true;
-      if (t === 'input') { if (el.id === 'pos-search') return false; const ty = (el.type || '').toLowerCase(); return ty !== 'button' && ty !== 'checkbox' && ty !== 'radio' && ty !== 'submit'; }
-      return false;
-    }
-    const fastBurst = () => buf.length >= MIN_LEN && (last - t0) / (buf.length - 1) <= FAST_AVG;
+    /* USB / Bluetooth scanner support lives in js/core/wedge.js (physical-key reading, speed detection, safe matching).
+       Here we only say what a scan DOES on each screen. A handler returns true (handled), 'keep' (handled, and it already
+       placed the code in a field) or false (not a scan for us). */
+    if (!window.Wedge) return;
+    const modalOpen = () => !!document.querySelector('.modal-back, .ui-confirm-backdrop, .lock, .scan');
+    const beep = k => { try { window.Sound && window.Sound.play && window.Sound.play(k); } catch (_) {} };
     function indicator(kind, code) {
       const el = document.querySelector('.scan-ready'); if (!el) return;
       el.classList.remove('hit', 'miss'); void el.offsetWidth; el.classList.add(kind);
       el.title = (kind === 'hit' ? 'Scanned: ' : 'Not found: ') + code;
       clearTimeout(indicator._t); indicator._t = setTimeout(() => el.classList.remove('hit', 'miss'), 1400);
     }
-    function reset() { buf = ''; t0 = last = 0; startEl = null; startVal = ''; if (timer) { clearTimeout(timer); timer = null; } }
-    function finish(viaKey) {
-      const fast = fastBurst(), typed = buf, el = startEl, before = startVal, ps = $s();
-      reset();
-      if (!fast || App.view !== 'pos' || blocked() || (window.Scanner && Scanner.isOpen && Scanner.isOpen())) return false;
-      // candidate codes: the burst itself, what the search box gained during the burst, then the whole box (irregular key timing)
-      const cands = [typed.trim()];
-      if (el && el.value !== undefined && el.value.startsWith(before) && el.value.length > before.length) cands.push(el.value.slice(before.length).trim());
-      if (ps && document.activeElement === ps) cands.push(ps.value.trim());
-      let p = null, used = typed.trim();
-      for (const c of cands) { if (c.length >= MIN_LEN && (p = POS.findByBarcode(c))) { used = c; break; } }
-      if (p) {
-        if (el && el !== ps && isText(el)) { el.value = before; try { el.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {} }   // undo the digits typed into another field
-        POS.q = ''; if (ps) ps.value = '';
-        POS.add(p.id, true, { picked: true });
-        POS.renderGrid();
-        if (ps && window.matchMedia && matchMedia('(hover:hover)').matches) { try { ps.focus(); } catch (_) {} }   // desktop: stay ready for the next scan; phones: no keyboard pop-up
-        else { try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (_) {} }
-        try { window.Sound && window.Sound.play && window.Sound.play('ok'); } catch (_) {}
-        indicator('hit', used);
-        return true;
-      }
-      // Looks like a barcode (has a digit, no spaces) but matches no product → report it. Anything else (a product NAME typed
-      // quickly) is left alone so the normal search / Enter behaviour still works.
-      if (/^(?=.*\d)[\w\-./]{4,}$/.test(used) && (viaKey || used.length >= 6)) {
-        if (ps && ps.value) { ps.value = ''; POS.q = ''; POS.renderGrid(); }
-        toast('⚠️ Barcode not found: ' + used);
-        try { window.Sound && window.Sound.play && window.Sound.play('err'); } catch (_) {}
-        indicator('miss', used);
+    function flashBox(id, kind) {                                    // green / red flash on a search or barcode box
+      const el = document.getElementById(id); if (!el) return;
+      el.classList.remove('scan-hit', 'scan-miss'); void el.offsetWidth; el.classList.add(kind);
+      setTimeout(() => el.classList.remove('scan-hit', 'scan-miss'), 900);
+    }
+    const looksLikeCode = c => /^(?=.*\d)[\w\-./]{4,}$/.test(c);
+    window.ScanFx = { indicator, flashBox, beep };
+
+    // POS: a scan adds the product to the cart straight away — wherever the cursor is
+    Wedge.register({
+      id: 'pos',
+      when: () => App.view === 'pos' && !modalOpen(),
+      handle(code, ctx) {
+        const ps = document.getElementById('pos-search'), r = Wedge.match(code);
+        if (r.product) {
+          POS.q = ''; POS.add(r.product.id, true, { picked: true }); POS.renderGrid();
+          if (ps && window.matchMedia && matchMedia('(hover:hover)').matches) { try { ps.focus(); } catch (_) {} }   // desktop: stay ready for the next scan; phones: no keyboard pop-up
+          else { try { document.activeElement && document.activeElement.blur && document.activeElement.blur(); } catch (_) {} }
+          beep('ok'); indicator('hit', r.code); flashBox('pos-search', 'scan-hit');
+          return true;
+        }
+        if (r.ambiguous.length) { toast('⚠️ ' + r.ambiguous.length + ' products share barcode ' + r.code + ' — fix it in Products'); beep('err'); indicator('miss', r.code); flashBox('pos-search', 'scan-miss'); return true; }
+        // looks like a barcode but matches nothing → report it; a quickly typed product NAME is left alone
+        if (looksLikeCode(r.code) && (ctx.viaKey || r.code.length >= 6)) {
+          if (ps && ps.value) { ps.value = ''; POS.q = ''; POS.renderGrid(); }
+          if (window.Scanner) Scanner.unknown(r.code); else toast('⚠️ Barcode not found: ' + r.code);
+          beep('err'); indicator('miss', r.code); flashBox('pos-search', 'scan-miss');
+          return true;
+        }
         return false;
       }
-      return viaKey ? 'pass' : false;
-    }
-    document.addEventListener('keydown', e => {
-      if (App.view !== 'pos' || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
-      const ae = document.activeElement;
-      if (blocked()) { reset(); return; }
-      const now = performance.now();
-      if (buf && now - last > MAX_GAP) reset();
-      if (e.key === 'Enter' || e.key === 'Tab') {
-        if (fastBurst()) { const r = finish(true); if (r !== 'pass') { e.preventDefault(); e.stopPropagation(); } } else reset();
-        return;
+    });
+
+    // Product form: a scan fills the Barcode box, no matter which field has the cursor
+    Wedge.register({
+      id: 'product-form',
+      when: () => !!document.getElementById('pf-bc') && !!document.querySelector('.modal-back') && !document.querySelector('.ui-confirm-backdrop, .lock, .scan'),
+      handle(code, ctx) {
+        const f = document.getElementById('pf-bc'); if (!f) return false;
+        if (ctx.el && ctx.el !== f) Wedge.restore(ctx.el, ctx.before);
+        f.value = code; try { f.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {}
+        beep('ok'); flashBox('pf-bc', 'scan-hit'); toast('✓ Barcode captured');
+        return 'keep';
       }
-      if (!e.key || e.key.length !== 1) return;
-      if (isTypingTarget(ae) && !isText(ae)) { reset(); return; }               // textarea / select / contenteditable: never a scan
-      if (!buf) { t0 = now; startEl = isText(ae) ? ae : null; startVal = startEl ? startEl.value : ''; }
-      buf += e.key; last = now;
-      if (e.key === ' ' && buf.length > 2 && fastBurst()) e.preventDefault();       // a space inside a code must not "click" a focused button
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => { if (fastBurst()) finish(false); else reset(); }, IDLE);
-    }, true);
+    });
+
+    // Products list: a scan goes into the search box and shows the product
+    Wedge.register({
+      id: 'product-search',
+      when: () => App.view === 'products' && !!document.getElementById('prod-q') && !modalOpen(),
+      handle(code, ctx) {
+        const q = document.getElementById('prod-q'); if (!q) return false;
+        if (ctx.el && ctx.el !== q) Wedge.restore(ctx.el, ctx.before);
+        q.value = code; Products.setQ(code);
+        const r = Wedge.match(code); beep(r.product ? 'ok' : 'err'); flashBox('prod-q', r.product ? 'scan-hit' : 'scan-miss');
+        return 'keep';
+      }
+    });
+
+    // Barcode Labels page: a scan fills the code box and previews the label
+    Wedge.register({
+      id: 'labels',
+      when: () => App.view === 'barcodes' && !!document.getElementById('bc-val') && !modalOpen(),
+      handle(code, ctx) {
+        const f = document.getElementById('bc-val'); if (!f) return false;
+        if (ctx.el && ctx.el !== f) Wedge.restore(ctx.el, ctx.before);
+        f.value = code; try { f.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {}
+        beep('ok'); flashBox('bc-val', 'scan-hit');
+        return 'keep';
+      }
+    });
   })();
 })();
