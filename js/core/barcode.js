@@ -306,14 +306,18 @@
       mod = n >= 1 ? n * dot : Math.max(0.05, maxW / modsW);
       note = (note ? note + ' · ' : '') + 'Label is too small for this code — bars are thin and may not scan. Use a bigger label, a shorter code, or QR.';
     }
-    let svg;
-    if (qr) svg = qrSvgU(value, { unit: 'mm', mod, text: showText, value, textH });
-    else {
+    let svg, sym;
+    if (qr) {
+      svg = qrSvgU(value, { unit: 'mm', mod, text: showText, value, textH });
+      sym = { kind: 'qr', modsW, size: qrMatrix(value).size, matrix: qrMatrix(value).modules, textHmm: textH, text: showText ? value : '' };
+    } else {
       const barH = Math.max(5, Math.min(o.barH || 15, (maxH - textH)));
       svg = linearSvg(bits, { unit: 'mm', mod, barH, textH, text: showText, value: text, quiet: 11 });
+      sym = { kind: '1d', bits, quiet: 11, modsW, barHmm: barH, textHmm: textH, text: showText ? text : '' };
     }
+    sym.modMm = mod;
     const wm = /width="([\d.]+)mm"/.exec(svg), hm = /height="([\d.]+)mm"/.exec(svg);
-    return { svg, fmt: f, note, moduleMm: mod, widthMm: wm ? +wm[1] : 0, heightMm: hm ? +hm[1] : 0, ok };
+    return { svg, sym, fmt: f, note, moduleMm: mod, widthMm: wm ? +wm[1] : 0, heightMm: hm ? +hm[1] : 0, ok };
   }
 
   /* Print page for stickers. mode 'roll' = one label per page at the exact label size (thermal/sticker printers);

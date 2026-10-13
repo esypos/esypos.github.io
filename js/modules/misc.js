@@ -243,6 +243,7 @@
 
     sizeObj() {
       const s = this.state;
+      if (s.size === 'printer' && window.LP && LP.paper()) { const p = LP.paper(); return { w: p.w, h: p.h, id: 'printer' }; }
       if (s.size === 'custom') return { w: Math.max(20, Math.min(200, +s.customW || 50)), h: Math.max(15, Math.min(150, +s.customH || 30)) };
       return SIZES.find(x => x.id === s.size) || SIZES[1];
     },
@@ -340,6 +341,8 @@
         dpi: DB.settings.printerDpi || 203, text: true
       });
       const parts = [];
+      let priceTxt = '';
+      if (showPrice) { const pr0 = parseFloat(price); priceTxt = isNaN(pr0) ? String(price) : money(pr0); }
       if (showShop) parts.push(`<div class="bl-shop">${esc(shop)}</div>`);
       if (showName) parts.push(`<div class="bl-name" style="${nameLines > 1 ? 'max-height:6.4mm' : 'height:3.2mm;white-space:nowrap;text-overflow:ellipsis'}">${esc(name)}</div>`);
       parts.push(`<div class="bl-svg">${r.svg}</div>`);
@@ -349,8 +352,20 @@
       }
       return {
         html: `<div class="bl-label" style="width:${size.w}mm;height:${size.h}mm">${parts.join('')}</div>`,
-        note: r.note, fmt: r.fmt, ok: r.ok
+        note: r.note, fmt: r.fmt, ok: r.ok,
+        spec: { size, r, shop: showShop ? shop : '', name: showName ? String(name) : '', nameLines, price: priceTxt }
       };
+    },
+
+    /* Send labels to the printer: straight to a connected label printer (exact paper size, whole-dot bars) when a
+       printer profile with direct printing is set up; otherwise through the browser print dialog (sized from the profile). */
+    async output(jobs, size) {
+      if (window.LP && LP.canDirect()) {
+        try { await LP.printJobs(jobs, size); return true; }
+        catch (e) { console.error(e); toast('⚠️ Direct print failed: ' + (e && e.message || e) + ' — using browser print'); }
+      }
+      printHTML(BarcodeGen.printDoc(jobs.map(j => j.r.html.repeat(j.copies || 1)).join(''), size.w, size.h, DB.settings.labelMode || 'roll'));
+      return false;
     },
 
     savePrint() {
@@ -408,21 +423,22 @@
       const size = this.sizeObj();
       const s = this.state;
       const copies = s.sequential ? 1 : s.copies;
-      const all = [];
+      const jobs = [];
       let warn = '';
       vals.forEach(v => {
         const r = this.buildLabel(v, s.name, s.price, s.fmt, size);
         if (r.note && !r.ok) warn = r.note;
-        for (let i = 0; i < copies; i++) all.push(r.html);
+        jobs.push({ r, copies });
       });
-      printHTML(BarcodeGen.printDoc(all.join(''), size.w, size.h, DB.settings.labelMode || 'roll'));
+      this.output(jobs, size);
       if (warn) toast('⚠️ ' + warn);
-      toast('✓ Sent ' + all.length + ' label(s) to printer');
     },
 
     render() {
       const s = this.state;
-      const sizeOpts = SIZES.map(x => `<option value="${x.id}"${s.size === x.id ? ' selected' : ''}>${x.label}</option>`).join('');
+      const lpPaper = window.LP && LP.paper();
+      if (lpPaper && !this._autoPicked) { this._autoPicked = true; s.size = 'printer'; }
+      const sizeOpts = (lpPaper ? `<option value="printer"${s.size === 'printer' ? ' selected' : ''}>Printer paper — auto (${lpPaper.w}×${lpPaper.h} mm)</option>` : '') + SIZES.map(x => `<option value="${x.id}"${s.size === x.id ? ' selected' : ''}>${x.label}</option>`).join('');
       $('view').innerHTML = `
       <div class="page-head">
         <div><h2>Barcode Labels</h2><p>Generate &amp; print stickers — no product required · any printer</p></div>
@@ -433,6 +449,7 @@
       </div>
       <div class="bc-layout">
         <div class="card pad bc-form">
+          ${window.LP ? LP.chipHTML() : ''}
           <div class="sec-title"><i class="fas fa-barcode ptext"></i> Barcode value</div>
           <div class="field">
             <label class="label">Code / text</label>

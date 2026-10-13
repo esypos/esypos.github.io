@@ -1,7 +1,7 @@
 /* EsyPOS Service Worker (v10.7) - cache-first app shell, so the app opens instantly even on a slow or missing network.
    Every release ships a new cache (CACHE_VERSION), so users always get a complete, consistent set of files.
    App data lives in localStorage + the user's Google Drive; this cache only holds the app files. */
-const CACHE_VERSION = 'v10.7.4';
+const CACHE_VERSION = 'v10.7.5';
 const APP_CACHE = `esypos-app-${CACHE_VERSION}`;
 
 const APP_SHELL = [
@@ -11,7 +11,7 @@ const APP_SHELL = [
   './fonts/inter-latin-var.woff2', './fonts/fa-solid-subset.woff2', './fonts/fa-brands-subset.woff2',
   './js/core/core.js', './js/core/barcode.js', './js/core/ui.js', './js/core/config.js',
   './js/modules/app.js', './js/modules/people.js', './js/modules/misc.js', './js/modules/settings.js',
-  './js/services/cloud.js', './js/services/pwa.js',
+  './js/services/cloud.js', './js/services/labelprinter.js', './js/services/pwa.js',
   './assets/icons/icon-192.png', './assets/icons/icon-512.png', './assets/icons/maskable-512.png', './assets/icons/apple-touch-icon.png',
   './assets/icons/favicon-32.png', './assets/icons/favicon-16.png'
 ];

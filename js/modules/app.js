@@ -560,7 +560,7 @@
       const fmt0 = ($('pf-bcfmt') && $('pf-bcfmt').value) || 'code128';
       if (!bc) { toast('⚠️ Enter or generate a barcode first'); return; }
       if (!window.BarcodeGen || !window.Barcodes) { toast('⚠️ Barcode engine not loaded'); return; }
-      const sizes = Barcodes.SIZES.filter(x => x.id !== 'custom'), sz0 = DB.settings.labelSize || '50x30';
+      const lpP = window.LP && LP.paper(), sizes = (lpP ? [{ id: 'printer', w: lpP.w, h: lpP.h, label: `Printer paper — auto (${lpP.w}×${lpP.h} mm)` }] : []).concat(Barcodes.SIZES.filter(x => x.id !== 'custom')), sz0 = DB.settings.labelSize || (lpP ? 'printer' : '50x30');
       const dpi0 = DB.settings.printerDpi || 203, mode0 = DB.settings.labelMode || 'roll';
       const m = Modal.open({ title: 'Barcode label', body: `
         <div class="lbl-prev" id="lbl-prev" style="overflow:auto"></div><p class="xs warn tc mt2" id="lbl-note"></p>
@@ -572,10 +572,10 @@
         <p class="xs muted">In the print dialog choose your label size as paper, <b>Margins: None</b>, <b>Scale: 100%</b>. Scan the printed sticker, not the screen preview.</p>`,
         foot: `<button class="btn" onclick="Modal.closeFrom(this)">Close</button><button class="btn btn-primary" id="lbl-print"><i class="fas fa-print"></i> Print</button>` });
       const fs = m.querySelector('#lbl-fmt'), sel = m.querySelector('#lbl-size'), md = m.querySelector('#lbl-mode'), dp = m.querySelector('#lbl-dpi');
-      fs.value = fmt0; sel.value = sizes.some(x => x.id === sz0) ? sz0 : '50x30'; md.value = mode0; dp.value = String(dpi0);
+      fs.value = fmt0; sel.value = sizes.some(x => x.id === sz0) ? sz0 : sizes[0].id; md.value = mode0; dp.value = String(dpi0);
       const draw = () => {
         DB.settings.labelSize = sel.value; DB.settings.labelMode = md.value; DB.settings.printerDpi = parseInt(dp.value, 10) || 203;
-        const size = sizes.find(x => x.id === sel.value) || sizes[1];
+        const size = sizes.find(x => x.id === sel.value) || sizes[0];
         const r = Barcodes.buildLabel(bc, name, price, fs.value, size, { showName: true, showPrice: true, showShop: false, barH: 18 });
         const z = Math.max(1, Math.min(2, Math.round(((m.querySelector('#lbl-prev').clientWidth || 300) - 36) / (size.w * 3.7795) * 20) / 20));
         m.querySelector('#lbl-prev').innerHTML = `<div style="zoom:${z}">${r.html}</div>`; m.querySelector('#lbl-note').textContent = r.note || '';
@@ -584,7 +584,7 @@
       [fs, sel, md, dp].forEach(el => el.onchange = () => { draw(); C.save('settings'); }); draw();
       m.querySelector('#lbl-print').onclick = () => {
         const { r, size } = draw(); const n = Math.min(200, Math.max(1, parseInt(m.querySelector('#lbl-n').value, 10) || 1));
-        printHTML(BarcodeGen.printDoc(r.html.repeat(n), size.w, size.h, md.value));
+        Barcodes.output([{ r, copies: n }], size);
         if (r.note && !r.ok) toast('⚠️ ' + r.note);
       };
     },
