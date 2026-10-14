@@ -4,7 +4,8 @@
   const C = Core, { DB, esc, num, r2, fmt, money, genId, toast, findProduct, findCustomer } = C;
   const $ = id => document.getElementById(id);
   const NAV = [
-    { id: 'pos', label: 'Sales Counter', icon: 'fa-store' },
+    { id: 'home', label: 'Home', icon: 'fa-store' },
+    { id: 'pos', label: 'Sales Counter', icon: 'fa-cash-register' },
     { id: 'customers', label: 'Customers & Due', icon: 'fa-user-group' },
     { id: 'products', label: 'Products & Stock', icon: 'fa-box-open' },
     { id: 'barcodes', label: 'Barcode Labels', icon: 'fa-barcode' },
@@ -17,9 +18,9 @@
   ];
   const Views = {};
   const App = window.App = {
-    view: 'pos', Views,
+    view: 'home', Views,
     go(v) {
-      if (!Views[v]) v = 'pos';
+      if (!Views[v]) v = 'home';
       Modal.closeAll(); App.closeDrawers(); App.view = v; document.body.dataset.view = v;
       document.querySelectorAll('.nav-link[data-v]').forEach(b => b.classList.toggle('active', b.dataset.v === v));
       try {
@@ -46,7 +47,7 @@
     if (window.Scanner && Scanner.isOpen()) { Scanner.close(); return true; }
     if (Modal.stack.length) { Modal.close(); return true; }
     if (App.drawerOpen()) { App.closeDrawers(); return true; }
-    if (App.view !== 'pos') { App.go('pos'); return true; }
+    if (App.view !== 'home') { App.go('home'); return true; }
     return false;
   }
   try { history.replaceState({ root: 1 }, ''); pushGuard(); } catch (_) {}
@@ -753,7 +754,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     C.load(); POS.taxInit(); buildNav();
     const start = () => {
-      let first = 'pos'; try { const g = new URLSearchParams(location.search).get('go'); if (g && App.Views[g]) first = g; } catch (_) {}   // app-icon shortcuts: index.html?go=products
+      let first = 'home'; try { const g = new URLSearchParams(location.search).get('go'); if (g && App.Views[g]) first = g; } catch (_) {}   // app-icon shortcuts: index.html?go=products
       App.go(first); checkPendingBackup(); POS.renderCart(); if (window.Cloud) Cloud.init();
       if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});   // ask the browser not to evict shop data
     };

@@ -314,7 +314,7 @@
       <div class="grid2 mt3"><button class="btn btn-primary" onclick="Cloud.syncNow()"><i class="fas fa-rotate"></i> Sync now</button><button class="btn btn-ghost" onclick="Cloud.pull()"><i class="fas fa-cloud-arrow-down"></i> Pull from cloud</button></div>
       <div class="mt2"><button class="btn btn-ghost btn-block" onclick="Cloud.snapshots()"><i class="fas fa-clock-rotate-left"></i> Old copies</button></div>
       <button class="btn btn-danger-soft btn-block mt2" onclick="Cloud.signOut()"><i class="fas fa-right-from-bracket"></i> Sign out</button>
-      <p class="xs muted mt3">🔒 Data stays only in your Drive's private app folder — the app cannot see any other files. Changes sync automatically within a few seconds. EsyPOS renews the Google connection in the background; if it cannot, tap Reconnect.</p>`;
+      <p class="xs muted mt3">🔒 Data stays only in your Drive's private app folder — the app cannot see any other files. Changes sync automatically within a few seconds. EsyPOS keeps this connection on and renews it automatically until you sign out; if Google ever asks, just tap Reconnect.</p>`;
   }
   function renderUI() {
     const l = lbl(), on = isOn();
@@ -420,8 +420,21 @@
       if (document.visibilityState === 'hidden') { if (get(KEY.dirty) === '1' && validTok()) push(); }
       else if (!validTok()) resume();
     });
+    // Google only lets a silent (no-prompt) renewal run inside a real tap or key press; without one the browser blocks Google's tiny popup.
+    // So the first touch after the token gets old renews it invisibly — no "Reconnect" tap needed. The connection stays ON until Sign out.
+    let gTry = 0;
+    const onGesture = e => {
+      if (!isOn() || S.applying || S.authP || !clientId() || !navigator.onLine) return;
+      if (e && e.target && e.target.closest && e.target.closest('.js-chip,.acct,.welcome,.authgate,.gate,.lock')) return;   // those taps start a normal sign-in
+      const left = S.tok ? S.exp - Date.now() : 0;
+      if (left > 10 * 60 * 1000) return;                       // still fresh
+      if (Date.now() - gTry < 20000) return;                   // do not retry on every tap
+      gTry = Date.now(); S.lastTry = 0;
+      resume(left > 60000);                                    // soon to expire → refresh in place; expired → full silent resume
+    };
+    ['pointerup', 'touchend', 'keydown'].forEach(ev => document.addEventListener(ev, onGesture, { capture: true, passive: true }));
     // Renew the token a few minutes before it expires so sync never stops while the shop is open.
-    setInterval(() => { if (isOn() && document.visibilityState === 'visible' && !S.busy && S.tok && S.exp - Date.now() < 5 * 60 * 1000 && S.exp - Date.now() > 0) { resume(true); } }, 60 * 1000);
+    setInterval(() => { if (isOn() && document.visibilityState === 'visible' && !S.busy && S.tok && S.exp - Date.now() < 8 * 60 * 1000 && S.exp - Date.now() > 0) { resume(true); } }, 60 * 1000);
   }
   window.Cloud = { init, chip, markDirty, signIn, signOut, resetPin, syncNow, pull, snapshots, panel, setup, renderUI, isOn };
   if (!isOn()) showGate('new');
