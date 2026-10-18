@@ -27,6 +27,12 @@
   const ico = (n, sz) => `<svg class="ic" viewBox="0 0 24 24" width="${sz || 24}" height="${sz || 24}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n]}</svg>`;
   window.EsyIcon = ico;
 
+  const SLIDES = [
+    { cls: 's1', title: 'Manage your business', accent: 'Simply.', text: 'Fast, easy POS for your growing business.', icon: 'cart', go: "App.go('pos')" },
+    { cls: 's2', title: 'Your data, always safe', accent: 'Auto backup.', text: 'Saved in one file on your Google Drive.', icon: 'history', go: "Cloud.panel()" },
+    { cls: 's3', title: 'Sell faster', accent: 'Scan & go.', text: 'Phone camera, USB or Bluetooth scanner.', icon: 'scan', go: "Home.scan()" },
+    { cls: 's4', title: 'Know your profit', accent: 'Every day.', text: 'Sales, expenses and profit in one tap.', icon: 'chart', go: "App.go('reports')" }
+  ];
   const TILES = [
     { l: 'New Sale', i: 'cart', go: "App.go('pos')" },
     { l: 'Add Product', i: 'boxPlus', go: "Home.addProduct()" },
@@ -48,7 +54,9 @@
   }
 
   const Home = window.Home = {
+    SLIDES, _t: null,
     render() {
+      clearInterval(this._t);
       const t = C.todayKey(), td = C.buildReport(t, t), al = alerts();
       $('view').innerHTML = `<div class="hm">
         <section class="hm-hero">
@@ -61,8 +69,32 @@
           <div class="hm-sales-tx"><span>Today's Sales</span><b>${money(td.netSales)}</b></div>
           <span class="hm-link">Report ${ico('right', 16)}</span>
         </section>
+        <section class="hm-slider" id="hm-slider" aria-roledescription="carousel">
+          <div class="hm-track" id="hm-track">${SLIDES.map((x, i) => `<article class="hm-slide ${x.cls}" onclick="${x.go}" aria-label="${i + 1} / ${SLIDES.length}">
+            <div class="hm-st"><h3>${esc(x.title)}</h3><h2>${esc(x.accent)}</h2><p>${esc(x.text)}</p></div>
+            <div class="hm-art">${ico(x.icon, 40)}</div></article>`).join('')}</div>
+          <div class="hm-dots" id="hm-dots">${SLIDES.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div>
+        </section>
         <section class="hm-tiles">${TILES.map(x => `<button type="button" class="hm-tile" onclick="${x.go}"><span class="hm-ti">${ico(x.i, 28)}</span><span class="hm-tl">${x.l}</span></button>`).join('')}</section>
       </div>`;
+      this.initSlider();
+    },
+    initSlider() {
+      const tr = $('hm-track'); if (!tr) return;
+      const dots = $('hm-dots').children; let paused = false, raf = 0;
+      const idx = () => Math.max(0, Math.min(SLIDES.length - 1, Math.round(tr.scrollLeft / (tr.clientWidth || 1))));
+      const mark = () => { const i = idx(); for (let k = 0; k < dots.length; k++) dots[k].classList.toggle('on', k === i); };
+      tr.addEventListener('scroll', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(mark); }, { passive: true });
+      const hold = () => { paused = true; }, free = () => setTimeout(() => { paused = false; }, 2500);
+      tr.addEventListener('pointerdown', hold); tr.addEventListener('touchstart', hold, { passive: true });
+      ['pointerup', 'pointercancel', 'touchend', 'touchcancel', 'mouseleave'].forEach(e => tr.addEventListener(e, free));
+      Array.prototype.forEach.call(dots, (d, i) => { d.onclick = () => tr.scrollTo({ left: i * tr.clientWidth, behavior: 'smooth' }); });
+      if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      this._t = setInterval(() => {
+        if (!$('hm-track') || App.view !== 'home') return clearInterval(Home._t);
+        if (paused || document.hidden || document.querySelector('.modal-back,.scan,.lock,.welcome,.drawer.open')) return;
+        tr.scrollTo({ left: ((idx() + 1) % SLIDES.length) * tr.clientWidth, behavior: 'smooth' });
+      }, 4500);
     },
     addProduct() { App.go('products'); setTimeout(() => { try { Products.edit(); } catch (e) { console.error(e); } }, 60); },
     scan() { App.go('pos'); setTimeout(() => { try { POS.scan(); } catch (e) { console.error(e); } }, 80); },
@@ -88,6 +120,6 @@
   document.body.appendChild(nav);
   const syncNav = () => nav.querySelectorAll('button[data-v]').forEach(b => b.classList.toggle('active', b.dataset.v === App.view));
   const go0 = App.go;
-  App.go = function (v) { const r = go0.apply(this, arguments); syncNav(); return r; };
+  App.go = function (v) { const r = go0.apply(this, arguments); if (App.view !== 'home') clearInterval(Home._t); syncNav(); return r; };
   App.Views.home = Home;
 })();
