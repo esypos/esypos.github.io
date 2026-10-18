@@ -20,7 +20,7 @@
   const clientId = () => ((window.PROPOS_CONFIG && window.PROPOS_CONFIG.googleClientId) || get(KEY.client) || '').trim();
   const hasLocal = () => !!(DB.products.length || DB.sales.length || DB.customers.length || DB.suppliers.length || DB.expenses.length);
   const mk = (code, status) => { const e = new Error(code); e.code = code; e.status = status; return e; };
-  const S = { needConsent: false, status: 'off', busy: false, applying: false, timer: null, tok: null, exp: 0, authP: null, lastTry: 0, seq: 0, gis: null };
+  const S = { detail: '', needConsent: false, status: 'off', busy: false, applying: false, timer: null, tok: null, exp: 0, authP: null, lastTry: 0, seq: 0, gis: null };
   // The Google access token lives ~1 hour. Keep it in localStorage so closing and reopening the app within that hour needs no new sign-in.
   const clearTok = () => { try { LS.removeItem(KEY.tok); } catch (_) {} try { sessionStorage.removeItem(KEY.tok); } catch (_) {} };
   [LS, sessionStorage].some(st => { try { const t = JSON.parse(st.getItem(KEY.tok) || 'null'); if (t && t.exp > Date.now() + 60000) { S.tok = t.t; S.exp = t.exp; return true; } } catch (_) {} return false; });
@@ -69,12 +69,14 @@
     if (r.status === 401 && !noRetry) { S.tok = null; S.exp = 0; clearTok(); throw mk('auth', 401); }
     if (!r.ok) {
       const e = mk('http', r.status);
+      let j = null; try { j = await r.clone().json(); } catch (_) {}
+      const er = (j && j.error) || {}; e.detail = [er.status, (er.errors && er.errors[0] && er.errors[0].reason), er.message].filter(Boolean).join(' · ').slice(0, 220);
       if (r.status === 403) {
-        let j = null; try { j = await r.clone().json(); } catch (_) {}
-        const er = (j && j.error) || {}, why = ((er.errors && er.errors[0] && er.errors[0].reason) || '') + ' ' + (er.status || '') + ' ' + (er.message || '');
+        const why = ((er.errors && er.errors[0] && er.errors[0].reason) || '') + ' ' + (er.status || '') + ' ' + (er.message || '');
         e.why = /accessNotConfigured|has not been used|is disabled|SERVICE_DISABLED/i.test(why) ? 'api'
+          : /storageQuotaExceeded|storage quota/i.test(why) ? 'full'
           : /insufficient|SCOPE_INSUFFICIENT|PERMISSION_DENIED/i.test(why) ? 'scope'
-          : /rateLimit|quota/i.test(why) ? 'rate' : 'other';
+          : /rateLimitExceeded|userRateLimitExceeded|RATE_LIMIT_EXCEEDED/i.test(why) ? 'rate' : 'other';
       }
       throw e;
     }
@@ -157,9 +159,10 @@
       const hidden = f && (f.spaces || []).indexOf('appDataFolder') >= 0;   // older hidden file: create the visible one, keep the old as a copy
       const res = await writeMain(f && !hidden ? f.id : null, JSON.stringify(payload()));
       set(KEY.fid, res.id); set(KEY.rev, res.modifiedTime); set(KEY.last, String(Date.now()));
+      S.retries = 0;
       if (S.seq === seq) { del(KEY.dirty); del('esypos_dirty'); setStatus('ok'); }
       else { setStatus('pending'); S.timer = setTimeout(() => push(), 3000); }
-    } catch (e) { fail(e); }
+    } catch (e) { if (isOn()) set(KEY.dirty, '1'); fail(e); }
     finally { S.busy = false; }
   }
   async function syncNow() {
@@ -297,11 +300,17 @@
     else if (c === 'noclient') { setup(); st = 'off'; }
     else if (c === 'badfile') msg = '⚠️ Cloud file is not valid EsyPOS data';
     else if (e.status === 403 && e.why === 'scope') { st = 'auth'; S.needConsent = true; S.tok = null; S.exp = 0; clearTok(); msg = '⚠️ Drive permission was not given. Tap Reconnect and allow the Drive access checkbox'; }
+    else if (e.status === 403 && e.why === 'full') msg = '⚠️ Your Google Drive storage is full. Free some space, then tap Back up';
     else if (e.status === 403 && e.why === 'rate') msg = '⚠️ Google is busy, will retry automatically';
     else if (e.status === 403) msg = '⚠️ Google Drive API is not enabled for this app\'s Google Cloud project (see setup guide, step 2)';
     else if (e.status === 404) msg = '⚠️ Cloud file not found';
     console.warn('[Cloud]', e);
+    S.detail = (st === 'error' && e && e.detail) ? e.detail : '';
     setStatus(isOn() ? st : 'off');
+    if (st === 'error' && isOn() && e && e.why !== 'api' && e.why !== 'full' && (S.retries || 0) < 5) {
+      const wait = Math.min(600, 30 * Math.pow(2, S.retries || 0)) * 1000; S.retries = (S.retries || 0) + 1;
+      clearTimeout(S.timer); S.timer = setTimeout(() => push(), wait);   // try again by itself, like a phone backup
+    }
     if (loud && st === 'offline') msg = '⚠️ No internet connection';
     if (msg || (loud && st === 'error')) toast(msg || '⚠️ Cloud sync failed (' + (c || e.status || 'error') + ')');
   }
@@ -329,10 +338,10 @@
     const l = lbl();
     return `<div class="flex items-c gap3 mb3">${avatar(true)}<div class="grow"><div class="fw7 trunc">${esc(get(KEY.name) || 'Google account')}</div><div class="xs muted trunc">${esc(get(KEY.email))}</div></div></div>
       <div class="sync-line ${l.c}"><i class="fas ${l.i}"></i><span>${l.long}</span></div>
-      <div class="grid2 mt3"><button class="btn btn-primary" onclick="Cloud.syncNow()"><i class="fas fa-rotate"></i> Sync now</button><button class="btn btn-ghost" onclick="Cloud.pull()"><i class="fas fa-cloud-arrow-down"></i> Pull from cloud</button></div>
-      <div class="mt2"><button class="btn btn-ghost btn-block" onclick="Cloud.snapshots()"><i class="fas fa-clock-rotate-left"></i> Old copies</button></div>
-      <button class="btn btn-danger-soft btn-block mt2" onclick="Cloud.signOut()"><i class="fas fa-right-from-bracket"></i> Sign out</button>
-      <p class="xs muted mt3">🔒 All your data is saved in one file, <b>EsyPOS-Backup.json</b>, in My Drive. The app cannot see any other files in your Drive. Changes sync automatically within a few seconds. EsyPOS keeps this connection on and renews it automatically until you sign out; if Google ever asks, just tap Reconnect.</p>`;
+      ${S.status === 'error' && S.detail ? `<p class="xs muted mt2" style="overflow-wrap:anywhere">Details: ${esc(S.detail)}</p>` : ''}
+      <button class="btn btn-primary btn-block btn-lg mt3" onclick="Cloud.syncNow()"><i class="fas fa-cloud-arrow-up"></i> Back up</button>
+      <button class="btn btn-danger-soft btn-block mt2" onclick="Cloud.signOut()"><i class="fas fa-right-from-bracket"></i> Log out</button>
+      <p class="xs muted mt3">🔒 Backs up automatically after every change to one file, <b>EsyPOS-Backup.json</b>, in your Google Drive. Sign in with the same Google account on any device and your data is restored automatically.</p>`;
   }
   function renderUI() {
     const l = lbl(), on = isOn();
