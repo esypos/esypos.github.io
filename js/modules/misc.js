@@ -141,7 +141,7 @@
       arr.forEach(e => by[e.category] = r2((by[e.category] || 0) + num(e.amount)));
       $('ex-sum').innerHTML = `<div class="stats"><div class="stat hl"><div class="k">Total Expenses</div><div class="v">${money(tot)}</div></div><div class="stat"><div class="k">Entries</div><div class="v">${arr.length}</div></div></div>` +
         (Object.keys(by).length ? `<div class="chips mb3">${Object.entries(by).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<span class="badge b-p" style="padding:6px 12px;font-size:12px">${esc(k)}: ${money(v)}</span>`).join('')}</div>` : '');
-      $('ex-list').innerHTML = arr.length ? arr.map(e => `<div class="row" style="cursor:default"><div class="avatar"><i class="fas fa-wallet"></i></div><div class="grow"><div class="t">${esc(e.category)}</div><div class="s">${C.fmtDate(e.date)}${e.note ? ' · ' + esc(e.note) : ''}</div></div><div class="fw7 bad">${money(e.amount)}</div><button class="icon-btn" onclick="Exp.del('${e.id}')"><i class="fas fa-trash bad"></i></button></div>`).join('') : '<div class="empty"><i class="fas fa-wallet"></i>No expenses</div>';
+      $('ex-list').innerHTML = arr.length ? arr.map(e => `<div class="row" style="cursor:default"><div class="avatar"><i class="fas fa-wallet"></i></div><div class="grow"><div class="t">${esc(e.category)}</div><div class="s">${C.fmtDate(e.date)}${e.note ? ' · ' + esc(e.note) : ''}</div></div><div class="fw7 bad">${money(e.amount)}</div><button class="icon-btn" aria-label="Delete" title="Delete" onclick="Exp.del('${e.id}')"><i class="fas fa-trash bad"></i></button></div>`).join('') : '<div class="empty"><i class="fas fa-wallet"></i>No expenses</div>';
     },
     add() {
       const cats = [...new Set([...CATS, ...DB.expenses.map(e => e.category)])];

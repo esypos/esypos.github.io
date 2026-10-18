@@ -20,6 +20,11 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
 ---
 
+## v10.13.0 — Accessibility labels, metadata refresh
+- Icon-only delete/remove buttons now have accessible labels; images have empty alt text where decorative.
+- Backup: single visible file `EsyPOS-Backup.json` in Google Drive, automatic retry, clearer errors.
+- Blue professional palette, home page removed (app opens on the Sales Counter).
+
 ## v10.12.0 — UI/UX polish
 - Cart bar, toast and install/update bars now sit clear of the bottom navigation (no more overlap with the Scan button); the cart icon keeps a fixed round shape.
 - Home: one consistent outline icon set, tiles aligned on one icon line (labels may wrap to 2 lines without shifting icons), equal-size popular-product cards with the whole picture visible.

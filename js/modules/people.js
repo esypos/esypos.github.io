@@ -216,7 +216,7 @@
     quickSup() { Buy.editSup(null, id => { const sel = $('pu-sup'); if (sel) { sel.innerHTML += `<option value="${id}">${esc(findSupplier(id).name)}</option>`; sel.value = id; } }); },
     rows() {
       const el = $('pu-rows'); if (!el) return;
-      el.innerHTML = People.pr.map((r, i) => `<div class="card pad-s mb2"><div class="flex gap2 mb2"><select class="input grow" onchange="Buy.selP(${i},this.value)"><option value="">Select product...</option>${DB.products.slice().sort((a, b) => a.name.localeCompare(b.name, 'bn')).map(p => `<option value="${p.id}" ${r.pid === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select><button class="icon-btn" onclick="Buy.delRow(${i})"><i class="fas fa-xmark bad"></i></button></div>
+      el.innerHTML = People.pr.map((r, i) => `<div class="card pad-s mb2"><div class="flex gap2 mb2"><select class="input grow" onchange="Buy.selP(${i},this.value)"><option value="">Select product...</option>${DB.products.slice().sort((a, b) => a.name.localeCompare(b.name, 'bn')).map(p => `<option value="${p.id}" ${r.pid === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select><button class="icon-btn" aria-label="Remove" title="Remove" onclick="Buy.delRow(${i})"><i class="fas fa-xmark bad"></i></button></div>
         <div class="grid2"><div><label class="label">Qty</label><input type="number" step="any" min="0" class="input" value="${r.qty}" oninput="Buy.setR(${i},'qty',this.value)"></div><div><label class="label">Unit purchase price</label><input type="number" step="any" min="0" class="input" value="${r.cost}" oninput="Buy.setR(${i},'cost',this.value)"></div></div></div>`).join('');
       this.puCalc();
     },

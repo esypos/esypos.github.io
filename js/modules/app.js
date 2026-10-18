@@ -248,7 +248,7 @@
           <div class="grow" onclick="POS.editItem('${c.id}')"><div class="fw6 sm trunc">${esc(c.name)}</div>${c.note ? `<div class="xs muted cart-note">+ ${esc(c.note)}</div>` : ''}<div class="xs muted">${money(c.price)} × ${c.qty} <i class="fas fa-pen" style="font-size:9px;opacity:.5"></i></div></div>
           <div class="qty"><button onclick="POS.qty('${c.id}',-1)">−</button><span>${c.qty}</span><button onclick="POS.qty('${c.id}',1)">+</button></div>
           <div class="fw7 ptext sm" style="min-width:56px;text-align:right">${money(c.price * c.qty)}</div>
-          <button class="icon-btn" style="width:28px;height:28px" onclick="POS.remove('${c.id}')"><i class="fas fa-xmark"></i></button></div>`).join('')
+          <button class="icon-btn" aria-label="Remove" title="Remove" style="width:28px;height:28px" onclick="POS.remove('${c.id}')"><i class="fas fa-xmark"></i></button></div>`).join('')
         : '<div class="empty"><i class="fas fa-bag-shopping"></i>Cart empty</div>';
       return `<div class="flex between items-c mb3"><div class="sec-title" style="margin:0"><i class="fas fa-bag-shopping ptext cart-ico"></i> Cart <span class="badge b-p">${DB.cart.reduce((s, c) => s + c.qty, 0)}</span></div>
           <div class="flex gap1"><button class="btn btn-sm btn-ghost" onclick="POS.hold()"><i class="fas fa-pause"></i> Hold</button><button class="btn btn-sm btn-danger-soft" onclick="POS.clear()"><i class="fas fa-trash"></i></button></div></div>
@@ -410,10 +410,10 @@
         const low = p.track !== false && p.stock <= (p.minStock || 0);
         const exp = p.expiry ? (p.expiry < C.todayKey() ? '<span class="badge b-bad">Expired</span>' : (p.expiry <= soon ? '<span class="badge b-warn">Expiry ' + p.expiry + '</span>' : '')) : '';
         return `<div class="row" onclick="Products.edit('${p.id}')">
-          <div class="avatar" style="overflow:hidden">${p.image ? `<img src="${esc(C.imgSrc(p))}" loading="lazy" decoding="async" draggable="false" style="width:100%;height:100%;object-fit:cover">` : '<i class="fas fa-box"></i>'}</div>
+          <div class="avatar" style="overflow:hidden">${p.image ? `<img alt="" src="${esc(C.imgSrc(p))}" loading="lazy" decoding="async" draggable="false" style="width:100%;height:100%;object-fit:cover">` : '<i class="fas fa-box"></i>'}</div>
           <div class="grow"><div class="t">${esc(p.name)} ${exp}</div><div class="s">${esc(p.category || 'No category')}${p.barcode ? ' · ' + esc(p.barcode) : ''} · Cost ${money(p.cost || 0)}</div></div>
           <div class="tr"><div class="fw7 ptext">${money(p.price)}</div><div class="xs ${low ? 'bad fw6' : 'muted'}">${p.track === false ? 'Not tracked' : p.stock + ' ' + esc(p.unit || '')}</div></div>
-          <button class="icon-btn" onclick="event.stopPropagation();Products.del('${p.id}')"><i class="fas fa-trash bad"></i></button></div>`;
+          <button class="icon-btn" aria-label="Delete" title="Delete" onclick="event.stopPropagation();Products.del('${p.id}')"><i class="fas fa-trash bad"></i></button></div>`;
       }).join('') + (arr.length > lim ? `<div class="tc mt3"><button class="btn btn-ghost" onclick="Products.more()">Show more (${arr.length - lim} left)</button></div>` : '');
     },
     edit(id) {
@@ -426,7 +426,7 @@
       const extra = this._extraFieldsHtml(biz, p);
       const m = Modal.open({ title: p ? 'Edit Product' : 'New Product', size: 'xl', body: `
         <div class="pf-layout"><div class="pf-main">
-        <div class="flex gap3 mb3 items-c"><label style="cursor:pointer"><div class="avatar" id="pf-img" style="width:64px;height:64px;overflow:hidden">${this.img ? `<img src="${esc(this.img)}" style="width:100%;height:100%;object-fit:cover">` : '<i class="fas fa-camera"></i>'}</div><input type="file" accept="image/*" class="hidden" onchange="Products.pickImg(this)"></label>
+        <div class="flex gap3 mb3 items-c"><label style="cursor:pointer"><div class="avatar" id="pf-img" style="width:64px;height:64px;overflow:hidden">${this.img ? `<img alt="" src="${esc(this.img)}" style="width:100%;height:100%;object-fit:cover">` : '<i class="fas fa-camera"></i>'}</div><input type="file" accept="image/*" class="hidden" onchange="Products.pickImg(this)"></label>
           <div class="grow"><label class="label">Product name *</label><input id="pf-name" class="input" autofocus value="${esc(p ? p.name : '')}"></div></div>
         <div class="field"><label class="label">Barcode</label><div class="flex gap2 flex-wrap">
           <input id="pf-bc" class="input grow" value="${esc(p ? p.barcode : '')}" placeholder="Scan, type or generate" style="min-width:120px" oninput="Products.bcCheck()" autocomplete="off">
@@ -507,7 +507,7 @@
       el.innerHTML = rows.map((v, i) => `<div class="flex gap2 mb2 items-c">
         <input class="input grow" placeholder="Size / name" value="${esc(v.name || '')}" oninput="Products._variants[${i}].name=this.value">
         <input class="input" type="number" step="any" min="0" style="width:100px" placeholder="Price" value="${v.price != null ? v.price : ''}" oninput="Products._variants[${i}].price=parseFloat(this.value)||0">
-        <button type="button" class="icon-btn" onclick="Products._variants.splice(${i},1);Products.renderVariantRows()"><i class="fas fa-trash bad"></i></button></div>`).join('');
+        <button type="button" class="icon-btn" aria-label="Remove" title="Remove" onclick="Products._variants.splice(${i},1);Products.renderVariantRows()"><i class="fas fa-trash bad"></i></button></div>`).join('');
     },
     addVariantRow() {
       if (!this._variants) this._variants = [];
@@ -522,12 +522,12 @@
         const opts = (g.options || []).map((o, oi) => `<div class="flex gap2 mb1 items-c">
           <input class="input grow" placeholder="Option" value="${esc(o.name || '')}" oninput="Products._addons[${gi}].options[${oi}].name=this.value">
           <input class="input" type="number" step="any" style="width:90px" placeholder="+price" value="${o.price != null ? o.price : 0}" oninput="Products._addons[${gi}].options[${oi}].price=parseFloat(this.value)||0">
-          <button type="button" class="icon-btn" onclick="Products._addons[${gi}].options.splice(${oi},1);Products.renderAddonGroups()"><i class="fas fa-xmark"></i></button></div>`).join('');
+          <button type="button" class="icon-btn" aria-label="Remove" title="Remove" onclick="Products._addons[${gi}].options.splice(${oi},1);Products.renderAddonGroups()"><i class="fas fa-xmark"></i></button></div>`).join('');
         return `<div class="card pad-s mb2"><div class="flex gap2 items-c mb2">
           <input class="input grow" placeholder="Group name (e.g. Sauce)" value="${esc(g.name || '')}" oninput="Products._addons[${gi}].name=this.value">
           <label class="xs"><input type="checkbox" ${g.required ? 'checked' : ''} onchange="Products._addons[${gi}].required=this.checked"> Required</label>
           <button type="button" class="btn btn-sm btn-soft" onclick="Products._addons[${gi}].options=Products._addons[${gi}].options||[];Products._addons[${gi}].options.push({name:'',price:0});Products.renderAddonGroups()">+ Opt</button>
-          <button type="button" class="icon-btn" onclick="Products._addons.splice(${gi},1);Products.renderAddonGroups()"><i class="fas fa-trash bad"></i></button></div>${opts || '<p class="xs bad fw6">No options yet — tap “+ Opt” to add one</p>'}</div>`;
+          <button type="button" class="icon-btn" aria-label="Remove" title="Remove" onclick="Products._addons.splice(${gi},1);Products.renderAddonGroups()"><i class="fas fa-trash bad"></i></button></div>${opts || '<p class="xs bad fw6">No options yet — tap “+ Opt” to add one</p>'}</div>`;
       }).join('');
     },
     addAddonGroup() {
@@ -590,7 +590,7 @@
     },
     pickImg(input) {
       const f = input.files && input.files[0]; if (!f) return; const rd = new FileReader();
-      rd.onload = e => { const im = new Image(); im.onload = () => { const r = Math.min(1, 320 / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * r); c.height = Math.round(im.height * r); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); this.img = c.toDataURL('image/jpeg', .7); $('pf-img').innerHTML = `<img src="${this.img}" style="width:100%;height:100%;object-fit:cover">`; }; im.src = e.target.result; };
+      rd.onload = e => { const im = new Image(); im.onload = () => { const r = Math.min(1, 320 / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * r); c.height = Math.round(im.height * r); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); this.img = c.toDataURL('image/jpeg', .7); $('pf-img').innerHTML = `<img alt="" src="${this.img}" style="width:100%;height:100%;object-fit:cover">`; }; im.src = e.target.result; };
       rd.readAsDataURL(f);
     },
     scanBC() { Scanner.open(code => { const f = $('pf-bc'); if (f) { f.value = code; this.bcCheck(); toast('✓ Barcode captured'); } }, { hint: 'Hold product barcode', once: true }); },

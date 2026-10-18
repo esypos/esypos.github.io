@@ -755,7 +755,7 @@ html.dark #toast.t-warn{background:#f59e0b;color:#2a1700}
 html.needs-login .bottom-nav{display:none!important}
 
 /* ==========================================================================
-   v10.12.0 — UI/UX polish pass (all screens, all device sizes)
+   v10.13.0 — UI/UX polish pass (all screens, all device sizes)
    ========================================================================== */
 :root{--bn-h:64px;--fab:58px}
 .ic{display:block;flex:none}
@@ -1008,3 +1008,7 @@ html.dark .sidebar,html.dark .topbar,html.dark .bottom-nav{background:var(--card
 
 /* Print: receipts and reports without chrome */
 @media print{.sidebar,.topbar,.bottom-nav,.cart-bar,#toast{display:none!important}.main{margin:0!important;padding:0!important}}
+
+/* v10.13 — comfortable touch targets for small icon buttons (cart remove, row delete) */
+.icon-btn[aria-label="Remove"],.icon-btn[aria-label="Delete"]{min-width:36px;min-height:36px;color:var(--muted)}
+.icon-btn[aria-label="Delete"]:hover,.icon-btn[aria-label="Remove"]:hover{color:var(--bad);background:var(--badsoft);border-color:transparent}
