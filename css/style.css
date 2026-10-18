@@ -755,7 +755,7 @@ html.dark #toast.t-warn{background:#f59e0b;color:#2a1700}
 html.needs-login .bottom-nav{display:none!important}
 
 /* ==========================================================================
-   v10.11.1 — UI/UX polish pass (all screens, all device sizes)
+   v10.12.0 — UI/UX polish pass (all screens, all device sizes)
    ========================================================================== */
 :root{--bn-h:64px;--fab:58px}
 .ic{display:block;flex:none}
@@ -921,3 +921,90 @@ body{background:var(--bg);background-attachment:scroll}
 .modal-sheet{border:1px solid var(--border)}
 /* Status chip colours: calm, readable */
 .sync-chip{background:var(--card)}
+
+
+/* ==========================================================================
+   v10.12 — Design refinement: type, spacing, sheets, feedback, dark mode
+   ========================================================================== */
+:root{--ring:rgba(37,99,235,.28);--bn-h:62px}
+html.dark{--ring:rgba(96,165,250,.40)}
+::selection{background:rgba(37,99,235,.22)}
+body{font-size:14px;line-height:1.5;letter-spacing:-.003em}
+h1,h2,h3{letter-spacing:-.02em;line-height:1.25}
+
+/* Layout rhythm */
+.page-head{margin-bottom:14px}
+.page-head h2{font-size:21px;font-weight:700;letter-spacing:-.02em}
+.page-head p{color:var(--muted)}
+.sec-title{font-size:14.5px;font-weight:700;color:var(--text)}
+.card.pad,.pad{padding:16px}
+
+/* Sidebar & brand */
+.sidebar{background:var(--card);box-shadow:none;border-right:1px solid var(--border)}
+.brand{padding:16px 16px 14px}
+.brand .fw7{font-size:16.5px;letter-spacing:-.02em}
+.nav{gap:2px;padding:10px 10px}
+.nav-link{padding:10px 12px;font-size:14px;font-weight:500;border-radius:10px;color:var(--muted)}
+.nav-link i{font-size:15px;width:20px}
+.nav-link.active{background:var(--psoft);color:var(--ptext);font-weight:600;box-shadow:inset 3px 0 0 var(--primary)}
+.nav-link:not(.active):hover{background:var(--hover);color:var(--text)}
+.acct{border-radius:12px}
+
+/* Form controls */
+.label{font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:6px}
+.input{min-height:44px;border-radius:10px}
+textarea.input{min-height:88px}
+.input::placeholder{color:color-mix(in srgb,var(--muted) 75%,transparent)}
+.btn-lg{min-height:48px;border-radius:12px}
+.btn:focus-visible,.chip:focus-visible,.icon-btn:focus-visible,.nav-link:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+/* Sheets & dialogs */
+.modal-back{background:rgba(15,23,42,.45)}
+.modal-sheet{border-radius:20px 20px 0 0;box-shadow:0 -12px 40px -12px rgba(15,23,42,.35)}
+.modal-head{padding:14px 18px;background:var(--card);border-bottom:1px solid var(--border)}
+.modal-head h3{font-size:17px;font-weight:700}
+.modal-body{padding:16px 18px}
+.modal-foot{padding:12px 18px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--border);background:var(--card);gap:10px}
+.modal-foot .btn{min-height:46px}
+@media(min-width:700px){.modal-sheet,.modal-sheet.full{border-radius:18px}}
+
+/* Feedback */
+#toast{background:#0f172a;color:#f8fafc;border-radius:12px;font-weight:500;font-size:13.5px;box-shadow:0 10px 30px -10px rgba(15,23,42,.5)}
+html.dark #toast{background:#e5eaf3;color:#0f172a}
+.badge{font-weight:600;padding:3px 9px}
+.note-warn{border-radius:10px}
+.sync-chip{font-weight:600;border-radius:99px}
+.sync-chip.ok{color:var(--ok);background:var(--oksoft);border-color:transparent}
+.sync-chip.err{color:var(--bad);background:var(--badsoft);border-color:transparent}
+.sync-chip.pending{color:var(--warn);background:var(--warnsoft);border-color:transparent}
+
+/* Product grid & cart */
+.pcard{border-radius:14px;box-shadow:var(--shadow);transition:border-color .15s,box-shadow .15s,transform .12s}
+.pcard:hover{border-color:color-mix(in srgb,var(--primary) 40%,var(--border));transform:none}
+.pcard:active{transform:scale(.98)}
+.pay-opt{border-radius:10px;font-weight:600}
+.pay-opt.on,.pay-opt.sel,.pay-opt.active{background:var(--psoft);border-color:var(--primary);color:var(--ptext)}
+.row{padding:12px 16px}
+.row:hover{background:var(--hover)}
+.avatar{border-radius:50%;font-weight:600}
+
+/* Lists, tables, numbers */
+.tbl td{padding:11px 14px}
+.tbl tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--hover) 45%,transparent)}
+.tbl tbody tr:hover td{background:var(--hover)}
+.stat .k{font-weight:600}
+.stat .v,.cb-total,.pprice,.sumrow,.kv b,.tbl td.r{font-variant-numeric:tabular-nums}
+
+/* Scrollbars (desktop) */
+@media(hover:hover){*{scrollbar-width:thin;scrollbar-color:var(--border) transparent}}
+
+/* Dark mode: clearer surfaces */
+html.dark .card,html.dark .stat,html.dark .pcard,html.dark .modal-sheet{border-color:var(--border);box-shadow:none}
+html.dark .sidebar,html.dark .topbar,html.dark .bottom-nav{background:var(--card)}
+
+/* Motion: quick, quiet */
+.view{animation:rise .22s var(--ease) backwards}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* Print: receipts and reports without chrome */
+@media print{.sidebar,.topbar,.bottom-nav,.cart-bar,#toast{display:none!important}.main{margin:0!important;padding:0!important}}
