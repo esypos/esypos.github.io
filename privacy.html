@@ -65,6 +65,7 @@ a{color:#4f46e5}
     <table>
       <tr><th>Scope</th><th>Purpose</th></tr>
       <tr><td><code>openid</code>, <code>email</code>, <code>profile</code></td><td>Show your name, email and picture in the app and identify which account is connected.</td></tr>
+      <tr><td><code>drive.file</code></td><td>Create and update one visible backup file (<code>EsyPOS-Backup.json</code>) in your Google Drive that contains your shop data. This scope only reaches files EsyPOS itself created; it cannot see any other file.</td></tr>
       <tr><td><code>drive.appdata</code></td><td>Store and restore a backup file (<code>esypos-data.json</code> and dated snapshots) in the <b>hidden application-data folder</b> of your Google Drive. This scope does not let the app see, read, or modify any other file in your Drive.</td></tr>
     </table>
     <ul>
@@ -103,7 +104,7 @@ a{color:#4f46e5}
     <ul>
       <li><b>Device data:</b> Settings → Data management → "Delete all data", or clear the site's data in your browser.</li>
       <li><b>Google connection:</b> Settings → Google Drive cloud backup → "Sign out". You can also remove EsyPOS's access at <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a>.</li>
-      <li><b>Backup in Drive:</b> in Google Drive → Settings → "Manage apps", delete EsyPOS's hidden app data.</li>
+      <li><b>Backup in Drive:</b> in Google Drive → Settings → "Manage apps", delete EsyPOS's hidden app data, and delete the file EsyPOS-Backup.json from My Drive.</li>
       <li>Because we hold none of your data, there is nothing for us to delete on our side; contact us by email if you have questions.</li>
     </ul>
 

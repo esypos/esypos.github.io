@@ -85,7 +85,7 @@ a{color:var(--ptext)}
 .row .s{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .avatar{width:40px;height:40px;border-radius:12px;background:var(--psoft);color:var(--ptext);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
 .empty{text-align:center;padding:36px 16px;color:var(--muted);font-size:14px}
-.empty i{font-size:30px;opacity:.45;display:block;margin-bottom:10px}
+.empty>i{font-size:30px;opacity:.45;display:block;margin-bottom:10px}
 .kv{display:flex;justify-content:space-between;gap:12px;padding:8px 0;font-size:14px;border-bottom:1px dashed var(--border)}
 .kv:last-child{border:0}
 .sumrow{display:flex;justify-content:space-between;align-items:center;font-size:14px;margin:6px 0}
@@ -726,63 +726,11 @@ html.dark #toast.t-warn{background:#f59e0b;color:#2a1700}
 .modal-sheet{border-radius:26px 26px 0 0}
 @media (min-width:700px){.modal-sheet{border-radius:24px}}
 .btn:focus-visible,.chip:focus-visible,.icon-btn:focus-visible,.pcard:focus-visible,.row:focus-visible{outline:3px solid var(--ring);outline-offset:2px}
-.empty i{width:68px;height:68px;border-radius:50%;background:var(--psoft);color:var(--ptext);opacity:1;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 12px}
+.empty>i{width:68px;height:68px;border-radius:50%;background:var(--psoft);color:var(--ptext);opacity:1;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 12px}
 
 /* ==========================================================================
    v10.9 — Home screen + mobile bottom navigation
    ========================================================================== */
-.hm{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
-.hm-hero{position:relative;overflow:hidden;border-radius:var(--r-xl);padding:18px 18px 20px;background:linear-gradient(120deg,var(--psoft),color-mix(in srgb,var(--primary2) 22%,var(--card)));color:var(--ptext);display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-.hm-hero-txt{position:relative;z-index:1;min-width:0}
-.hm-hi{font-size:15px;color:var(--muted);font-weight:500}
-.hm-hero h1{margin:2px 0 4px;font-size:26px;line-height:1.15;font-weight:800;letter-spacing:-.03em;color:var(--text)}
-.hm-hero p{margin:0;font-size:13.5px;color:var(--muted)}
-.hm-leaf{position:absolute;right:-6px;bottom:-4px;width:170px;height:auto;color:var(--primary2);pointer-events:none}
-.hm-bell{position:relative;z-index:2;flex:none;width:42px;height:42px;border:0;border-radius:50%;background:transparent;color:var(--text);font-size:21px;display:flex;align-items:center;justify-content:center;cursor:pointer}
-.hm-bell b{position:absolute;top:0;right:-2px;min-width:20px;height:20px;padding:0 5px;border-radius:99px;background:var(--primary);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--card)}
-.hm-sales{display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer}
-.hm-sales-ic{flex:none;width:54px;height:54px;border-radius:16px;background:var(--psoft);color:var(--ptext);display:flex;align-items:center;justify-content:center;font-size:22px}
-.hm-sales-tx{flex:1;min-width:0;display:flex;flex-direction:column}
-.hm-sales-tx span{font-size:14px;color:var(--muted);font-weight:500}
-.hm-sales-tx b{font-size:28px;line-height:1.15;font-weight:800;letter-spacing:-.02em;color:var(--text);overflow:hidden;text-overflow:ellipsis}
-.hm-link{border:0;background:transparent;color:var(--ptext);font:inherit;font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap;padding:6px 0}
-.hm-link i{font-size:11px}
-.hm-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-.hm-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:92px;padding:12px 4px;border:1px solid var(--border);border-radius:var(--r-lg);background:var(--card);color:var(--text);font:inherit;font-size:12.5px;font-weight:600;text-align:center;cursor:pointer;box-shadow:var(--shadow);transition:transform .15s var(--ease),background .15s}
-.hm-tile:active{transform:scale(.96);background:var(--hover)}
-.hm-ti{position:relative;color:var(--ptext);font-size:26px;line-height:1;height:28px;display:flex;align-items:center}
-.hm-ti em{position:absolute;right:-9px;bottom:-5px;width:15px;height:15px;border-radius:50%;background:var(--card);color:var(--ptext);font-size:9px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 1.5px var(--ptext) inset}
-.hm-slider{position:relative}
-.hm-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;border-radius:var(--r-xl);-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
-.hm-track::-webkit-scrollbar{display:none}
-.hm-slide{flex:0 0 100%;scroll-snap-align:center;scroll-snap-stop:always;position:relative;overflow:hidden;min-height:150px;padding:20px 20px 30px;display:flex;align-items:center;justify-content:space-between;gap:10px;color:#fff;background:linear-gradient(120deg,#6d3fe0,#8b5cf6 60%,#a78bfa)}
-.hm-slide.s2{background:linear-gradient(120deg,#4338ca,#6366f1 60%,#8b5cf6)}
-.hm-slide.s3{background:linear-gradient(120deg,#5b21b6,#7c3aed 55%,#c026d3)}
-.hm-slide.s4{background:linear-gradient(120deg,#1e3a8a,#4f46e5 60%,#8b5cf6)}
-.hm-slide::before{content:'';position:absolute;right:-40px;top:-60px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.12)}
-.hm-slide::after{content:'';position:absolute;right:70px;bottom:-90px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.08)}
-.hm-st{position:relative;z-index:1;min-width:0;flex:1}
-.hm-st h3{margin:0;font-size:22px;line-height:1.2;font-weight:800;letter-spacing:-.02em}
-.hm-st h2{margin:0 0 8px;font-size:30px;line-height:1.1;font-weight:800;letter-spacing:-.02em;color:#e9dcff}
-.hm-st p{margin:0;font-size:13.5px;line-height:1.5;opacity:.92;max-width:300px}
-.hm-art{position:relative;z-index:1;flex:none}
-.hm-dev{width:92px;height:92px;border-radius:26px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-size:42px;box-shadow:0 14px 30px -12px rgba(0,0,0,.4);transform:rotate(-6deg)}
-.hm-dots{position:absolute;left:0;right:0;bottom:10px;display:flex;justify-content:center;gap:6px;pointer-events:none}
-.hm-dots i{width:7px;height:7px;border-radius:99px;background:rgba(255,255,255,.5);transition:width .25s var(--ease),background .25s;pointer-events:auto;cursor:pointer}
-.hm-dots i.on{width:20px;background:#fff}
-.hm-ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.hm-ph h2{margin:0;font-size:20px;font-weight:800;letter-spacing:-.02em}
-.hm-prods{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;padding:2px 2px 6px;margin:0 -2px}
-.hm-prods::-webkit-scrollbar{display:none}
-.hm-prod{flex:0 0 calc((100% - 24px)/3);min-width:128px;scroll-snap-align:start;display:flex;flex-direction:column;align-items:flex-start;text-align:left;padding:12px;border:1px solid var(--border);border-radius:var(--r-lg);background:var(--card);color:var(--text);font:inherit;cursor:pointer;box-shadow:var(--shadow);transition:transform .15s var(--ease)}
-.hm-prod:active{transform:scale(.97)}
-.hm-pi{width:100%;height:92px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;border-radius:12px;overflow:hidden;color:var(--ptext);font-size:30px;background:var(--input)}
-.hm-pi img{width:100%;height:100%;object-fit:contain}
-.hm-pn{font-size:14.5px;font-weight:600;line-height:1.25;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hm-pp{font-size:18px;font-weight:800;color:var(--ptext);margin:4px 0 8px}
-.hm-st-chip{font-size:11.5px;font-weight:600;color:var(--ptext);background:var(--psoft);padding:4px 10px;border-radius:99px}
-.hm-st-chip.low{color:var(--warn);background:var(--warnsoft)}
-.hm-empty{text-align:center;padding:24px 16px}.hm-empty i{font-size:30px;color:var(--ptext);opacity:.6}.hm-empty p{margin:8px 0 14px;color:var(--muted)}
 
 /* Bottom navigation (phones & tablets; desktop keeps the sidebar) */
 .bottom-nav{display:none}
@@ -805,12 +753,9 @@ html.dark #toast.t-warn{background:#f59e0b;color:#2a1700}
   body.kb-open .bottom-nav{display:none}
 }
 html.needs-login .bottom-nav{display:none!important}
-@media(min-width:700px){.hm-tiles{gap:14px}.hm-tile{min-height:104px;font-size:14px}.hm-prod{flex-basis:calc((100% - 36px)/4)}.hm-slide{min-height:170px;padding:26px 28px 34px}.hm-st h3{font-size:26px}.hm-st h2{font-size:36px}.hm-dev{width:110px;height:110px;font-size:50px}}
-@media(min-width:1024px){.hm-tiles{grid-template-columns:repeat(8,minmax(0,1fr))}.hm-tile{min-height:96px;font-size:13px}.hm-hero h1{font-size:30px}.hm-leaf{width:230px}.hm-prod{flex-basis:calc((100% - 60px)/6)}}
-@media(max-width:359px){.hm-tile{font-size:11.5px}.hm-sales-tx b{font-size:24px}.hm-st h3{font-size:19px}.hm-st h2{font-size:26px}.hm-dev{display:none}}
 
 /* ==========================================================================
-   v10.9.1 — UI/UX polish pass (all screens, all device sizes)
+   v10.10.2 — UI/UX polish pass (all screens, all device sizes)
    ========================================================================== */
 :root{--bn-h:64px;--fab:58px}
 .ic{display:block;flex:none}
@@ -829,25 +774,8 @@ table.tbl td,table.tbl th{vertical-align:middle}
 }
 
 /* ---- Home: tiles (equal icon line, 2-line label slot, never overflows) ---- */
-.hm-tile{display:grid;grid-template-rows:32px minmax(2.4em,auto);align-content:center;justify-items:center;row-gap:8px;min-height:96px;padding:12px 4px 10px;font-size:clamp(11px,3.05vw,13px);letter-spacing:-.005em}
-.hm-ti{height:32px;display:flex;align-items:center;justify-content:center;color:var(--ptext)}
-.hm-tl{display:flex;align-items:flex-start;justify-content:center;line-height:1.2;text-align:center;max-width:100%;overflow-wrap:anywhere;hyphens:auto}
-.hm-tile:hover{border-color:color-mix(in srgb,var(--primary) 35%,var(--border))}
-.hm-sales-ic .ic,.hm-bell .ic{margin:auto}
-.hm-link{gap:2px}.hm-link .ic{margin-top:1px}
-.hm-pi .ic{opacity:.75}
-.hm-dev .ic{color:#fff}
-.hm-slide{min-width:0}
-.hm-st h3,.hm-st h2{overflow-wrap:anywhere}
 
 /* ---- Home: popular products — equal cards, whole image visible, next card peeks ---- */
-.hm-prods{scroll-snap-type:x mandatory;scroll-padding-inline:2px;padding-bottom:8px}
-.hm-prod{flex:0 0 clamp(138px,42%,176px);min-width:0;align-items:stretch;padding:10px 10px 12px;gap:0}
-.hm-pi{aspect-ratio:1/1;height:auto;margin-bottom:10px;padding:6px;background:var(--input);border:1px solid var(--border)}
-.hm-pi img{width:100%;height:100%;object-fit:contain;border-radius:8px}
-.hm-pn{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal;line-height:1.25;min-height:2.5em;font-size:14px}
-.hm-pp{margin:6px 0 8px;font-size:17px}
-.hm-st-chip{align-self:flex-start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ---- Sales counter: product cards ---- */
 .pcard{display:flex;flex-direction:column;padding:8px}
@@ -886,42 +814,128 @@ table.tbl td,table.tbl th{vertical-align:middle}
 @media(max-width:359px){
   :root{--bn-h:60px;--fab:52px}
   .bottom-nav button{font-size:10px}
-  .hm-tile{min-height:88px;row-gap:6px}
-  .hm-hero h1{font-size:22px}.hm-leaf{width:130px}
-  .hm-prod{flex-basis:132px}
 }
-@media(min-width:360px) and (max-width:389px){.hm-hero h1{font-size:24px}}
 @media(max-height:480px) and (orientation:landscape) and (max-width:1023px){
   .bottom-nav{min-height:calc(54px + env(safe-area-inset-bottom))}
   .bottom-nav button span{display:none}
   .bottom-nav .bn-scan{margin-top:-14px}
-  .hm-tiles{grid-template-columns:repeat(8,minmax(0,1fr))}
 }
 
 /* ---- Tablet (700–1023): roomier home ---- */
-@media(min-width:700px) and (max-width:1023px){
-  .hm{gap:18px}
-  .hm-hero{padding:24px 26px 26px}.hm-hero h1{font-size:30px}.hm-leaf{width:220px}
-  .hm-sales{padding:18px 22px}.hm-sales-tx b{font-size:34px}
-  .hm-tiles{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
-  .hm-tile{min-height:112px;font-size:14px;row-gap:10px}
-  .hm-prod{flex-basis:clamp(168px,24%,200px)}
-}
 
 /* ---- Desktop: centered, comfortable width ---- */
-@media(min-width:1024px){
-  .hm{max-width:1120px;gap:20px}
-  .hm-hero{padding:28px 32px}.hm-hero h1{font-size:32px}
-  .hm-sales{padding:20px 26px}.hm-sales-tx b{font-size:36px}
-  .hm-tiles{grid-template-columns:repeat(8,minmax(0,1fr));gap:12px}
-  .hm-tile{min-height:112px;font-size:13px}
-  .hm-prod{flex-basis:clamp(170px,16%,210px)}
-  .hm-slide{min-height:190px;padding:30px 40px 40px}
-  .hm-st h3{font-size:28px}.hm-st h2{font-size:42px}
-  .hm-dev{width:124px;height:124px}
-  .hm-dev .ic{width:56px;height:56px}
-}
-@media(min-width:1600px){.hm{max-width:1280px}}
 
 /* ---- Respect reduced motion for the new home pieces ---- */
-@media(prefers-reduced-motion:reduce){.hm-track{scroll-behavior:auto}.hm-tile,.hm-prod,.bn-scan{transition:none}}
+
+
+/* ==========================================================================
+   v10.10 — One-screen Home, true circles, fluid scaling on every display
+   Everything on Home is sized from one unit (--u) that follows BOTH the screen width and height,
+   so small phones get a compact layout and big screens get a bigger one. No scrolling on Home.
+   ========================================================================== */
+
+/* ---- Round things stay round: never squeezed by flex/grid, always 1:1 ---- */
+.g-av,.avatar,.logo,.ui-confirm-icon,.perm-ico,.empty>i,.dots i,.fly-ring,.hm-bell,.hm-sales-ic,.hm-bub,.cb-ico,.bn-scan,.keypad button,.gate-feats li i{aspect-ratio:1/1;flex:none}
+.g-av,.ui-confirm-icon,.perm-ico,.empty>i,.hm-bell,.bn-scan,.keypad button{border-radius:50%}
+.keypad button{width:100%;height:auto;padding:0}
+.ic{display:block;flex:none;max-width:none;overflow:visible}
+.fas,.far,.fab,.fa-solid{flex:none}
+.ui-confirm-icon .fas,.perm-ico .fas,.empty>i::before,.gate-feats li i .fas{width:auto}
+.bottom-nav .ic{width:24px;height:24px}
+.bottom-nav .bn-scan .ic{width:28px;height:28px}
+
+/* ---- Home: fills the visible screen exactly ---- */
+body[data-view="home"]{overflow:hidden;height:100vh;height:100dvh;display:flex;flex-direction:column}
+body[data-view="home"] .main{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden;
+  padding-top:max(10px,1.2dvh);padding-bottom:max(10px,1.2dvh)}
+body[data-view="home"] .view{flex:1 1 auto;min-height:0;width:100%;max-width:none;display:flex;justify-content:center;animation:none}
+@media(max-width:1023px){
+  body[data-view="home"] .main{padding-bottom:calc(var(--bn-h) + 12px + env(safe-area-inset-bottom))}
+}
+
+.hm{--u:clamp(10px,min(2.6vw,2.1dvh),20px);
+  width:100%;max-width:calc(var(--u)*58);height:100%;min-height:0;display:flex;flex-direction:column;gap:calc(var(--u)*1.2)}
+
+.hm-hero{flex:none;display:flex;align-items:center;justify-content:space-between;gap:var(--u);
+  padding:calc(var(--u)*1.5) calc(var(--u)*1.8);border-radius:calc(var(--u)*2);
+  background:linear-gradient(120deg,var(--psoft),color-mix(in srgb,var(--primary2) 22%,var(--card)));color:var(--ptext)}
+.hm-hero-txt{min-width:0}
+.hm-hi{font-size:calc(var(--u)*1.4);font-weight:500;color:var(--muted);line-height:1.3}
+.hm-hero h1{margin:calc(var(--u)*.2) 0 0;font-size:calc(var(--u)*2.6);line-height:1.15;font-weight:800;letter-spacing:-.03em;color:var(--text)}
+.hm-bell{position:relative;width:calc(var(--u)*4.6);height:calc(var(--u)*4.6);border:0;background:color-mix(in srgb,var(--card) 70%,transparent);color:var(--text);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.hm-bell .ic{width:calc(var(--u)*2.4);height:calc(var(--u)*2.4)}
+.hm-bell b{position:absolute;top:-2px;right:-2px;min-width:calc(var(--u)*2);height:calc(var(--u)*2);padding:0 5px;border-radius:99px;background:var(--primary);color:#fff;
+  font-size:calc(var(--u)*1.1);font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--card)}
+
+.hm-sales{flex:none;display:flex;align-items:center;gap:calc(var(--u)*1.4);padding:calc(var(--u)*1.4) calc(var(--u)*1.6);cursor:pointer;border-radius:calc(var(--u)*1.8)}
+.hm-sales-ic{width:calc(var(--u)*5.4);height:calc(var(--u)*5.4);border-radius:calc(var(--u)*1.6);background:var(--psoft);color:var(--ptext);display:flex;align-items:center;justify-content:center}
+.hm-sales-ic .ic{width:calc(var(--u)*2.8);height:calc(var(--u)*2.8)}
+.hm-sales-tx{flex:1;min-width:0;display:flex;flex-direction:column}
+.hm-sales-tx span{font-size:calc(var(--u)*1.35);color:var(--muted);font-weight:500}
+.hm-sales-tx b{font-size:calc(var(--u)*2.9);line-height:1.15;font-weight:800;letter-spacing:-.02em;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hm-link{display:inline-flex;align-items:center;gap:2px;font-size:calc(var(--u)*1.35);font-weight:600;color:var(--ptext);white-space:nowrap}
+.hm-link .ic{width:calc(var(--u)*1.6);height:calc(var(--u)*1.6)}
+
+.hm-tiles{flex:1 1 0;min-height:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:calc(var(--u)*1.1)}
+.hm-tile{container-type:size;min-width:0;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:0;
+  border:1px solid var(--border);border-radius:calc(var(--u)*1.8);background:var(--card);color:var(--text);font:inherit;text-align:center;cursor:pointer;box-shadow:var(--shadow);
+  transition:transform .15s var(--ease),background .15s,border-color .15s}
+.hm-tile:active{transform:scale(.96);background:var(--hover)}
+.hm-tile:hover{border-color:color-mix(in srgb,var(--primary) 35%,var(--border))}
+.hm-ti{display:flex;align-items:center;justify-content:center;flex:none;aspect-ratio:1/1;border-radius:28%;background:var(--psoft);color:var(--ptext);
+  width:calc(var(--u)*5.6);margin-bottom:calc(var(--u)*.9)}
+.hm-ti .ic{width:52%;height:52%}
+.hm-tl{display:block;max-width:92%;font-size:calc(var(--u)*1.3);font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@supports (width:1cqw){
+  .hm-ti{width:min(52cqw,44cqh,calc(var(--u)*9));margin-bottom:min(5cqh,calc(var(--u)*1.4))}
+  .hm-tl{font-size:clamp(10px,min(12cqw,11cqh),calc(var(--u)*1.7))}
+}
+
+/* Wide, low screens (phones on their side): one row of 8 */
+@media(max-height:520px) and (orientation:landscape){
+  .hm-tiles{grid-template-columns:repeat(8,minmax(0,1fr));grid-template-rows:minmax(0,1fr)}
+  .hm-hi{display:none}
+  .hm-hero{padding:calc(var(--u)*.9) calc(var(--u)*1.6)}
+}
+/* Big displays: a little more air and a larger content width */
+@media(min-width:1280px){.hm{max-width:calc(var(--u)*62)}}
+@media(prefers-reduced-motion:reduce){.hm-tile{transition:none}}
+
+/* ---- Whole-app fluid polish (all other screens) ---- */
+.page-head{align-items:center}
+.page-head>*{min-width:0}
+.page-head .btn,.page-head .chip{flex:none}
+.card,.stat,.row{min-width:0}
+.row .grow,.row>div:not(.avatar){min-width:0}
+.modal-sheet{max-height:92vh;max-height:92dvh}
+img,svg,video{max-width:100%}
+@media(max-width:699px){
+  .main{padding-top:10px}
+  .page-head h2{font-size:20px}
+  .btn{min-height:44px}
+  .btn-sm{min-height:38px}
+  .tbl th,.tbl td{padding:9px 10px}
+}
+@media(max-width:379px){
+  .topbar{padding-left:10px;padding-right:10px}
+  .topbar-actions{gap:6px}
+  .topbar .icon-btn{width:40px;height:40px}
+  .sync-chip{padding:7px 9px}
+  .sync-chip .lbl{display:none}
+}
+@media(min-width:1440px){
+  body{font-size:15px}
+  .page-head h2{font-size:26px}
+  .stat .v{font-size:26px}
+  .row .t{font-size:15px}
+}
+@media(min-width:1920px){
+  body{font-size:16px}
+  .view{max-width:1760px}
+}
+
+/* Cart bar carries the class "empty" when the cart has no items: keep the generic empty-state look off it */
+.cart-bar.empty{padding:10px 14px;text-align:left;font-size:inherit}
+.cart-bar .cb-ico{width:44px;height:44px;min-width:44px;max-width:44px;aspect-ratio:1/1;border-radius:14px;flex:none}
+.cart-bar .cb-ico i{width:auto;height:auto;background:none;border-radius:0;margin:0;display:inline-flex;font-size:19px;opacity:1}

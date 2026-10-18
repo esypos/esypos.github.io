@@ -1,5 +1,6 @@
 /* EsyPOS Cloud: Google sign-in + automatic backup & restore in Google Drive (private appDataFolder)
-   - Only the drive.appdata scope is used: the app cannot see any other file in your Drive.
+   - Scopes: drive.file (the visible backup file 'EsyPOS-Backup.json' in My Drive, created by this app) + drive.appdata (hidden dated copies).
+     The app cannot see any other file in your Drive.
    - If browser data is ever cleared, signing in again brings all shop data back. */
 (function () {
   'use strict';
@@ -9,7 +10,8 @@
   const KEY = { on: 'esypos_g_on', email: 'esypos_g_email', name: 'esypos_g_name', pic: 'esypos_g_pic', rev: 'esypos_g_rev', fid: 'esypos_g_fid',
     last: 'esypos_g_last', snap: 'esypos_g_snap', dirty: 'esypos_g_dirty', welcomed: 'esypos_welcomed', client: 'esypos_g_client', tok: 'esypos_g_tok', pinReset: 'esypos_pin_reset' };
   const MAIN = 'esypos-data.json', SNAP = 'esypos-snap-', KEEP_SNAPS = 14;
-  const SCOPE = 'openid email profile https://www.googleapis.com/auth/drive.appdata';
+  const SCOPE = 'openid email profile https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata';
+  const VIS = 'EsyPOS-Backup.json', SV = 'esypos_g_scopev';
   const DRIVE = 'https://www.googleapis.com/drive/v3/files', UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
   const get = k => { try { return LS.getItem(k); } catch (_) { return null; } };
   const set = (k, v) => { try { LS.setItem(k, v); } catch (_) {} };
@@ -18,10 +20,11 @@
   const clientId = () => ((window.PROPOS_CONFIG && window.PROPOS_CONFIG.googleClientId) || get(KEY.client) || '').trim();
   const hasLocal = () => !!(DB.products.length || DB.sales.length || DB.customers.length || DB.suppliers.length || DB.expenses.length);
   const mk = (code, status) => { const e = new Error(code); e.code = code; e.status = status; return e; };
-  const S = { status: 'off', busy: false, applying: false, timer: null, tok: null, exp: 0, authP: null, lastTry: 0, seq: 0, gis: null };
+  const S = { needConsent: false, status: 'off', busy: false, applying: false, timer: null, tok: null, exp: 0, authP: null, lastTry: 0, seq: 0, gis: null };
   // The Google access token lives ~1 hour. Keep it in localStorage so closing and reopening the app within that hour needs no new sign-in.
   const clearTok = () => { try { LS.removeItem(KEY.tok); } catch (_) {} try { sessionStorage.removeItem(KEY.tok); } catch (_) {} };
   [LS, sessionStorage].some(st => { try { const t = JSON.parse(st.getItem(KEY.tok) || 'null'); if (t && t.exp > Date.now() + 60000) { S.tok = t.t; S.exp = t.exp; return true; } } catch (_) {} return false; });
+  if (get(SV) !== '2') { clearTok(); S.tok = null; S.exp = 0; S.needConsent = true; }
   const validTok = () => !!S.tok && Date.now() < S.exp - 60000;
   function loadGIS() {
     if (window.google && google.accounts && google.accounts.oauth2) return Promise.resolve();
@@ -48,10 +51,10 @@
       return new Promise((resolve, reject) => {
         const cl = google.accounts.oauth2.initTokenClient({
           client_id: clientId(), scope: SCOPE,
-          callback: r => { if (r.error) return reject(mk(r.error)); setTok(r.access_token, r.expires_in); resolve(S.tok); },
+          callback: r => { if (r.error) return reject(mk(r.error)); S.needConsent = false; set(SV, '2'); setTok(r.access_token, r.expires_in); resolve(S.tok); },
           error_callback: e => reject(mk((e && e.type) || 'popup_closed'))
         });
-        const o = { prompt: silent ? 'none' : (pick ? 'select_account' : '') };
+        const o = { prompt: silent ? 'none' : (S.needConsent ? 'consent' : (pick ? 'select_account' : '')) };
         const hint = get(KEY.email); if (hint && !pick) o.hint = hint;
         cl.requestAccessToken(o);
       });
@@ -64,23 +67,35 @@
     const t = await requestToken(false);
     const r = await fetch(url, Object.assign({}, opt, { headers: Object.assign({ Authorization: 'Bearer ' + t }, (opt && opt.headers) || {}) }));
     if (r.status === 401 && !noRetry) { S.tok = null; S.exp = 0; clearTok(); throw mk('auth', 401); }
-    if (!r.ok) throw mk('http', r.status);
+    if (!r.ok) {
+      const e = mk('http', r.status);
+      if (r.status === 403) {
+        let j = null; try { j = await r.clone().json(); } catch (_) {}
+        const er = (j && j.error) || {}, why = ((er.errors && er.errors[0] && er.errors[0].reason) || '') + ' ' + (er.status || '') + ' ' + (er.message || '');
+        e.why = /accessNotConfigured|has not been used|is disabled|SERVICE_DISABLED/i.test(why) ? 'api'
+          : /insufficient|SCOPE_INSUFFICIENT|PERMISSION_DENIED/i.test(why) ? 'scope'
+          : /rateLimit|quota/i.test(why) ? 'rate' : 'other';
+      }
+      throw e;
+    }
     return r;
   }
-  async function listFiles(q) {
-    const u = DRIVE + '?' + new URLSearchParams({ spaces: 'appDataFolder', pageSize: '100', orderBy: 'modifiedTime desc', fields: 'files(id,name,modifiedTime,size)', q });
+  async function listFiles(q, space) {
+    const u = DRIVE + '?' + new URLSearchParams({ spaces: space || 'appDataFolder', pageSize: '100', orderBy: 'modifiedTime desc', fields: 'files(id,name,modifiedTime,size,spaces)', q });
     return ((await (await api(u)).json()).files) || [];
   }
   const findMain = async () => {
-    let f = (await listFiles("name = '" + MAIN + "' and trashed = false"))[0];
+    // 1) the visible file in My Drive  2) older hidden copies (migrated to the visible file on the next save)
+    let f = (await listFiles("name = '" + VIS + "' and trashed = false", 'drive'))[0];
+    if (!f) f = (await listFiles("name = '" + MAIN + "' and trashed = false"))[0];
     if (!f) f = (await listFiles("name = 'propos-data.json' and trashed = false"))[0] || null;
     return f || null;
   };
-  const getMeta = async id => { const j = await (await api(DRIVE + '/' + id + '?fields=id,modifiedTime')).json(); if (!j || !j.id) throw mk('http', 404); return j; };
+  const getMeta = async id => { const j = await (await api(DRIVE + '/' + id + '?fields=id,modifiedTime,spaces')).json(); if (!j || !j.id) throw mk('http', 404); return j; };
   const download = async id => (await api(DRIVE + '/' + id + '?alt=media')).json();
   async function writeMain(fid, text) {
     const b = 'pp' + Date.now().toString(36);
-    const meta = fid ? {} : { name: MAIN, parents: ['appDataFolder'] };
+    const meta = fid ? {} : { name: VIS, mimeType: 'application/json' };   // no parent = My Drive, visible to the user
     const body = '--' + b + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(meta) +
       '\r\n--' + b + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + text + '\r\n--' + b + '--';
     const r = await api((fid ? UPLOAD + '/' + fid : UPLOAD) + '?uploadType=multipart&fields=id,modifiedTime',
@@ -139,7 +154,8 @@
       if (!f) f = await findMain();
       if (f && !force && get(KEY.rev) !== f.modifiedTime) { S.busy = false; setStatus('pending'); await conflict(f); return; }
       if (f) await snapshotBefore(f);
-      const res = await writeMain(f ? f.id : null, JSON.stringify(payload()));
+      const hidden = f && (f.spaces || []).indexOf('appDataFolder') >= 0;   // older hidden file: create the visible one, keep the old as a copy
+      const res = await writeMain(f && !hidden ? f.id : null, JSON.stringify(payload()));
       set(KEY.fid, res.id); set(KEY.rev, res.modifiedTime); set(KEY.last, String(Date.now()));
       if (S.seq === seq) { del(KEY.dirty); del('esypos_dirty'); setStatus('ok'); }
       else { setStatus('pending'); S.timer = setTimeout(() => push(), 3000); }
@@ -280,7 +296,9 @@
     else if (/popup|access_denied|interaction|immediate/.test(c)) { st = 'auth'; msg = '⚠️ Sign-in incomplete'; }
     else if (c === 'noclient') { setup(); st = 'off'; }
     else if (c === 'badfile') msg = '⚠️ Cloud file is not valid EsyPOS data';
-    else if (e.status === 403) msg = '⚠️ Google Drive API not enabled or no permission — view setup guide';
+    else if (e.status === 403 && e.why === 'scope') { st = 'auth'; S.needConsent = true; S.tok = null; S.exp = 0; clearTok(); msg = '⚠️ Drive permission was not given. Tap Reconnect and allow the Drive access checkbox'; }
+    else if (e.status === 403 && e.why === 'rate') msg = '⚠️ Google is busy, will retry automatically';
+    else if (e.status === 403) msg = '⚠️ Google Drive API is not enabled for this app\'s Google Cloud project (see setup guide, step 2)';
     else if (e.status === 404) msg = '⚠️ Cloud file not found';
     console.warn('[Cloud]', e);
     setStatus(isOn() ? st : 'off');
@@ -304,7 +322,7 @@
     return pic ? `<img class="g-av ${big ? 'big' : ''}" src="${esc(pic)}" alt="" referrerpolicy="no-referrer">` : `<div class="g-av ${big ? 'big' : ''}">${esc(nm.trim().charAt(0).toUpperCase())}</div>`; };
   const gIcon = '<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>';
   function bodyHTML() {
-    if (!isOn()) return `<p class="muted sm mb3">Sign in with Google to auto-save all data to a private folder in your Google Drive. Even if browser data is cleared, signing in again restores everything.</p>
+    if (!isOn()) return `<p class="muted sm mb3">Sign in with Google to auto-save all data into one backup file (EsyPOS-Backup.json) in your Google Drive. Even if browser data is cleared, signing in again restores everything.</p>
       <button class="btn btn-google btn-block" onclick="Cloud.signIn()">${gIcon} Sign in / Sign up with Google</button>
       <div class="consent-note">By signing in you accept our <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> &amp; <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</div>
       ${clientId() ? '' : '<div class="note-warn mt3"><i class="fas fa-triangle-exclamation"></i> Client ID is not set. <a href="#" onclick="Cloud.setup();return false">View setup guide</a></div>'}`;
@@ -314,7 +332,7 @@
       <div class="grid2 mt3"><button class="btn btn-primary" onclick="Cloud.syncNow()"><i class="fas fa-rotate"></i> Sync now</button><button class="btn btn-ghost" onclick="Cloud.pull()"><i class="fas fa-cloud-arrow-down"></i> Pull from cloud</button></div>
       <div class="mt2"><button class="btn btn-ghost btn-block" onclick="Cloud.snapshots()"><i class="fas fa-clock-rotate-left"></i> Old copies</button></div>
       <button class="btn btn-danger-soft btn-block mt2" onclick="Cloud.signOut()"><i class="fas fa-right-from-bracket"></i> Sign out</button>
-      <p class="xs muted mt3">🔒 Data stays only in your Drive's private app folder — the app cannot see any other files. Changes sync automatically within a few seconds. EsyPOS keeps this connection on and renews it automatically until you sign out; if Google ever asks, just tap Reconnect.</p>`;
+      <p class="xs muted mt3">🔒 All your data is saved in one file, <b>EsyPOS-Backup.json</b>, in My Drive. The app cannot see any other files in your Drive. Changes sync automatically within a few seconds. EsyPOS keeps this connection on and renews it automatically until you sign out; if Google ever asks, just tap Reconnect.</p>`;
   }
   function renderUI() {
     const l = lbl(), on = isOn();
@@ -379,7 +397,7 @@
       <ol class="guide sm">
         <li>Open <b>console.cloud.google.com</b> and create a new project.</li>
         <li><b>APIs &amp; Services → Library</b>: enable the <b>Google Drive API</b>.</li>
-        <li><b>OAuth consent screen</b>: User type = External, Enter app name. Add the scopes <code>drive.appdata</code>, <code>email</code>, <code>profile</code>, <code>openid</code>. Finally <b>Publish app (In production)</b> — these scopes do not require Google verification.</li>
+        <li><b>OAuth consent screen</b>: User type = External, Enter app name. Add the scopes <code>drive.file</code>, <code>drive.appdata</code>, <code>email</code>, <code>profile</code>, <code>openid</code>. Finally <b>Publish app (In production)</b> — these scopes do not require Google verification.</li>
         <li><b>Credentials → Create credentials → OAuth client ID → Web application</b>.</li>
         <li><b>Authorized JavaScript origins</b> — enter your site address (no path, no trailing /):<br><code class="sel">${esc(location.origin)}</code></li>
         <li>Copy the Client ID you get (<code>…apps.googleusercontent.com</code>) into <code>js/core/config.js</code>.</li>

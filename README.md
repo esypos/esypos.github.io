@@ -20,7 +20,7 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
 ---
 
-## v10.9.1 — UI/UX polish
+## v10.10.2 — UI/UX polish
 - Cart bar, toast and install/update bars now sit clear of the bottom navigation (no more overlap with the Scan button); the cart icon keeps a fixed round shape.
 - Home: one consistent outline icon set, tiles aligned on one icon line (labels may wrap to 2 lines without shifting icons), equal-size popular-product cards with the whole picture visible.
 - Sales counter: product pictures are no longer cropped, names clamp to 2 lines, price and stock never collide, stock/low-stock tags stay inside the card.
@@ -76,7 +76,7 @@ EsyPOS is an open-source project released under the **[MIT License](LICENSE)**. 
 ## Privacy
 
 - Data stays on **your device**. No backend server, no analytics, no ads.
-- Google sign-in is optional and uses only a hidden app folder in **your** Drive.
+- Google sign-in is optional and saves one backup file (EsyPOS-Backup.json) in **your** Drive and cannot see other files.
 - Camera (barcode) and Bluetooth (printer) are used only when needed.
 
 [Full Privacy Policy](https://esypos.github.io/privacy.html)
