@@ -19,12 +19,15 @@
   ];
   const DEFAULT_LOCKED = ['reports', 'dashboard', 'purchases', 'expenses', 'settings'];
   let openUntil = 0;
+  const LOGK = 'esypos_audit';
+  function log(msg) { try { const a = JSON.parse(localStorage.getItem(LOGK) || '[]'); a.unshift({ t: Date.now(), m: msg }); localStorage.setItem(LOGK, JSON.stringify(a.slice(0, 40))); } catch (_) {} }
+  const logs = () => { try { return JSON.parse(localStorage.getItem(LOGK) || '[]'); } catch (_) { return []; } };
   const minutes = () => Math.max(1, parseInt(DB.settings.sectionLockMin, 10) || 2);
   const lockedList = () => Array.isArray(DB.settings.lockedViews) ? DB.settings.lockedViews : DEFAULT_LOCKED;
   const needs = v => !!(window.Lock && Lock.has() && lockedList().indexOf(v) >= 0 && Date.now() > openUntil);
   const extend = () => { if (Date.now() <= openUntil) openUntil = Date.now() + minutes() * 60000; };
 
-  function ask(done) {
+  function ask(done, name) {
     const m = Modal.open({
       title: 'Owner PIN required',
       body: '<p class="muted sm mb3">This section is locked. Enter the owner PIN to continue.</p>' +
@@ -36,8 +39,9 @@
     const go = async () => {
       if (busy || inp.value.length < 4) return; busy = true;
       const r = await Lock.check(inp.value);
-      if (r === 'ok') { openUntil = Date.now() + minutes() * 60000; Modal.close(m); done(); }
+      if (r === 'ok') { log('Unlocked: ' + (name || 'section')); openUntil = Date.now() + minutes() * 60000; Modal.close(m); done(); }
       else {
+        log(r === 'wait' ? 'PIN lock-out (too many wrong attempts)' : 'Wrong PIN for ' + (name || 'section'));
         msg.textContent = r === 'wait' ? '⚠️ Too many wrong attempts. Wait ' + Math.max(1, Math.ceil((Lock.until - Date.now()) / 1000)) + ' seconds.' : '⚠️ Wrong PIN';
         inp.value = ''; if (navigator.vibrate) navigator.vibrate(100); inp.focus();
       }
@@ -51,10 +55,10 @@
   function hook() {
     if (!window.App || App.__guarded) return; App.__guarded = true;
     const go0 = App.go.bind(App);
-    App.go = function (v) { if (needs(v)) { ask(() => go0(v)); return; } extend(); go0(v); };
+    App.go = function (v) { if (needs(v)) { ask(() => go0(v), v); return; } extend(); go0(v); };
     if (window.Cloud && Cloud.panel) {
       const p0 = Cloud.panel;
-      Cloud.panel = function () { if (needs('settings')) { ask(() => p0.apply(Cloud, arguments)); return; } return p0.apply(Cloud, arguments); };
+      Cloud.panel = function () { if (needs('settings')) { ask(() => p0.apply(Cloud, arguments), 'settings'); return; } return p0.apply(Cloud, arguments); };
     }
     if (window.Lock) {
       const l0 = Lock.lockNow.bind(Lock);
@@ -78,13 +82,29 @@
       '<div class="field"><label class="label">Lock app after idle</label><select class="input" onchange="Guard.set(\'autoLockMin\',this.value)">' +
       opt(1, auto, '1 minute') + opt(2, auto, '2 minutes') + opt(5, auto, '5 minutes') + opt(15, auto, '15 minutes') + '</select></div></div>' +
       '<p class="xs muted mt2">Wrong PIN 5 times locks the keypad for 30 s, then 1, 5, 15 and 30 minutes.</p></div>';
-    const anchor = t.closest('.card'); if (anchor && !$('guard-card')) anchor.insertAdjacentHTML('afterend', html);
+    const L2 = logs().slice(0, 10), last = parseInt(localStorage.getItem('esypos_g_last') || '0', 10), cnt = parseInt(localStorage.getItem('esypos_g_cnt') || '0', 10);
+    const on = localStorage.getItem('esypos_g_on') === '1', dirty = localStorage.getItem('esypos_g_dirty') === '1';
+    const health = '<div class="card pad mb3" id="health-card"><div class="sec-title"><i class="fas fa-heart-pulse ptext"></i> Backup health</div>' +
+      '<div class="kv"><span>Cloud backup</span><b>' + (on ? (dirty ? 'Waiting to sync' : 'Verified ✓') : 'Not connected') + '</b></div>' +
+      '<div class="kv"><span>Last verified backup</span><b>' + (last ? C.fmtDT(new Date(last).toISOString()) : '—') + '</b></div>' +
+      '<div class="kv"><span>Records in last backup</span><b>' + (cnt || '—') + '</b></div>' +
+      '<button class="btn btn-soft btn-block mt3" onclick="Guard.localCopy()"><i class="fas fa-download"></i> Download a local copy now</button>' +
+      '<p class="xs muted mt2">Keep a weekly copy on your phone or computer as a second safety net.</p></div>' +
+      '<div class="card pad mb3" id="audit-card"><div class="sec-title"><i class="fas fa-clipboard-list ptext"></i> Security log</div>' +
+      (L2.length ? L2.map(x => '<div class="kv"><span>' + esc(x.m) + '</span><b class="xs">' + esc(C.fmtDT(new Date(x.t).toISOString())) + '</b></div>').join('') + '<button class="btn btn-ghost btn-block mt3" onclick="Guard.clearLog()">Clear log</button>' : '<p class="xs muted">No unlock or wrong-PIN events yet.</p>') + '</div>';
+    const anchor = t.closest('.card'); if (anchor && !$('guard-card')) anchor.insertAdjacentHTML('afterend', html + health);
   }
 
   const Guard = window.Guard = {
     toggle(id, on) { const L = lockedList().slice(), i = L.indexOf(id); if (on && i < 0) L.push(id); if (!on && i >= 0) L.splice(i, 1); DB.settings.lockedViews = L; C.save('settings'); },
     set(k, v) { DB.settings[k] = parseInt(v, 10) || 1; C.save('settings'); toast('Saved ✓'); },
-    needs
+    needs,
+    clearLog() { try { localStorage.removeItem(LOGK); } catch (_) {} App.refresh(); },
+    localCopy() {
+      const o = { app: 'EsyPOS', version: 4, exportDate: new Date().toISOString() };
+      Object.keys(C.K).forEach(k => { if (k !== 'cart') o[k] = k === 'settings' ? DB.settings : DB[k]; });
+      try { C.download('EsyPOS-backup-' + C.todayKey() + '.json', JSON.stringify(o), 'application/json'); localStorage.setItem('esypos_last_backup', String(Date.now())); toast('✓ Local copy downloaded'); } catch (e) { toast('⚠️ Could not create the file'); }
+    }
   };
 
   /* ---- anonymous user counter ---- */
@@ -97,9 +117,7 @@
   }
   function pill() {
     const n = parseInt(LS.get('esypos_uc') || '0', 10);
-    document.querySelectorAll('.uc-pill').forEach(e => e.remove());
-    if (!n) return;
-    document.querySelectorAll('.legal-links').forEach(l => l.insertAdjacentHTML('beforebegin', '<div class="uc-pill" title="Total EsyPOS users"><i class="fas fa-users"></i> <b>' + n.toLocaleString('en-US') + '</b> users</div>'));
+    document.querySelectorAll('.js-ucount').forEach(e => { e.textContent = n ? n.toLocaleString('en-US') : '—'; });
   }
   async function count() {
     const b = base(); if (!b || !navigator.onLine) return pill();

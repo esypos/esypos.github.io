@@ -1049,3 +1049,8 @@ img,video,canvas,svg{max-width:100%}
 }
 @media(max-height:480px) and (orientation:landscape){.modal-sheet{max-height:100vh;max-height:100dvh}}
 @media(prefers-reduced-motion:reduce){.view{animation:none}}
+
+/* v10.14 — brand header: never squeezed by the menu list; user count on one line */
+.sidebar .brand,.drawer .brand{flex:0 0 auto}
+.brand-users{white-space:nowrap;display:flex;align-items:center;gap:5px;margin-top:2px}
+.brand-users b{color:var(--primary);font-variant-numeric:tabular-nums}
