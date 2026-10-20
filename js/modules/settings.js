@@ -305,14 +305,42 @@
     }
   };
   App.Views.settings = {
+    sec: undefined,
+    open(id, quiet) {
+      const wide = window.matchMedia('(min-width:1024px)').matches;
+      if (!id && wide) id = 'shop';
+      this.sec = id || '';
+      const st = $('st'); if (!st) return;
+      st.classList.toggle('in-sec', !!this.sec);
+      st.querySelectorAll('.st-sec').forEach(x => x.classList.toggle('on', x.dataset.s === this.sec));
+      st.querySelectorAll('.st-item').forEach(x => x.classList.toggle('on', x.dataset.s === this.sec));
+      if (!quiet) window.scrollTo(0, 0);
+    },
+    back() { this.open(''); },
     render() {
       const s = DB.settings; let bytes = 0; try { Object.keys(localStorage).forEach(k => { bytes += (k.length + (localStorage.getItem(k) || '').length) * 2; }); } catch (_) {}
       const kb = Math.round(bytes / 1024); const last = parseInt(localStorage.getItem('esypos_last_backup') || '0', 10);
-      $('view').innerHTML = `<div class="page-head"><div><h2>Settings</h2><p>Shop, appearance, security, printer & data</p></div></div>
-      <div class="card pad mb3"><div class="sec-title"><i class="fas fa-store ptext"></i> Shop info</div>
+      const SEC = [
+        ['shop', 'fa-store', 'Shop info', 'Name, address, phone, currency'],
+        ['billing', 'fa-receipt', 'Billing & receipt', 'Tax, invoice, receipt text, paper'],
+        ['barcode', 'fa-barcode', 'Barcode', 'Prefix, format, counter'],
+        ['appearance', 'fa-palette', 'Appearance & sound', 'Theme, sound, vibration'],
+        ['security', 'fa-lock', 'Security', 'PIN lock'],
+        ['printers', 'fa-print', 'Printers', 'Label and Bluetooth receipt printer'],
+        ['backup', 'fa-cloud-arrow-up', 'Backup & data', 'Google Drive, backup file, reset'],
+        ['about', 'fa-scale-balanced', 'About & legal', 'Privacy, terms, license']
+      ];
+      const sec = (id, body) => { const m = SEC.find(x => x[0] === id); return `<section class="st-sec" data-s="${id}"><div class="st-sec-head"><button type="button" class="icon-btn st-back" onclick="Settings.back()" aria-label="Back to settings"><i class="fas fa-chevron-right fa-rotate-180"></i></button><div class="st-ico"><i class="fas ${m[1]}"></i></div><div><h3>${m[2]}</h3><p>${m[3]}</p></div></div>${body}</section>`; };
+      const SAVE = `<button class="btn btn-primary btn-block" onclick="Settings.save()"><i class="fas fa-floppy-disk"></i> Save changes</button>`;
+      $('view').innerHTML = `<div class="st" id="st">
+      <div class="page-head"><div><h2>Settings</h2><p>Shop, appearance, security, printer & data</p></div></div>
+      <div class="st-wrap">
+      <nav class="st-nav card" aria-label="Settings sections">${SEC.map(m => `<button type="button" class="st-item" data-s="${m[0]}" onclick="Settings.open('${m[0]}')"><span class="st-ico"><i class="fas ${m[1]}"></i></span><span class="st-txt"><b>${m[2]}</b><small>${m[3]}</small></span><i class="fas fa-chevron-right st-go"></i></button>`).join('')}</nav>
+      <div class="st-panel">
+      ${sec('shop', `<div class="card pad mb3">
         <div class="field"><label class="label">Shop name</label><input id="st-name" class="input" value="${esc(s.shopName)}"></div>
         <div class="field"><label class="label">Address</label><input id="st-addr" class="input" value="${esc(s.shopAddress)}"></div>
-        <div class="grid2"><div class="field"><label class="label">Phone</label><input id="st-phone" class="input" value="${esc(s.shopPhone)}"></div><div class="field"><label class="label">Default tax (%)</label><input id="st-tax" type="number" step="any" min="0" class="input" value="${s.defaultTax || 0}"></div></div>
+        <div class="grid2"><div class="field"><label class="label">Phone</label><input id="st-phone" class="input" value="${esc(s.shopPhone)}"></div><div class="field"><label class="label">Currency symbol</label><input id="st-cur" class="input" maxlength="4" value="${esc(s.currency)}" placeholder="$"></div></div>
         <div class="field"><label class="label">Business type</label><select id="st-biz" class="input">
           <option value="retail" ${(s.businessType||'retail')==='retail'?'selected':''}>Retail / General shop</option>
           <option value="restaurant" ${s.businessType==='restaurant'?'selected':''}>Restaurant / Cafe / Fast food</option>
@@ -322,35 +350,41 @@
           <option value="clothing" ${s.businessType==='clothing'?'selected':''}>Clothing / Fashion</option>
           <option value="wholesale" ${s.businessType==='wholesale'?'selected':''}>Wholesale / Distributor</option>
         </select>
-        <p class="xs muted mt1">Adds matching fields to the product form.</p></div>
-        <div class="grid2"><div class="field"><label class="label">Currency symbol</label><input id="st-cur" class="input" maxlength="4" value="${esc(s.currency)}" placeholder="$"></div><div class="field"><label class="label">Example</label><div class="input" style="display:flex;align-items:center;background:var(--hover)">${esc(s.currency)}1,250.50</div></div></div>
+        <p class="xs muted mt1">Adds matching fields to the product form. Example amount: <b>${esc(s.currency)}1,250.50</b></p></div>
+        ${SAVE}</div>`)}
+      ${sec('billing', `<div class="card pad mb3">
+        <div class="grid2"><div class="field"><label class="label">Default tax (%)</label><input id="st-tax" type="number" step="any" min="0" class="input" value="${s.defaultTax || 0}"></div><div class="field"><label class="label">Invoice prefix</label><input id="st-pre" class="input" value="${esc(s.invPrefix)}" placeholder="INV-"></div></div>
+        <div class="grid2"><div class="field"><label class="label">Paper</label><select id="st-paper" class="input"><option value="58" ${s.paper === '58' ? 'selected' : ''}>58 mm</option><option value="80" ${s.paper === '80' ? 'selected' : ''}>80 mm</option></select></div><div class="field"><label class="label">Low stock (default)</label><input id="st-low" type="number" min="0" class="input" value="${s.lowStockDefault == null ? 5 : s.lowStockDefault}"></div></div>
         <div class="field"><label class="label">Receipt footer text</label><input id="st-foot" class="input" value="${esc(s.footer)}"></div>
         <div class="field"><label class="label">VAT / BIN / Tax ID (printed on receipt, optional)</label><input id="st-taxid" class="input" maxlength="40" value="${esc(s.taxId || '')}"></div>
-        <div class="grid3"><div class="field"><label class="label">Invoice prefix</label><input id="st-pre" class="input" value="${esc(s.invPrefix)}" placeholder="INV-"></div><div class="field"><label class="label">Paper</label><select id="st-paper" class="input"><option value="58" ${s.paper === '58' ? 'selected' : ''}>58 mm</option><option value="80" ${s.paper === '80' ? 'selected' : ''}>80 mm</option></select></div><div class="field"><label class="label">Low stock (default)</label><input id="st-low" type="number" min="0" class="input" value="${s.lowStockDefault == null ? 5 : s.lowStockDefault}"></div></div>
+        ${SAVE}</div>`)}
+      ${sec('barcode', `<div class="card pad mb3">
         <div class="grid2"><div class="field"><label class="label">Barcode prefix</label><input id="st-bcpre" class="input" maxlength="6" value="${esc(s.barcodePrefix||'ESY')}" placeholder="ESY"></div>
           <div class="field"><label class="label">Default barcode format</label><select id="st-bcfmt" class="input"><option value="code128" ${(s.barcodeFormat||'code128')==='code128'?'selected':''}>Code 128</option><option value="ean13" ${s.barcodeFormat==='ean13'?'selected':''}>EAN-13</option><option value="qr" ${s.barcodeFormat==='qr'?'selected':''}>QR Code</option></select></div></div>
-        <div class="field"><label class="label">Barcode sequence counter (next number)</label><input id="st-bcnext" type="number" min="1" step="1" class="input" value="${parseInt(s.nextBarcode, 10) || 1000001}"><p class="xs muted mt1">Next code: <b>${esc((window.BarcodeGen ? BarcodeGen.uniqueCode(s.barcodePrefix || 'ESY', s.nextBarcode) : ''))}</b> · each Generate uses this number, then adds 1</p></div>
-        <button class="btn btn-primary btn-block" onclick="Settings.save()"><i class="fas fa-floppy-disk"></i> Save</button></div>
-      <div class="card pad mb3"><div class="sec-title"><i class="fas fa-palette ptext"></i> Appearance & sound</div>
+        <div class="field"><label class="label">Next barcode number</label><input id="st-bcnext" type="number" min="1" step="1" class="input" value="${parseInt(s.nextBarcode, 10) || 1000001}"><p class="xs muted mt1">Next code: <b>${esc((window.BarcodeGen ? BarcodeGen.uniqueCode(s.barcodePrefix || 'ESY', s.nextBarcode) : ''))}</b> · each Generate uses this number, then adds 1</p></div>
+        ${SAVE}</div>`)}
+      ${sec('appearance', `<div class="card pad mb3">
         <div class="field"><label class="label">Theme</label><select id="theme-select" class="input" onchange="Theme.set(this.value)"><option value="auto">Auto (device setting)</option><option value="light">Light mode</option><option value="dark">Dark mode</option></select></div>
         <label class="switch"><span class="sm fw6"><i class="fas fa-volume-high ptext"></i> Click sound</span><input type="checkbox" ${Sound.isEnabled() ? 'checked' : ''} onchange="Sound.setEnabled(this.checked)"></label>
-        ${Haptic.supported() ? `<label class="switch mt2"><span class="sm fw6"><i class="fas fa-mobile-screen ptext"></i> Vibration feedback</span><input type="checkbox" ${Haptic.isEnabled() ? 'checked' : ''} onchange="Haptic.setEnabled(this.checked)"></label>` : ''}</div>
-      <div class="card pad mb3"><div class="sec-title"><i class="fas fa-lock ptext"></i> Security (PIN lock)</div><p class="muted sm mb3">${Lock.has() ? 'PIN on. Asked on open and after idle.' : 'Protect sales and accounts with a PIN.'}</p>
-        <div class="flex gap2"><button class="btn btn-primary" onclick="Lock.setup()">${Lock.has() ? 'Change PIN' : 'Set PIN'}</button>${Lock.has() ? '<button class="btn btn-ghost" onclick="Lock.lockNow()">Lock now</button><button class="btn btn-danger-soft" onclick="Lock.remove()">Disable PIN</button>' : ''}</div></div>
-      ${window.LP ? LP.cardHTML() : ''}
+        ${Haptic.supported() ? `<label class="switch mt2"><span class="sm fw6"><i class="fas fa-mobile-screen ptext"></i> Vibration feedback</span><input type="checkbox" ${Haptic.isEnabled() ? 'checked' : ''} onchange="Haptic.setEnabled(this.checked)"></label>` : ''}</div>`)}
+      ${sec('security', `<div class="card pad mb3"><p class="muted sm mb3">${Lock.has() ? 'PIN on. Asked on open and after idle.' : 'Protect sales and accounts with a PIN.'}</p>
+        <div class="flex gap2"><button class="btn btn-primary" onclick="Lock.setup()">${Lock.has() ? 'Change PIN' : 'Set PIN'}</button>${Lock.has() ? '<button class="btn btn-ghost" onclick="Lock.lockNow()">Lock now</button><button class="btn btn-danger-soft" onclick="Lock.remove()">Disable PIN</button>' : ''}</div></div>`)}
+      ${sec('printers', `${window.LP ? LP.cardHTML() : ''}
       <div class="card pad mb3"><div class="sec-title"><i class="fab fa-bluetooth-b ptext"></i> Bluetooth printer</div><div class="mb3" id="bt-status"></div>
         <div class="field"><label class="label">Print mode</label><select class="input" onchange="DB_.btMode(this.value)"><option value="image" ${s.btMode !== 'text' ? 'selected' : ''}>Image mode — supports all languages (recommended)</option><option value="text" ${s.btMode === 'text' ? 'selected' : ''}>Text mode — English only, faster</option></select></div>
         <div class="flex gap2"><button class="btn btn-primary grow" id="bt-conn" onclick="Printer.connect()"><i class="fab fa-bluetooth-b"></i> Connect printer</button><button class="btn btn-danger-soft grow hidden" id="bt-disc" onclick="Printer.disconnect()">Disconnect</button></div>
-        <p class="xs muted mt2">Android Chrome/Edge. Pair in Bluetooth first.</p></div>
-      <div class="card pad mb3"><div class="sec-title"><i class="fab fa-google ptext"></i> Google Drive Cloud Backup</div><div class="js-cloud-body"></div></div>
+        <p class="xs muted mt2">Android Chrome/Edge. Pair in Bluetooth first.</p></div>`)}
+      ${sec('backup', `<div class="card pad mb3"><div class="sec-title"><i class="fas fa-cloud-arrow-up ptext"></i> Google Drive Cloud Backup</div><div class="js-cloud-body"></div></div>
       <div class="card pad mb3"><div class="sec-title"><i class="fas fa-database ptext"></i> Data management</div>
         <p class="xs muted mt2">Sales save to <b>Google Drive</b> instantly; this device keeps a working copy for offline use.</p>
         <div class="grid2 mt3"><button class="btn btn-ghost" onclick="exportBackupFile()"><i class="fas fa-file-export"></i> Save backup file</button><label class="btn btn-ghost" style="cursor:pointer"><i class="fas fa-file-import"></i> Restore from file<input type="file" accept=".json,application/json" class="hidden" onchange="importData(this)"></label></div>
         <p class="xs muted mt2">Optional copy to keep outside Google Drive. Nothing is downloaded automatically, and the file does not contain your PIN.</p>
-        <button class="btn btn-danger-soft btn-block mt2" onclick="wipeAllData()"><i class="fas fa-trash"></i> Delete all data</button></div>
-      <div class="card pad mb3"><div class="sec-title"><i class="fas fa-scale-balanced ptext"></i> Legal</div>
+        <button class="btn btn-danger-soft btn-block mt2" onclick="wipeAllData()"><i class="fas fa-trash"></i> Delete all data</button></div>`)}
+      ${sec('about', `<div class="card pad mb3">
         <div class="grid2"><a class="btn btn-ghost" href="privacy.html" target="_blank" rel="noopener"><i class="fas fa-user-shield"></i> Privacy Policy</a><a class="btn btn-ghost" href="terms.html" target="_blank" rel="noopener"><i class="fas fa-file-contract"></i> Terms of Service</a></div></div>
-      <div class="tc muted xs">EsyPOS · Simple POS for Every Business<br>© EsyPOS · <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> · <a href="license.html" target="_blank" rel="noopener">MIT License</a> · <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a></div>`;
+      <div class="tc muted xs">EsyPOS · Simple POS for Every Business<br>© EsyPOS · <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> · <a href="license.html" target="_blank" rel="noopener">MIT License</a> · <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a></div>`)}
+      </div></div></div>`;
+      this.open(this.sec === undefined ? (window.matchMedia('(min-width:1024px)').matches ? 'shop' : '') : this.sec, true);
       Theme.apply(); Printer.ui(); if (window.Cloud) Cloud.renderUI();
     },
     save() {

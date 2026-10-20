@@ -20,6 +20,9 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
 ---
 
+## v10.17.1 — Settings in sections
+- **Settings** is now a short list: Shop info, Billing & receipt, Barcode, Appearance & sound, Security, Printers, Backup & data, About & legal. Tap one to open it. On phones the list opens a section with a back arrow (the phone Back button works too); on desktop the list stays on the left and the section opens on the right, with no empty gaps. All settings are still there.
+
 ## v10.17.0 — Cleaner menu, simpler discount, tidier design
 - **Menu order:** Sales Counter, Dashboard, Sales History, Products & Stock, Customers & Due, Purchases & Suppliers, Expenses, Reports, Barcode Labels, Settings (last). The phone bottom bar is now Sales, Dashboard, Scan, Products, Menu.
 - **Discount:** the amount (৳) is the default. A small ৳ | % switch inside the field changes it to percent without losing the number. Tax is hidden until needed (*Add tax*), unless a default tax is set in Settings.

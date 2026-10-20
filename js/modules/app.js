@@ -20,6 +20,7 @@
     view: 'pos', Views,
     go(v) {
       if (!Views[v]) v = 'pos';
+      if (v === 'settings' && App.view !== 'settings' && window.Settings) Settings.sec = undefined;
       Modal.closeAll(); App.closeDrawers(); App.view = v; document.body.dataset.view = v;
       document.querySelectorAll('.nav-link[data-v]').forEach(b => b.classList.toggle('active', b.dataset.v === v));
       try {
@@ -46,6 +47,7 @@
     if (window.Scanner && Scanner.isOpen()) { Scanner.close(); return true; }
     if (Modal.stack.length) { Modal.close(); return true; }
     if (App.drawerOpen()) { App.closeDrawers(); return true; }
+    if (App.view === 'settings' && window.Settings && Settings.sec && !window.matchMedia('(min-width:1024px)').matches) { Settings.back(); return true; }
     if (App.view !== 'pos') { App.go('pos'); return true; }
     return false;
   }

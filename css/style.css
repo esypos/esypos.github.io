@@ -433,9 +433,6 @@ body.gated .sidebar,body.gated .topbar,body.gated .main,body.gated .cart-bar,bod
   #rep-body>.stats,#rep-body>.card:last-child{grid-column:1/-1}
   #rep-body>.stats{margin-bottom:0}
   #rep-body>.card{margin-bottom:0!important}
-  body[data-view="settings"] #view{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
-  body[data-view="settings"] #view>.page-head,body[data-view="settings"] #view>.tc{grid-column:1/-1}
-  body[data-view="settings"] #view>.card{margin-bottom:0!important}
 }
 /* docked cart from 1280px */
 @media(min-width:1280px){
@@ -1114,3 +1111,48 @@ html.dark .seg button.on{background:var(--primary);color:#fff}
 .hold-lbl{display:none;margin-left:6px}
 #hold-count{margin-left:4px}
 @media(min-width:700px){.hold-lbl{display:inline}}
+
+
+/* ==========================================================================
+   Settings: a short list of sections; each one opens on its own
+   Phone: list -> tap -> section (with back). Desktop: list on the left, section on the right.
+   ========================================================================== */
+.st-wrap{display:block}
+.st-nav{padding:6px;display:flex;flex-direction:column}
+.st-item{display:flex;align-items:center;gap:12px;width:100%;border:0;background:transparent;color:var(--text);font:inherit;text-align:left;padding:10px;border-radius:10px;cursor:pointer;min-height:58px;transition:background .12s}
+.st-item:hover{background:var(--hover)}
+.st-item+.st-item{border-top:1px solid var(--border);border-radius:0}
+.st-ico{width:38px;height:38px;border-radius:10px;background:var(--psoft);color:var(--ptext);display:flex;align-items:center;justify-content:center;flex:none;font-size:15px}
+.st-txt{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.3}
+.st-txt b{font-size:14.5px;font-weight:600}
+.st-txt small{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st-go{font-size:12px;color:var(--muted);flex:none}
+.st-panel{min-width:0}
+.st-sec{display:none}
+.st-sec.on{display:block;animation:fadeIn .15s ease-out}
+.st-sec-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.st-sec-head h3{margin:0;font-size:18px;font-weight:700}
+.st-sec-head p{margin:1px 0 0;font-size:12.5px;color:var(--muted)}
+.st-sec .card:last-child{margin-bottom:0!important}
+/* phone: list OR section */
+.st:not(.in-sec) .st-panel{display:none}
+.st.in-sec .st-nav,.st.in-sec .page-head{display:none}
+.st.in-sec .st-sec-head .st-ico{display:none}
+/* desktop: two panes, no empty gaps */
+@media(min-width:1024px){
+  .st-wrap{display:grid;grid-template-columns:280px minmax(0,1fr);gap:24px;align-items:start}
+  .st-nav{position:sticky;top:24px}
+  .st .st-panel{display:block}
+  .st.in-sec .st-nav,.st.in-sec .page-head{display:flex}
+  .st.in-sec .page-head{display:flex}
+  .st-panel{max-width:760px}
+  .st-back{display:none}
+  .st-go{display:none}
+  .st-item{border-radius:10px!important;border-top:0!important;min-height:52px}
+  .st-item+.st-item{margin-top:2px}
+  .st-item.on{background:var(--psoft)}
+  .st-item.on .st-txt b{color:var(--ptext)}
+  .st-sec-head .st-ico{display:flex!important}
+}
+@media(max-width:1023px){.st-sec-head .st-back{display:inline-flex}}
+.grid2>.btn{white-space:normal;min-width:0;text-align:center;line-height:1.25}
