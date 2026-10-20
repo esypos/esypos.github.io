@@ -142,7 +142,7 @@
       else DB[k] = Array.isArray(d[k]) ? d[k] : [];
     });
     if (get(KEY.pinReset) === '1') { DB.settings.pinHash = ''; DB.settings.pinSalt = ''; pushAfter = true; del(KEY.pinReset); }
-    C.migrate(); C.saveAll();
+    C.migrate(); C.saveAll(); saveBase(snap(d));
     set(KEY.rev, f.modifiedTime); set(KEY.fid, f.id); set(KEY.last, String(Date.now()));
     if (pushAfter) set(KEY.dirty, '1'); else del(KEY.dirty);
     del('esypos_dirty');
@@ -153,7 +153,7 @@
     if (!isOn() || S.applying) return;
     set(KEY.dirty, '1'); S.seq++;
     if (S.status !== 'syncing' && S.status !== 'auth' && S.status !== 'offline') setStatus('pending'); else renderUI();
-    clearTimeout(S.timer); S.timer = setTimeout(() => push(), 4000);
+    clearTimeout(S.timer); S.timer = setTimeout(() => push(), 1500);
   }
   async function push(force, manual) {
     if (!isOn() || S.busy || S.applying || !hasLocal()) return;
@@ -164,7 +164,7 @@
       let f = null; const cached = get(KEY.fid);
       if (cached) { try { f = await getMeta(cached); } catch (e) { if (e.status !== 404) throw e; } }
       if (!f) f = await findMain();
-      if (f && !force && get(KEY.rev) !== f.modifiedTime) { S.busy = false; setStatus('pending'); await conflict(f); return; }
+      if (f && !force && get(KEY.rev) !== f.modifiedTime) mergeApply(await download(f.id), f);   // another device saved first: merge, never overwrite
       const pl = payload(), cnt = total(pl.integrity.n), last = parseInt(get('esypos_g_cnt') || '0', 10);
       // Safety: an automatic backup never replaces a much bigger cloud copy with a nearly empty one (e.g. after a wipe or storage reset).
       if (!force && !manual && last >= 20 && cnt < last * 0.5) throw mk('shrink');
@@ -173,7 +173,7 @@
       const res = await writeMain(f && !hidden ? f.id : null, JSON.stringify(pl));
       const back = await download(res.id);                          // read it back: only call it a backup if it matches
       if (!back || !back.integrity || back.integrity.h !== pl.integrity.h) throw mk('verify');
-      set('esypos_g_cnt', String(cnt));
+      set('esypos_g_cnt', String(cnt)); saveBase(snap(pl));
       set(KEY.fid, res.id); set(KEY.rev, res.modifiedTime); set(KEY.last, String(Date.now()));
       S.retries = 0;
       if (S.seq === seq) { del(KEY.dirty); del('esypos_dirty'); setStatus('ok'); }
@@ -191,6 +191,8 @@
     let d;
     try { d = await download(f.id); } catch (e) { return fail(e, true); }
     if (!hasLocal()) return applyRemote(d, f);
+    try { mergeApply(d, f); } catch (e) { return fail(e, true); }
+    return push();
     const rs = sum(d), ls = sum({ products: DB.products, sales: DB.sales, customers: DB.customers });
     const m = Modal.open({
       title: 'Which data to keep?', static: true,
@@ -448,6 +450,61 @@
     try { await afterSignIn(); } catch (e) { fail(e); }
   }
   function chip() { if (isOn() && S.status === 'auth') return syncNow(); return panel(); }
+  // ---- Smart merge (3-way): sales from two devices never overwrite each other. Google Drive is the single source of truth. ----
+  const COLL = ['products', 'customers', 'suppliers', 'sales', 'payments', 'spayments', 'purchases', 'expenses', 'returns'];
+  const RICH = { products: 1, customers: 1, suppliers: 1 };
+  const fnv = str => { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
+  const recHash = (k, r) => { if (k !== 'products') return fnv(JSON.stringify(r)); const c = Object.assign({}, r); delete c.stock; return fnv(JSON.stringify(c)); };
+  const setHash = st => { const c = Object.assign({}, st); delete c.nextInvoice; delete c.nextBarcode; return fnv(JSON.stringify(c)); };
+  function snap(d) {                                   // what both devices agreed on at the last sync
+    const o = { s: setHash(d.settings || {}), stock: {} };
+    COLL.forEach(k => { const m = {}; (d[k] || []).forEach(r => { if (r && r.id) m[r.id] = RICH[k] ? recHash(k, r) : 1; }); o[k] = m; });
+    (d.products || []).forEach(p => { if (p && p.id) o.stock[p.id] = Number(p.stock) || 0; });
+    return o;
+  }
+  const saveBase = o => { try { LS.setItem('esypos_g_base', JSON.stringify(o)); } catch (_) {} };
+  const loadBase = () => { try { return JSON.parse(LS.getItem('esypos_g_base') || 'null'); } catch (_) { return null; } };
+  function mergeData(R) {
+    const B = loadBase(), out = {}; let local = false;
+    COLL.forEach(k => {
+      const L = DB[k] || [], Rr = Array.isArray(R[k]) ? R[k] : [], Bk = B && B[k], lm = new Map(L.map(r => [r.id, r])), rm = new Set(Rr.map(r => r.id)), res = [];
+      Rr.forEach(r => {
+        const l = lm.get(r.id), inB = !!(Bk && (r.id in Bk));
+        if (l) {
+          if (k === 'products') {                      // stock: remote stock + what THIS device sold/received since the last sync
+            const chg = inB && recHash(k, l) !== Bk[r.id], bs = B && B.stock ? B.stock[r.id] : undefined, ds = bs === undefined ? 0 : (Number(l.stock) || 0) - bs;
+            const m = Object.assign({}, chg ? Object.assign({}, r, l) : r); m.stock = C.r2((Number(r.stock) || 0) + ds);
+            if (chg || ds) local = true; res.push(m);
+          } else if (RICH[k] && inB && recHash(k, l) !== Bk[r.id]) { res.push(l); local = true; }
+          else res.push(r);
+        } else if (inB) local = true;                  // deleted on this device -> stays deleted
+        else res.push(r);                              // new from the other device
+      });
+      L.forEach(l => { if (!rm.has(l.id) && !(Bk && (l.id in Bk))) { res.push(l); local = true; } });   // new on this device
+      out[k] = res;
+    });
+    const ls = DB.settings, rs = R.settings || {}, lchg = !!(B && setHash(ls) !== B.s);
+    const st = Object.assign({}, C.DEFAULTS, lchg ? Object.assign({}, rs, ls) : rs);
+    if (lchg) local = true;
+    let mx = 0; out.sales.forEach(x => { mx = Math.max(mx, parseInt(x.no, 10) || 0); });
+    st.nextInvoice = Math.max(parseInt(ls.nextInvoice, 10) || 1, parseInt(rs.nextInvoice, 10) || 1, mx + 1);
+    st.nextBarcode = Math.max(parseInt(ls.nextBarcode, 10) || 1, parseInt(rs.nextBarcode, 10) || 1);
+    const rSales = new Set((R.sales || []).map(x => x.id)), taken = new Set();
+    out.sales.forEach(x => { if (rSales.has(x.id)) taken.add(x.no); });
+    out.sales.forEach(x => { if (!rSales.has(x.id) && taken.has(x.no)) { x.no = st.nextInvoice++; local = true; toast('Invoice number changed to #' + x.no + ' (same number used on another device)'); } taken.add(x.no); });
+    return { out, st, local };
+  }
+  function mergeApply(d, f) {
+    if (!d || !Array.isArray(d.products)) throw mk('badfile');
+    if (d.integrity) { const g = integrity(d); if (g.h !== d.integrity.h || g.t !== d.integrity.t) throw mk('badfile'); }
+    const m = mergeData(d);
+    S.applying = true;
+    try { COLL.forEach(k => { DB[k] = m.out[k]; }); DB.settings = m.st; C.migrate(); C.saveAll(); } finally { S.applying = false; }
+    set(KEY.rev, f.modifiedTime); set(KEY.fid, f.id); saveBase(snap(d));
+    del('esypos_dirty'); if (m.local) set(KEY.dirty, '1'); else { del(KEY.dirty); set(KEY.last, String(Date.now())); }
+    try { if (window.App) App.refresh(); if (window.POS && POS.renderCart) POS.renderCart(); } catch (_) {}
+    return m.local;
+  }
   // ---- Live sync: the newest verified backup (from any device) replaces this device's data, checked every 5 seconds ----
   const autoOn = () => get('esypos_g_auto') !== '0';
   const uiBusy = () => !!((window.Modal && Modal.stack && Modal.stack.length) || (window.Scanner && Scanner.isOpen && Scanner.isOpen()) || document.querySelector('.lock,.welcome,.authgate'));
@@ -465,18 +522,22 @@
       set(KEY.rev, f.modifiedTime); set(KEY.fid, f.id); set(KEY.last, String(Date.now())); set('esypos_g_cnt', String(total(integrity(d).n)));
       del(KEY.dirty); del('esypos_dirty');
     } finally { setTimeout(() => { S.applying = false; del(KEY.dirty); del('esypos_dirty'); setStatus('ok'); }, 800); }
+    saveBase(snap(d));
     try { if (window.App) App.refresh(); if (window.POS && POS.renderCart) POS.renderCart(); } catch (_) {}
     toast('↻ Updated from the latest backup');
   }
   let polling = false;
   async function poll() {
     if (polling || !autoOn() || !isOn() || S.busy || S.applying || !validTok() || !navigator.onLine || document.visibilityState !== 'visible') return;
-    if (get(KEY.dirty) === '1' || uiBusy()) return;                // unsent local changes go up first; never replace while a form is open
+    if (uiBusy()) return;                                          // never touch data while a form is open
     const fid = get(KEY.fid); if (!fid) return;
     polling = true;
     try {
       const m = await getMeta(fid);
-      if (m.modifiedTime && m.modifiedTime !== get(KEY.rev) && get(KEY.dirty) !== '1' && !S.busy) applySoft(await download(fid), m);
+      if (m.modifiedTime && m.modifiedTime !== get(KEY.rev) && !S.busy) {
+        const sent = mergeApply(await download(fid), m);
+        if (sent) push(); else { setStatus('ok'); toast('↻ New sales from another device'); }
+      }
     } catch (_) { /* next tick tries again */ }
     polling = false;
   }

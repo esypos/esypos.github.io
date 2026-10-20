@@ -20,11 +20,12 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
 ---
 
-## v10.14.4 — Section lock, security, calmer UI
+## v10.14.5 — Section lock, security, calmer UI
 - **Section lock** (Settings → *Section lock*): pick which sections (Reports, Dashboard, Purchases, Expenses, Settings…) need the owner PIN. Salesmen can sell but cannot open locked sections. Locks re-engage after 1–15 minutes or when the app goes to the background.
 - **Security:** PIN is stored as PBKDF2-SHA256 (old PINs upgrade automatically); wrong-PIN lock-out grows 30 s → 1 → 5 → 15 → 30 min; configurable idle auto-lock; Content-Security-Policy added.
 - **Cloud backup:** every backup carries a checksum, is read back from Drive and verified; a restore of a damaged file is refused; automatic backups never replace a much larger cloud copy with an almost empty one.
 - **UI:** fewer and shorter animations, larger touch targets, no iOS input zoom, better 320 px / landscape / tablet layouts.
+- **Two devices, one Google Drive:** backups are now merged, never overwritten. Sales, payments, purchases and expenses from every device are combined; stock = the other device's stock + what this device sold since the last sync; edits and deletions are kept. No "cloud or device data?" question any more. New changes upload 1.5 s after a sale, other devices pick them up within 5 s.
 - **Security log** (last 40 unlocks / wrong PINs / lock-outs) and **Backup health** card (verified status, last backup, one-tap local copy download) in Settings.
 - **User counter:** set `userCounterUrl` in `js/core/config.js` to your Firebase Realtime Database URL. Each install registers one random anonymous ID; the total shows in the sidebar/menu. Database rules:
 ```json
