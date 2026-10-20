@@ -141,7 +141,7 @@
       else if (k === 'cart') DB.cart = [];
       else DB[k] = Array.isArray(d[k]) ? d[k] : [];
     });
-    if (get(KEY.pinReset) === '1') { DB.settings.pinHash = ''; DB.settings.pinSalt = ''; pushAfter = true; del(KEY.pinReset); }
+    if (get(KEY.pinReset) === '1') { DB.settings.pinHash = ''; DB.settings.pinSalt = ''; DB.settings.adminHash = ''; DB.settings.adminSalt = ''; pushAfter = true; del(KEY.pinReset); }
     C.migrate(); C.saveAll(); saveBase(snap(d));
     set(KEY.rev, f.modifiedTime); set(KEY.fid, f.id); set(KEY.last, String(Date.now()));
     if (pushAfter) set(KEY.dirty, '1'); else del(KEY.dirty);

@@ -156,7 +156,11 @@
     return false;
   }
   const Lock = window.Lock = {
-    hiddenAt: 0, el: null,
+    hiddenAt: 0, el: null, hashFor: hashPin,
+    toggleUI(el) {
+      const on = el.checked; el.checked = this.has();      // reverts visually until the PIN flow succeeds
+      if (on) this.setup(); else this.remove();
+    },
     get fails() { try { return parseInt(localStorage.getItem('esypos_lk_f') || '0', 10) || 0; } catch (_) { return 0; } },
     set fails(v) { try { localStorage.setItem('esypos_lk_f', String(v)); } catch (_) {} },
     get until() { try { return parseInt(localStorage.getItem('esypos_lk_u') || '0', 10) || 0; } catch (_) { return 0; } },
@@ -367,8 +371,10 @@
         <div class="field"><label class="label">Theme</label><select id="theme-select" class="input" onchange="Theme.set(this.value)"><option value="auto">Auto (device setting)</option><option value="light">Light mode</option><option value="dark">Dark mode</option></select></div>
         <label class="switch"><span class="sm fw6"><i class="fas fa-volume-high ptext"></i> Click sound</span><input type="checkbox" ${Sound.isEnabled() ? 'checked' : ''} onchange="Sound.setEnabled(this.checked)"></label>
         ${Haptic.supported() ? `<label class="switch mt2"><span class="sm fw6"><i class="fas fa-mobile-screen ptext"></i> Vibration feedback</span><input type="checkbox" ${Haptic.isEnabled() ? 'checked' : ''} onchange="Haptic.setEnabled(this.checked)"></label>` : ''}</div>`)}
-      ${sec('security', `<div class="card pad mb3"><p class="muted sm mb3">${Lock.has() ? 'PIN on. Asked on open and after idle.' : 'Protect sales and accounts with a PIN.'}</p>
-        <div class="flex gap2"><button class="btn btn-primary" onclick="Lock.setup()">${Lock.has() ? 'Change PIN' : 'Set PIN'}</button>${Lock.has() ? '<button class="btn btn-ghost" onclick="Lock.lockNow()">Lock now</button><button class="btn btn-danger-soft" onclick="Lock.remove()">Disable PIN</button>' : ''}</div></div>`)}
+      ${sec('security', `<div class="card pad mb3" id="screen-lock-card"><div class="sec-title"><i class="fas fa-mobile-screen-button ptext"></i> 1. Home screen lock</div>
+        <p class="muted sm mb3">${Lock.has() ? 'ON — this PIN is asked every time the app opens and after idle.' : 'OFF — turn on to ask a PIN every time the app opens.'}</p>
+        <label class="switch"><span class="sm fw6"><i class="fas fa-lock ptext"></i> Home screen lock</span><input type="checkbox" ${Lock.has() ? 'checked' : ''} onchange="Lock.toggleUI(this)"></label>
+        ${Lock.has() ? '<div class="flex gap2"><button class="btn btn-ghost grow" onclick="Lock.setup()">Change PIN</button><button class="btn btn-ghost grow" onclick="Lock.lockNow()">Lock now</button></div>' : ''}</div>`)}
       ${sec('printers', `${window.LP ? LP.cardHTML() : ''}
       <div class="card pad mb3"><div class="sec-title"><i class="fab fa-bluetooth-b ptext"></i> Bluetooth printer</div><div class="mb3" id="bt-status"></div>
         <div class="field"><label class="label">Print mode</label><select class="input" onchange="DB_.btMode(this.value)"><option value="image" ${s.btMode !== 'text' ? 'selected' : ''}>Image mode — supports all languages (recommended)</option><option value="text" ${s.btMode === 'text' ? 'selected' : ''}>Text mode — English only, faster</option></select></div>

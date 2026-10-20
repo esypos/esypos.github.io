@@ -20,8 +20,13 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
 ---
 
-## v10.18.0 — Settings in sections
+## v10.19.0 — Settings in sections
 - **Settings** is now a short list: Shop info, Billing & receipt, Barcode, Appearance & sound, Security, Printers, Backup & data, About & legal. Tap one to open it. On phones the list opens a section with a back arrow (the phone Back button works too); on desktop the list stays on the left and the section opens on the right, with no empty gaps. All settings are still there.
+
+## v10.19.0 — Two separate security systems
+- **1. Home screen lock**: switch on/off in Settings → Security; its own PIN, asked when the app opens and after idle.
+- **2. Admin lock**: a separate Admin PIN that hides sections and dashboard profit from staff. Choose exactly what to lock.
+- Existing installs: the old PIN is copied to the Admin PIN once, so current locks keep working; change it anytime.
 
 ## v10.18.0 — Lock selection restored, profit lock, polish
 - **Settings → Security** now shows the *Section lock* list again: tick exactly which sections need the owner PIN.
