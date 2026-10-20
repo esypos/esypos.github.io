@@ -225,7 +225,7 @@
       const debtors = DB.customers.map(c => ({ c, b: C.customerBalance(c.id) })).filter(x => x.b > 0).sort((a, b) => b.b - a.b).slice(0, 5);
       const recent = DB.sales.slice(0, 5);
       $('view').innerHTML = `<div class="page-head"><div><h2>Dashboard</h2><p>${esc(DB.settings.shopName)} · ${C.fmtDate(new Date().toISOString())}</p></div></div>
-      <div class="stats"><div class="stat hl"><div class="k"><i class="fas fa-sun"></i> Today's sales</div><div class="v">${money(td.netSales)}</div></div>
+      <div class="stats"><div class="stat hl"><div class="k">Today's sales</div><div class="v">${money(td.netSales)}</div></div>
         <div class="stat"><div class="k">Today's profit</div><div class="v ok">${money(td.grossProfit)}</div></div><div class="stat"><div class="k">Today's bills</div><div class="v">${td.count}</div></div><div class="stat"><div class="k">Today's expenses</div><div class="v bad">${money(td.expenses)}</div></div>
         <div class="stat"><div class="k">This month's sales</div><div class="v">${money(mo.netSales)}</div></div><div class="stat"><div class="k">This month's net profit</div><div class="v ${mo.netProfit >= 0 ? 'ok' : 'bad'}">${money(mo.netProfit)}</div></div>
         <div class="stat" onclick="App.go('customers')" style="cursor:pointer"><div class="k">Total customer due</div><div class="v bad">${money(C.totalCustomerDue())}</div></div><div class="stat"><div class="k">Stock value</div><div class="v">${money(C.stockValue())}</div></div></div>

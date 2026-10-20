@@ -20,6 +20,11 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
 ---
 
+## v10.17.0 — Cleaner menu, simpler discount, tidier design
+- **Menu order:** Sales Counter, Dashboard, Sales History, Products & Stock, Customers & Due, Purchases & Suppliers, Expenses, Reports, Barcode Labels, Settings (last). The phone bottom bar is now Sales, Dashboard, Scan, Products, Menu.
+- **Discount:** the amount (৳) is the default. A small ৳ | % switch inside the field changes it to percent without losing the number. Tax is hidden until needed (*Add tax*), unless a default tax is set in Settings.
+- **Design:** one calm look across screens. Fixed the shadow bleeding at the screen edge from closed side panels, a stray circle in the cart, the phone menu footer that wrapped, a duplicate camera button on phones, a crowded top bar (menu and theme now live in the bottom bar and menu), and a clipped search hint. Settings switches are real toggles. Barcode option chips stay on one line. Delete icons are quiet until hovered.
+
 ## v10.16.0 — Stock control, bill delete, cash drawer, bug fixes
 - **Stock adjustments** (Products → *Adjust stock* / *Stock log*): record damaged, expired, lost or own-use stock and count corrections. Loss reasons are written off at cost and reduce net profit in Reports; every change (also a hand-edited stock number) is kept in a log.
 - **Delete bill** (Receipt): puts the items back in stock and removes the bill's due. Needs the owner PIN when a PIN is set, is refused when the bill has returns, and is written to the Security log.

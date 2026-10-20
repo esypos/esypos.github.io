@@ -180,7 +180,8 @@ ol.guide{padding-left:20px;margin:0;line-height:1.75}ol.guide li{margin-bottom:6
 .drawer{position:fixed;top:0;height:100%;background:var(--card);z-index:50;box-shadow:0 0 40px rgba(0,0,0,.35);display:flex;flex-direction:column;transition:transform .34s var(--ease)}
 .drawer.left{left:0;width:min(300px,86vw);transform:translateX(-100%)}
 .drawer.right{right:0;width:100%;max-width:440px;transform:translateX(100%)}
-.drawer.open{transform:translateX(0)}
+.drawer{visibility:hidden;box-shadow:none;transition:transform .3s var(--ease),visibility 0s linear .3s,box-shadow .3s}
+.drawer.open{transform:translateX(0);visibility:visible;box-shadow:0 0 40px rgba(15,23,42,.28);transition:transform .3s var(--ease),visibility 0s,box-shadow .3s}
 .drawer .brand{padding-top:calc(18px + env(safe-area-inset-top))}
 .sync-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);color:var(--muted);border-radius:99px;padding:7px 12px;font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .2s,transform .12s}
 .sync-chip:active{transform:scale(.96)}
@@ -729,7 +730,7 @@ html.dark #toast.t-warn{background:#f59e0b;color:#2a1700}
 .empty>i{width:68px;height:68px;border-radius:50%;background:var(--psoft);color:var(--ptext);opacity:1;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 12px}
 
 /* ==========================================================================
-   v10.9 — Home screen + mobile bottom navigation
+   v10.9 — mobile bottom navigation
    ========================================================================== */
 
 /* Bottom navigation (phones & tablets; desktop keeps the sidebar) */
@@ -772,10 +773,6 @@ table.tbl td,table.tbl th{vertical-align:middle}
 @media(hover:hover) and (pointer:fine){
   *{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--muted) 40%,transparent) transparent}
 }
-
-/* ---- Home: tiles (equal icon line, 2-line label slot, never overflows) ---- */
-
-/* ---- Home: popular products — equal cards, whole image visible, next card peeks ---- */
 
 /* ---- Sales counter: product cards ---- */
 .pcard{display:flex;flex-direction:column;padding:8px}
@@ -821,22 +818,14 @@ table.tbl td,table.tbl th{vertical-align:middle}
   .bottom-nav .bn-scan{margin-top:-14px}
 }
 
-/* ---- Tablet (700–1023): roomier home ---- */
-
-/* ---- Desktop: centered, comfortable width ---- */
-
-/* ---- Respect reduced motion for the new home pieces ---- */
-
 
 /* ==========================================================================
-   v10.10 — One-screen Home, true circles, fluid scaling on every display
-   Everything on Home is sized from one unit (--u) that follows BOTH the screen width and height,
-   so small phones get a compact layout and big screens get a bigger one. No scrolling on Home.
+   v10.10 — true circles, fluid scaling on every display
    ========================================================================== */
 
 /* ---- Round things stay round: never squeezed by flex/grid, always 1:1 ---- */
-.g-av,.avatar,.logo,.ui-confirm-icon,.perm-ico,.empty>i,.dots i,.fly-ring,.hm-bell,.hm-sales-ic,.hm-bub,.cb-ico,.bn-scan,.keypad button,.gate-feats li i{aspect-ratio:1/1;flex:none}
-.g-av,.ui-confirm-icon,.perm-ico,.empty>i,.hm-bell,.bn-scan,.keypad button{border-radius:50%}
+.g-av,.avatar,.logo,.ui-confirm-icon,.perm-ico,.empty>i,.dots i,.fly-ring,.cb-ico,.bn-scan,.keypad button,.gate-feats li i{aspect-ratio:1/1;flex:none}
+.g-av,.ui-confirm-icon,.perm-ico,.empty>i,.bn-scan,.keypad button{border-radius:50%}
 .keypad button{width:100%;height:auto;padding:0}
 .ic{display:block;flex:none;max-width:none;overflow:visible}
 .fas,.far,.fab,.fa-solid{flex:none}
@@ -1054,3 +1043,74 @@ img,video,canvas,svg{max-width:100%}
 .sidebar .brand,.drawer .brand{flex:0 0 auto}
 .brand-users{white-space:nowrap;display:flex;align-items:center;gap:5px;margin-top:2px}
 .brand-users b{color:var(--primary);font-variant-numeric:tabular-nums}
+
+
+/* ==========================================================================
+   v10.17 — Tidy navigation, simple discount control, calmer controls
+   ========================================================================== */
+
+/* Drawers (mobile menu & cart) */
+.drawer-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top));border-bottom:1px solid var(--border)}
+.drawer-head b{font-size:17px;font-weight:700}
+.drawer-body{padding:14px;overflow-y:auto;flex:1;padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+
+/* Sidebar / menu footer: account, backup, three quick actions, legal line */
+.side-foot{display:flex;flex-direction:column;gap:8px;padding:12px;border-top:1px solid var(--border);padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+.foot-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.foot-actions .btn{flex-direction:column;min-height:52px;padding:8px 2px;font-size:12px;gap:4px;font-weight:600;line-height:1.2}
+.foot-actions .btn i{font-size:15px}
+.side-foot .legal-links{padding-top:2px}
+.nav-link{min-height:44px}
+
+/* Discount: amount first, % is one tap away */
+.disc-row .label{margin-bottom:6px}
+.disc-box{position:relative;display:flex;align-items:center}
+.disc-box .disc-input{padding-left:36px;padding-right:112px;font-weight:600}
+.disc-cur{position:absolute;left:13px;z-index:1;font-size:15px;font-weight:700;color:var(--muted);pointer-events:none}
+.seg{position:absolute;right:5px;top:5px;bottom:5px;display:flex;gap:2px;padding:2px;border-radius:8px;background:var(--hover)}
+.seg button{border:0;background:transparent;color:var(--muted);min-width:44px;padding:0 12px;border-radius:6px;font:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s,color .15s,box-shadow .15s}
+.seg button.on{background:var(--card);color:var(--ptext);box-shadow:0 1px 2px rgba(15,23,42,.18)}
+html.dark .seg button.on{background:var(--primary);color:#fff}
+.link-btn{display:inline-flex;align-items:center;gap:6px;border:0;background:none;padding:4px 0;color:var(--ptext);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.link-btn:hover{text-decoration:underline}
+.link-btn i{font-size:11px}
+
+/* Cart panel */
+.cart-desk .sumrow{margin:8px 0}
+.cart-item{background:var(--input);border:1px solid var(--border)}
+.cart-desk .btn-primary,#cart-mobile .btn-primary{min-height:50px;font-size:15px;font-weight:700}
+
+/* Desktop-only controls (camera button next to search) */
+.only-desk{display:none}
+@media(min-width:1024px){.only-desk{display:inline-flex}}
+
+/* Toggle switches in Settings */
+.switch input[type=checkbox]{appearance:none;-webkit-appearance:none;flex:none;width:42px;height:24px;border-radius:99px;background:color-mix(in srgb,var(--muted) 45%,transparent);position:relative;cursor:pointer;transition:background .18s;margin:0}
+.switch input[type=checkbox]::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .18s var(--ease)}
+.switch input[type=checkbox]:checked{background:var(--primary)}
+.switch input[type=checkbox]:checked::after{transform:translateX(18px)}
+.switch input[type=checkbox]:focus-visible{outline:2px solid var(--primary2);outline-offset:2px}
+
+/* Quieter row actions: delete is muted until hovered */
+.row .icon-btn[aria-label="Delete"]{border-color:transparent;background:transparent}
+.row .icon-btn[aria-label="Delete"] i{color:var(--muted)}
+.row .icon-btn[aria-label="Delete"]:hover i{color:var(--bad)}
+
+/* The add-to-cart ring is decorative only; the product already shows its quantity badge */
+.fly-ring{display:none}
+
+/* Mobile top bar: brand on the left, backup status on the right */
+@media(max-width:1023px){
+  .topbar{padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}
+}
+
+/* Product tiles: a little tighter so more fit on screen */
+.pimg{aspect-ratio:3/2}
+
+/* Barcode page option pills: one line, quiet selected state */
+.check-pill{white-space:nowrap}
+.check-pill:has(input:checked){box-shadow:none}
+
+.hold-lbl{display:none;margin-left:6px}
+#hold-count{margin-left:4px}
+@media(min-width:700px){.hold-lbl{display:inline}}

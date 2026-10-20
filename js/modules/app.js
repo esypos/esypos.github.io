@@ -5,14 +5,14 @@
   const $ = id => document.getElementById(id);
   const NAV = [
     { id: 'pos', label: 'Sales Counter', icon: 'fa-cash-register' },
-    { id: 'customers', label: 'Customers & Due', icon: 'fa-user-group' },
+    { id: 'dashboard', label: 'Dashboard', icon: 'fa-gauge-high' },
+    { id: 'history', label: 'Sales History', icon: 'fa-file-invoice' },
     { id: 'products', label: 'Products & Stock', icon: 'fa-box-open' },
-    { id: 'barcodes', label: 'Barcode Labels', icon: 'fa-barcode' },
+    { id: 'customers', label: 'Customers & Due', icon: 'fa-user-group' },
     { id: 'purchases', label: 'Purchases & Suppliers', icon: 'fa-truck' },
     { id: 'expenses', label: 'Expenses', icon: 'fa-money-bill-wave' },
-    { id: 'history', label: 'Sales History', icon: 'fa-file-invoice' },
     { id: 'reports', label: 'Reports', icon: 'fa-chart-column' },
-    { id: 'dashboard', label: 'Dashboard', icon: 'fa-gauge-high' },
+    { id: 'barcodes', label: 'Barcode Labels', icon: 'fa-barcode' },
     { id: 'settings', label: 'Settings', icon: 'fa-sliders' }
   ];
   const Views = {};
@@ -100,11 +100,11 @@
     }
   };
   const POS = window.POS = {
-    cat: 'all', q: '', limit: 120, disc: 0, discType: 'percent', tax: 0, customerId: null, note: '', payMethod: 'cash',
+    cat: 'all', q: '', limit: 120, disc: 0, discType: 'amount', showTax: false, tax: 0, customerId: null, note: '', payMethod: 'cash',
     taxInit() { this.tax = num(DB.settings.defaultTax); },
     totals() {
       const subtotal = r2(DB.cart.reduce((s, c) => s + c.price * c.qty, 0));
-      let discount = this.discType === 'percent' ? subtotal * Math.max(0, num(this.disc)) / 100 : Math.max(0, num(this.disc));
+      let discount = this.discType === 'percent' ? subtotal * Math.min(100, Math.max(0, num(this.disc))) / 100 : Math.max(0, num(this.disc));
       discount = r2(Math.min(Math.max(discount, 0), subtotal));
       const tax = r2((subtotal - discount) * Math.max(0, num(this.tax)) / 100);
       return { subtotal, discount, tax, total: r2(subtotal - discount + tax) };
@@ -115,9 +115,9 @@
         <div class="card search-wrap">
           <div class="flex gap2 mb2">
             <div class="relative grow"><i class="fas fa-magnifying-glass search-ico"></i>
-              <input id="pos-search" class="input has-ico" placeholder="Search or scan barcode..." value="${esc(this.q)}" oninput="POS.search(this.value)" onkeydown="if(event.key==='Enter')POS.enter()" autocomplete="off"></div>
-            <button class="btn btn-soft" onclick="POS.scan()" title="Camera scan"><i class="fas fa-barcode"></i></button>
-            <button class="btn btn-soft" onclick="POS.showHold()" title="Held Bills"><i class="fas fa-pause"></i><span id="hold-count"></span></button>
+              <input id="pos-search" class="input has-ico" placeholder="Search product or barcode" value="${esc(this.q)}" oninput="POS.search(this.value)" onkeydown="if(event.key==='Enter')POS.enter()" autocomplete="off"></div>
+            <button class="btn btn-soft only-desk" onclick="POS.scan()" title="Camera scan" aria-label="Camera scan"><i class="fas fa-barcode"></i></button>
+            <button class="btn btn-soft" onclick="POS.showHold()" title="Held bills" aria-label="Held bills"><i class="fas fa-pause"></i><span class="hold-lbl">Held bills</span><span id="hold-count"></span></button>
             <span class="scan-ready only-desk" title="USB/Bluetooth barcode scanner ready"><i class="fas fa-plug"></i> Scanner</span>
           </div>
           <div class="chips" id="pos-cats"></div>
@@ -240,7 +240,7 @@
       if (!DB.cart.length) return;
       askConfirm('Clear all items from cart?', () => { DB.cart = []; this.resetBill(); C.save('cart'); this.renderCart(); toast('Cart cleared'); }, { title: 'Clear cart?', yes: 'Yes, clear', danger: true });
     },
-    resetBill() { this.disc = 0; this.discType = 'percent'; this.customerId = null; this.note = ''; this.taxInit(); },
+    resetBill() { this.disc = 0; this.discType = 'amount'; this.showTax = false; this.customerId = null; this.note = ''; this.taxInit(); },
     cartHTML() {
       const t = this.totals(); const cust = this.customerId ? findCustomer(this.customerId) : null;
       const la = this.lastAdded;
@@ -254,11 +254,14 @@
           <div class="flex gap1"><button class="btn btn-sm btn-ghost" onclick="POS.hold()"><i class="fas fa-pause"></i> Hold</button><button class="btn btn-sm btn-danger-soft" onclick="POS.clear()"><i class="fas fa-trash"></i></button></div></div>
         <div style="max-height:38vh;overflow-y:auto;margin-bottom:10px">${items}</div>
         <button class="btn btn-ghost btn-block mb3" onclick="POS.pickCust()"><i class="fas fa-user"></i> ${cust ? esc(cust.name) + (C.customerBalance(cust.id) > 0 ? ' · Due ' + money(C.customerBalance(cust.id)) : '') : 'Customer: Walk-in (select for due)'}</button>
-        <div class="grid2 mb2"><div><label class="label">Discount</label><div class="flex gap1"><input type="number" min="0" step="any" class="input" value="${this.disc || ''}" placeholder="0" oninput="POS.setDisc(this.value)"><select class="input" style="width:70px" onchange="POS.setDiscType(this.value)"><option value="percent" ${this.discType === 'percent' ? 'selected' : ''}>%</option><option value="amount" ${this.discType === 'amount' ? 'selected' : ''}>${esc(C.cur())}</option></select></div></div>
-          <div><label class="label">Tax (%)</label><input type="number" min="0" step="any" class="input" value="${this.tax || ''}" placeholder="0" oninput="POS.setTax(this.value)"></div></div>
+        <div class="disc-row mb2">
+          <label class="label">Discount</label>
+          <div class="disc-box"><span class="disc-cur">${this.discType === 'percent' ? '%' : esc(C.cur())}</span><input type="number" inputmode="decimal" min="0" step="any" class="input disc-input" value="${this.disc || ''}" placeholder="0" oninput="POS.setDisc(this.value)">
+            <div class="seg" role="group" aria-label="Discount type"><button type="button" class="${this.discType === 'amount' ? 'on' : ''}" data-dt="amount" onclick="POS.setDiscType('amount')">${esc(C.cur())}</button><button type="button" class="${this.discType === 'percent' ? 'on' : ''}" data-dt="percent" onclick="POS.setDiscType('percent')">%</button></div></div></div>
+        ${(this.showTax || num(this.tax) > 0) ? `<div class="disc-row mb2"><label class="label">Tax (%)</label><input type="number" inputmode="decimal" min="0" step="any" class="input" value="${this.tax || ''}" placeholder="0" oninput="POS.setTax(this.value)"></div>` : `<button type="button" class="link-btn mb2" onclick="POS.addTax()"><i class="fas fa-plus"></i> Add tax</button>`}
         <div class="sumrow muted"><span>Subtotal</span><span class="js-sub">${money(t.subtotal)}</span></div>
         <div class="sumrow muted"><span>Discount</span><span class="js-disc bad">-${money(t.discount)}</span></div>
-        <div class="sumrow muted"><span>Tax</span><span class="js-tax">${money(t.tax)}</span></div>
+        ${(this.showTax || num(this.tax) > 0) ? `<div class="sumrow muted"><span>Tax</span><span class="js-tax">${money(t.tax)}</span></div>` : ''}
         <div class="sumrow big"><span>Total</span><span class="ptext js-total">${money(t.total)}</span></div>
         <button class="btn btn-primary btn-block mt3" style="padding:14px;font-size:15px" ${DB.cart.length ? '' : 'disabled'} onclick="POS.checkout()"><i class="fas fa-circle-check"></i> Checkout</button>`;
     },
@@ -278,7 +281,15 @@
     },
     updTotals() { const t = this.totals(); const set = (c, v) => document.querySelectorAll(c).forEach(e => e.textContent = v); set('.js-sub', money(t.subtotal)); set('.js-disc', '-' + money(t.discount)); set('.js-tax', money(t.tax)); set('.js-total', money(t.total)); set('.cb-total', money(t.total)); },
     setDisc(v) { this.disc = num(v); this.updTotals(); },
-    setDiscType(v) { this.discType = v; this.updTotals(); },
+    setDiscType(v) {
+      this.discType = v === 'percent' ? 'percent' : 'amount';
+      document.querySelectorAll('.disc-box').forEach(b => {
+        b.querySelectorAll('.seg button').forEach(x => x.classList.toggle('on', x.dataset.dt === this.discType));
+        const cur = b.querySelector('.disc-cur'); if (cur) cur.textContent = this.discType === 'percent' ? '%' : C.cur();
+      });
+      this.updTotals();
+    },
+    addTax() { this.showTax = true; this.renderCart(); },
     setTax(v) { this.tax = num(v); this.updTotals(); },
     pickCust() { People.pick(id => { this.customerId = id; this.renderCart(); }, true); },
     hold() {
@@ -296,7 +307,7 @@
     restore(id, btn) {
       const h = DB.hold.find(x => x.id === id); if (!h) return;
       const run = () => {
-        DB.cart = h.items; this.customerId = h.customerId; this.disc = h.disc; this.discType = h.discType; this.tax = h.tax; this.note = h.note || '';
+        DB.cart = h.items; this.customerId = h.customerId; this.disc = h.disc; this.discType = h.discType === 'percent' ? 'percent' : 'amount'; this.tax = h.tax; this.showTax = num(h.tax) > 0; this.note = h.note || '';
         DB.hold = DB.hold.filter(x => x.id !== id); C.save('hold'); C.save('cart'); Modal.closeAll(); this.renderCart(); this.renderGrid(); toast('Bill resumed ✓');
       };
       if (DB.cart.length) askConfirm('Current cart items will be replaced. Continue?', run, { yes: 'Yes' }); else run();
