@@ -213,7 +213,7 @@
       const p = prof();
       return `<div class="card pad mb3" id="lp-card"><div class="sec-title"><i class="fas fa-print ptext"></i> Label &amp; receipt printer</div>
         <p class="sm mb2">${esc(this.summary())}</p>
-        <p class="xs muted mb3">Connect the printer once. EsyPOS recognises it, you confirm the paper that is loaded, and every label or receipt is then laid out for exactly that paper.</p>
+        <p class="xs muted mb3">Connect once, confirm the paper, and every label or receipt fits.</p>
         <div class="flex gap2 flex-wrap"><button class="btn btn-primary grow" onclick="LP.setup()"><i class="fas fa-plug"></i> ${p ? 'Change / re-detect' : 'Connect printer'}</button>${p ? '<button class="btn btn-soft" onclick="LP.edit()">Paper &amp; options</button><button class="btn btn-danger-soft" onclick="LP.forget()">Forget</button>' : ''}</div></div>`;
     },
     refresh() { const c = $('lp-card'); if (c) c.outerHTML = this.cardHTML(); const ch = document.querySelector('.lp-chip'); if (ch) ch.outerHTML = this.chipHTML(); if (window.Barcodes && App.view === 'barcodes') { Barcodes._autoPicked = false; Barcodes.render(); } },
@@ -230,8 +230,8 @@
             ${bt ? '<button class="btn btn-primary" id="lp-bt"><i class="fab fa-bluetooth-b"></i> Bluetooth printer</button>' : ''}
             <button class="btn btn-soft" id="lp-man"><i class="fas fa-sliders"></i> Set up manually (printer with Windows driver)</button>
           </div>
-          ${usb || bt ? '' : '<p class="xs warn mt3">This browser cannot talk to printers directly. Use Chrome or Edge for automatic detection. You can still set the paper size manually — browser printing will follow it.</p>'}
-          <p class="xs muted mt3">Why a profile? Web pages are not allowed to read the paper loaded in a printer, so EsyPOS identifies the model, you confirm the paper once, and it remembers.</p>`,
+          ${usb || bt ? '' : '<p class="xs warn mt3">Auto-detect needs Chrome or Edge. You can still set the paper size manually.</p>'}
+          <p class="xs muted mt3">Browsers cannot read the loaded paper, so confirm it once.</p>`,
         foot: '<button class="btn" data-x>Close</button>'
       });
       m.querySelector('[data-x]').onclick = () => Modal.close(m);

@@ -708,7 +708,7 @@
       }, { title: 'Delete product?', yes: 'Yes, Delete', danger: true });
     },
     csvMenu() {
-      Modal.open({ title: 'Product CSV', body: `<p class="muted sm mb3">Import many products from Excel/Google Sheet. Columns: Name, Barcode, Category, Cost, Sell price, Stock, Unit, Low stock limit, Expiry</p>
+      Modal.open({ title: 'Product CSV', body: `<p class="muted sm mb3">Import from Excel/Sheets. Columns: Name, Barcode, Category, Cost, Sell price, Stock, Unit, Low stock limit, Expiry</p>
         <button class="btn btn-ghost btn-block mb2" onclick="Products.csvOut()"><i class="fas fa-file-export"></i> All Product Export (CSV)</button>
         <button class="btn btn-ghost btn-block mb2" onclick="Products.csvTemplate()"><i class="fas fa-file-lines"></i> Download empty template</button>
         <label class="btn btn-primary btn-block" style="cursor:pointer"><i class="fas fa-file-import"></i> CSV Import<input type="file" accept=".csv,text/csv" class="hidden" onchange="Products.csvIn(this)"></label>` });

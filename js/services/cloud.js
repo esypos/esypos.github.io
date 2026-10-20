@@ -153,7 +153,7 @@
     if (!isOn() || S.applying) return;
     set(KEY.dirty, '1'); S.seq++;
     if (S.status !== 'syncing' && S.status !== 'auth' && S.status !== 'offline') setStatus('pending'); else renderUI();
-    clearTimeout(S.timer); S.timer = setTimeout(() => push(), 1500);
+    clearTimeout(S.timer); S.timer = setTimeout(() => push(), 900);
   }
   async function push(force, manual) {
     if (!isOn() || S.busy || S.applying || !hasLocal()) return;
@@ -206,7 +206,6 @@
     });
     m.querySelector('#cf-cloud').onclick = () => {
       Modal.close(m);
-      try { C.download('esypos-device-backup-' + C.todayKey() + '.json', JSON.stringify(payload()), 'application/json'); } catch (_) {}
       setTimeout(() => applyRemote(d, f), 400);
     };
     m.querySelector('#cf-local').onclick = async () => {
@@ -301,7 +300,7 @@
         const tag = x.name.slice(SNAP.length, -5); const day = /^\d{4}-\d{2}-\d{2}$/.test(tag) ? C.fmtDate(tag + 'T12:00:00') : 'Copy before overwrite';
         return `<div class="row" style="cursor:default"><div class="grow"><div class="t">${esc(day)}</div><div class="s">${C.fmtDT(x.modifiedTime)} · ${Math.round((x.size || 0) / 1024)} KB</div></div><button class="btn btn-sm btn-primary" data-id="${x.id}">Restore</button></div>`;
       }).join('') : '<div class="empty"><i class="fas fa-clock-rotate-left"></i>No old copies yet</div>';
-      const m = Modal.open({ title: 'Old backups (cloud)', body: '<p class="xs muted mb3">A snapshot is kept before the first sync each day (last ' + KEEP_SNAPS + ').</p>' + rows });
+      const m = Modal.open({ title: 'Old backups (cloud)', body: '<p class="xs muted mb3">Daily snapshots kept: last ' + KEEP_SNAPS + '.</p>' + rows });
       m.querySelectorAll('button[data-id]').forEach(b => b.onclick = async () => {
         try {
           const d = await download(b.dataset.id); const f = await findMain();
@@ -351,7 +350,7 @@
     return pic ? `<img class="g-av ${big ? 'big' : ''}" src="${esc(pic)}" alt="" referrerpolicy="no-referrer">` : `<div class="g-av ${big ? 'big' : ''}">${esc(nm.trim().charAt(0).toUpperCase())}</div>`; };
   const gIcon = '<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>';
   function bodyHTML() {
-    if (!isOn()) return `<p class="muted sm mb3">Sign in with Google to auto-save all data into one backup file (EsyPOS-Backup.json) in your Google Drive. Even if browser data is cleared, signing in again restores everything.</p>
+    if (!isOn()) return `<p class="muted sm mb3">Sign in with Google to back up every sale to your Drive automatically. Clear the browser or change phone — sign in and everything returns.</p>
       <button class="btn btn-google btn-block" onclick="Cloud.signIn()">${gIcon} Sign in / Sign up with Google</button>
       <div class="consent-note">By signing in you accept our <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> &amp; <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</div>
       ${clientId() ? '' : '<div class="note-warn mt3"><i class="fas fa-triangle-exclamation"></i> Client ID is not set. <a href="#" onclick="Cloud.setup();return false">View setup guide</a></div>'}`;
@@ -363,7 +362,7 @@
       <button class="btn btn-soft btn-block mt2" onclick="Cloud.replaceNow()"><i class="fas fa-cloud-arrow-down"></i> Replace with latest backup</button>
       <label class="switch mt3"><span class="sm fw6"><i class="fas fa-rotate ptext"></i> Live sync every 5 seconds</span><input type="checkbox" ${autoOn() ? 'checked' : ''} onchange="Cloud.autoToggle(this.checked)"></label>
       <button class="btn btn-danger-soft btn-block mt2" onclick="Cloud.signOut()"><i class="fas fa-right-from-bracket"></i> Log out</button>
-      <p class="xs muted mt3">🔒 Backs up automatically after every change to one file, <b>EsyPOS-Backup.json</b>, in your Google Drive. Sign in with the same Google account on any device and your data is restored automatically.</p>`;
+      <p class="xs muted mt3">🔒 Every sale saves to Google Drive instantly. Same Google account on any device — same data.</p>`;
   }
   function renderUI() {
     const l = lbl(), on = isOn();
@@ -546,8 +545,8 @@
     try { setStatus('syncing'); await requestToken(true); const fid = get(KEY.fid); const f = fid ? await getMeta(fid) : await findMain(); if (!f) { setStatus('ok'); return toast('No cloud backup found yet'); }
       const d = await download(f.id); setStatus(get(KEY.dirty) === '1' ? 'pending' : 'ok');
       const when = d.exportDate ? C.fmtDT(d.exportDate) : C.fmtDT(f.modifiedTime), n = sum(d);
-      askConfirm('Replace this device\'s data with the latest cloud backup (' + when + (d.device ? ', ' + d.device : '') + ')? It has ' + n.p + ' products, ' + n.s + ' sales and ' + n.c + ' customers. A copy of this device\'s current data will be downloaded first.',
-        () => { try { C.download('esypos-before-replace-' + C.todayKey() + '.json', JSON.stringify(payload()), 'application/json'); } catch (_) {} try { applySoft(d, f); } catch (e) { fail(e, true); } }, { title: 'Replace with latest backup', yes: 'Replace', icon: 'fa-cloud-arrow-down' });
+      askConfirm('Load the latest cloud backup (' + when + ') on this device? ' + n.p + ' products · ' + n.s + ' sales · ' + n.c + ' customers.',
+        async () => { try { if (get(KEY.dirty) === '1') await push(); const f2 = await getMeta(f.id); applySoft(await download(f.id), f2); } catch (e) { fail(e, true); } }, { title: 'Replace with latest backup', yes: 'Replace', icon: 'fa-cloud-arrow-down' });
     } catch (e) { fail(e, true); }
   }
   let inited = false;

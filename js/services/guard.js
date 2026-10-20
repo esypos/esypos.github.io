@@ -30,7 +30,7 @@
   function ask(done, name) {
     const m = Modal.open({
       title: 'Owner PIN required',
-      body: '<p class="muted sm mb3">This section is locked. Enter the owner PIN to continue.</p>' +
+      body: '<p class="muted sm mb3">Enter the owner PIN to open this section.</p>' +
         '<input id="sl-pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" class="input sl-input" placeholder="••••" autofocus>' +
         '<div class="xs sl-msg" id="sl-msg" role="alert"></div>',
       foot: '<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" id="sl-ok"><i class="fas fa-lock-open"></i> Unlock</button>'
@@ -74,22 +74,21 @@
     const has = Lock.has(), L = lockedList(), mins = minutes(), auto = parseInt(DB.settings.autoLockMin, 10) || 1;
     const opt = (v, cur, txt) => '<option value="' + v + '"' + (v === cur ? ' selected' : '') + '>' + txt + '</option>';
     const html = '<div class="card pad mb3" id="guard-card"><div class="sec-title"><i class="fas fa-user-shield ptext"></i> Section lock (for staff)</div>' +
-      (has ? '<p class="muted sm mb3">Turn on a section to hide it behind the owner PIN. Salesmen can keep selling, but cannot open locked sections.</p>' :
-        '<p class="muted sm mb3">⚠️ Set an owner PIN first — section locks only work when a PIN is set.</p><button class="btn btn-primary mb3" onclick="Lock.setup()">Set PIN</button>') +
+      (has ? '<p class="muted sm mb3">Locked sections need the owner PIN. Staff can still sell.</p>' :
+        '<p class="muted sm mb3">⚠️ Set a PIN first — locks need it.</p><button class="btn btn-primary mb3" onclick="Lock.setup()">Set PIN</button>') +
       ITEMS.map(i => '<label class="switch"><span class="sm fw6"><i class="fas ' + i[2] + ' ptext"></i> ' + esc(i[1]) + '</span><input type="checkbox" ' + (L.indexOf(i[0]) >= 0 ? 'checked' : '') + ' onchange="Guard.toggle(\'' + i[0] + '\',this.checked)"></label>').join('') +
       '<div class="grid2 mt3"><div class="field"><label class="label">Re-lock sections after</label><select class="input" onchange="Guard.set(\'sectionLockMin\',this.value)">' +
       opt(1, mins, '1 minute') + opt(2, mins, '2 minutes') + opt(5, mins, '5 minutes') + opt(15, mins, '15 minutes') + '</select></div>' +
       '<div class="field"><label class="label">Lock app after idle</label><select class="input" onchange="Guard.set(\'autoLockMin\',this.value)">' +
       opt(1, auto, '1 minute') + opt(2, auto, '2 minutes') + opt(5, auto, '5 minutes') + opt(15, auto, '15 minutes') + '</select></div></div>' +
-      '<p class="xs muted mt2">Wrong PIN 5 times locks the keypad for 30 s, then 1, 5, 15 and 30 minutes.</p></div>';
+      '<p class="xs muted mt2">5 wrong PINs lock the keypad (30 s, then longer).</p></div>';
     const L2 = logs().slice(0, 10), last = parseInt(localStorage.getItem('esypos_g_last') || '0', 10), cnt = parseInt(localStorage.getItem('esypos_g_cnt') || '0', 10);
     const on = localStorage.getItem('esypos_g_on') === '1', dirty = localStorage.getItem('esypos_g_dirty') === '1';
     const health = '<div class="card pad mb3" id="health-card"><div class="sec-title"><i class="fas fa-heart-pulse ptext"></i> Backup health</div>' +
       '<div class="kv"><span>Cloud backup</span><b>' + (on ? (dirty ? 'Waiting to sync' : 'Verified ✓') : 'Not connected') + '</b></div>' +
       '<div class="kv"><span>Last verified backup</span><b>' + (last ? C.fmtDT(new Date(last).toISOString()) : '—') + '</b></div>' +
       '<div class="kv"><span>Records in last backup</span><b>' + (cnt || '—') + '</b></div>' +
-      '<button class="btn btn-soft btn-block mt3" onclick="Guard.localCopy()"><i class="fas fa-download"></i> Download a local copy now</button>' +
-      '<p class="xs muted mt2">Keep a weekly copy on your phone or computer as a second safety net.</p></div>' +
+      '</div>' +
       '<div class="card pad mb3" id="audit-card"><div class="sec-title"><i class="fas fa-clipboard-list ptext"></i> Security log</div>' +
       (L2.length ? L2.map(x => '<div class="kv"><span>' + esc(x.m) + '</span><b class="xs">' + esc(C.fmtDT(new Date(x.t).toISOString())) + '</b></div>').join('') + '<button class="btn btn-ghost btn-block mt3" onclick="Guard.clearLog()">Clear log</button>' : '<p class="xs muted">No unlock or wrong-PIN events yet.</p>') + '</div>';
     const anchor = t.closest('.card'); if (anchor && !$('guard-card')) anchor.insertAdjacentHTML('afterend', html + health);
@@ -99,12 +98,7 @@
     toggle(id, on) { const L = lockedList().slice(), i = L.indexOf(id); if (on && i < 0) L.push(id); if (!on && i >= 0) L.splice(i, 1); DB.settings.lockedViews = L; C.save('settings'); },
     set(k, v) { DB.settings[k] = parseInt(v, 10) || 1; C.save('settings'); toast('Saved ✓'); },
     needs,
-    clearLog() { try { localStorage.removeItem(LOGK); } catch (_) {} App.refresh(); },
-    localCopy() {
-      const o = { app: 'EsyPOS', version: 4, exportDate: new Date().toISOString() };
-      Object.keys(C.K).forEach(k => { if (k !== 'cart') o[k] = k === 'settings' ? DB.settings : DB[k]; });
-      try { C.download('EsyPOS-backup-' + C.todayKey() + '.json', JSON.stringify(o), 'application/json'); localStorage.setItem('esypos_last_backup', String(Date.now())); toast('✓ Local copy downloaded'); } catch (e) { toast('⚠️ Could not create the file'); }
-    }
+    clearLog() { try { localStorage.removeItem(LOGK); } catch (_) {} App.refresh(); }
   };
 
   /* ---- anonymous user counter ---- */
