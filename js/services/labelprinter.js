@@ -226,7 +226,7 @@
         title: 'Connect printer',
         body: `<p class="sm mb3">EsyPOS will recognise the printer and fill in its paper size. You only do this once.</p>
           <div class="flex flex-col gap2">
-            ${usb ? '<button class="btn btn-primary" id="lp-usb"><i class="fas fa-usb"></i> USB printer</button>' : ''}
+            ${usb ? '<button class="btn btn-primary" id="lp-usb"><i class="fas fa-plug"></i> USB printer</button>' : ''}
             ${bt ? '<button class="btn btn-primary" id="lp-bt"><i class="fab fa-bluetooth-b"></i> Bluetooth printer</button>' : ''}
             <button class="btn btn-soft" id="lp-man"><i class="fas fa-sliders"></i> Set up manually (printer with Windows driver)</button>
           </div>

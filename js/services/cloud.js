@@ -125,7 +125,7 @@
   }
   // Integrity stamp: record counts + a checksum of the data, so a damaged or half-written backup is never restored or trusted.
   function integrity(o) {
-    const names = Object.keys(K).filter(k => k !== 'cart' && k !== 'settings'), n = {}; let str = '';
+    const names = Object.keys(K).filter(k => k !== 'cart' && k !== 'settings' && k !== 'adjust'), n = {}; let str = '';   // adjust is synced but not checksummed, so older app versions still accept newer backups
     names.forEach(k => { const a = Array.isArray(o[k]) ? o[k] : []; n[k] = a.length; str += k + JSON.stringify(a); });
     let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
     return { n, h: (h >>> 0).toString(16), t: str.length };
@@ -193,26 +193,6 @@
     if (!hasLocal()) return applyRemote(d, f);
     try { mergeApply(d, f); } catch (e) { return fail(e, true); }
     return push();
-    const rs = sum(d), ls = sum({ products: DB.products, sales: DB.sales, customers: DB.customers });
-    const m = Modal.open({
-      title: 'Which data to keep?', static: true,
-      body: `<p class="muted sm mb3">Your Google Drive already has EsyPOS data that differs from this device.</p>
-        <div class="grid2 mb3">
-          <div class="cl-opt"><div class="xs muted mb1"><i class="fas fa-cloud"></i> Cloud data</div><div class="fw7">${rs.p} Product · ${rs.s} Sales</div><div class="xs muted">${rs.c} Customer<br>${d.exportDate ? C.fmtDT(d.exportDate) : C.fmtDT(f.modifiedTime)}</div></div>
-          <div class="cl-opt"><div class="xs muted mb1"><i class="fas fa-mobile-screen"></i> This device data</div><div class="fw7">${ls.p} Product · ${ls.s} Sales</div><div class="xs muted">${ls.c} Customer</div></div>
-        </div>
-        <p class="xs muted">Safety: if you choose cloud data, a backup of this device data will download first. If you keep device data, a copy of the old cloud data will be saved on Drive.</p>`,
-      foot: `<button class="btn btn-primary" id="cf-cloud"><i class="fas fa-cloud-arrow-down"></i> Take cloud data</button><button class="btn btn-ghost" id="cf-local"><i class="fas fa-cloud-arrow-up"></i> Keep device data</button>`
-    });
-    m.querySelector('#cf-cloud').onclick = () => {
-      Modal.close(m);
-      setTimeout(() => applyRemote(d, f), 400);
-    };
-    m.querySelector('#cf-local').onclick = async () => {
-      Modal.close(m); setStatus('syncing');
-      try { await snapshotBefore(f, 'before-overwrite-' + C.todayKey() + '-' + Date.now().toString(36)); } catch (_) {}
-      set(KEY.fid, f.id); set(KEY.rev, f.modifiedTime); await push(true);
-    };
   }
   async function afterSignIn() {
     const f = await findMain();
@@ -450,7 +430,7 @@
   }
   function chip() { if (isOn() && S.status === 'auth') return syncNow(); return panel(); }
   // ---- Smart merge (3-way): sales from two devices never overwrite each other. Google Drive is the single source of truth. ----
-  const COLL = ['products', 'customers', 'suppliers', 'sales', 'payments', 'spayments', 'purchases', 'expenses', 'returns'];
+  const COLL = ['products', 'customers', 'suppliers', 'sales', 'payments', 'spayments', 'purchases', 'expenses', 'returns', 'adjust'];
   const RICH = { products: 1, customers: 1, suppliers: 1 };
   const fnv = str => { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
   const recHash = (k, r) => { if (k !== 'products') return fnv(JSON.stringify(r)); const c = Object.assign({}, r); delete c.stock; return fnv(JSON.stringify(c)); };

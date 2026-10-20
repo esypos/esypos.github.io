@@ -254,7 +254,7 @@
           <div class="flex gap1"><button class="btn btn-sm btn-ghost" onclick="POS.hold()"><i class="fas fa-pause"></i> Hold</button><button class="btn btn-sm btn-danger-soft" onclick="POS.clear()"><i class="fas fa-trash"></i></button></div></div>
         <div style="max-height:38vh;overflow-y:auto;margin-bottom:10px">${items}</div>
         <button class="btn btn-ghost btn-block mb3" onclick="POS.pickCust()"><i class="fas fa-user"></i> ${cust ? esc(cust.name) + (C.customerBalance(cust.id) > 0 ? ' · Due ' + money(C.customerBalance(cust.id)) : '') : 'Customer: Walk-in (select for due)'}</button>
-        <div class="grid2 mb2"><div><label class="label">Discount</label><div class="flex gap1"><input type="number" min="0" step="any" class="input" value="${this.disc || ''}" placeholder="0" oninput="POS.setDisc(this.value)"><select class="input" style="width:70px" onchange="POS.setDiscType(this.value)"><option value="percent" ${this.discType === 'percent' ? 'selected' : ''}>%</option><option value="amount" ${this.discType === 'amount' ? 'selected' : ''}>৳</option></select></div></div>
+        <div class="grid2 mb2"><div><label class="label">Discount</label><div class="flex gap1"><input type="number" min="0" step="any" class="input" value="${this.disc || ''}" placeholder="0" oninput="POS.setDisc(this.value)"><select class="input" style="width:70px" onchange="POS.setDiscType(this.value)"><option value="percent" ${this.discType === 'percent' ? 'selected' : ''}>%</option><option value="amount" ${this.discType === 'amount' ? 'selected' : ''}>${esc(C.cur())}</option></select></div></div>
           <div><label class="label">Tax (%)</label><input type="number" min="0" step="any" class="input" value="${this.tax || ''}" placeholder="0" oninput="POS.setTax(this.value)"></div></div>
         <div class="sumrow muted"><span>Subtotal</span><span class="js-sub">${money(t.subtotal)}</span></div>
         <div class="sumrow muted"><span>Discount</span><span class="js-disc bad">-${money(t.discount)}</span></div>
@@ -384,7 +384,7 @@
       const low = DB.products.filter(p => p.track !== false && p.stock <= (p.minStock || 0)).length;
       $('view').innerHTML = `
       <div class="page-head"><div><h2>Products & Stock</h2><p>Add products, edit & control stock</p></div>
-        <div class="flex gap2"><button class="btn btn-ghost" onclick="Products.csvMenu()"><i class="fas fa-file-csv"></i> CSV</button><button class="btn btn-primary" onclick="Products.edit()"><i class="fas fa-plus"></i> New Product</button></div></div>
+        <div class="flex gap2"><button class="btn btn-ghost" onclick="Products.adjLog()"><i class="fas fa-file-lines"></i> Stock log</button><button class="btn btn-ghost" onclick="Products.csvMenu()"><i class="fas fa-file-csv"></i> CSV</button><button class="btn btn-primary" onclick="Products.edit()"><i class="fas fa-plus"></i> New Product</button></div></div>
       <div class="stats"><div class="stat"><div class="k">Total Product</div><div class="v">${DB.products.length}</div></div>
         <div class="stat"><div class="k">Stock value (at cost)</div><div class="v">${money(C.stockValue())}</div></div>
         <div class="stat"><div class="k">Low Stock</div><div class="v ${low ? 'bad' : ''}">${low}</div></div>
@@ -459,7 +459,7 @@
           <p class="xs muted">e.g. Sauce, Extra cheese, Toppings — shown when selling</p>
         </div></div></div>
         `,
-        foot: `<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" onclick="Products.save('${id || ''}',this)">Save</button>` });
+        foot: `${p && p.track !== false ? `<button class="btn btn-soft" onclick="Products.adjust('${p.id}')"><i class="fas fa-sliders"></i> Adjust stock</button>` : ''}<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" onclick="Products.save('${id || ''}',this)">Save</button>` });
       setTimeout(() => { Products.renderVariantRows(); Products.renderAddonGroups(); const fmt = (p && p.barcodeFormat) || DB.settings.barcodeFormat || 'code128'; const sel = $('pf-bcfmt'); if (sel) sel.value = fmt; Products.bcHint(); }, 30);
     },
     _extraFieldsHtml(biz, p) {
@@ -698,6 +698,10 @@
         required: !!g.required,
         options: (g.options || []).filter(o => (o.name || '').trim()).map(o => ({ name: String(o.name).trim(), price: num(o.price) }))
       }));
+      if (old && old.track !== false && obj.track !== false && r2(num(old.stock)) !== r2(obj.stock)) {   // a hand-edited stock number is logged too
+        DB.adjust.unshift({ id: genId(), date: new Date().toISOString(), productId: old.id, name: obj.name, type: obj.stock > num(old.stock) ? 'fix+' : 'fix-', qty: r2(obj.stock - num(old.stock)), cost: num(obj.cost), pl: false, note: 'Edited in product form' });
+        C.save('adjust');
+      }
       if (old) Object.assign(old, obj); else DB.products.push(obj);
       C.save('products'); Modal.closeFrom(btn); toast(old ? 'Product updated ✓' : 'New product added ✓'); App.refresh();
     },
@@ -737,6 +741,44 @@
     }
   };
   Views.products = Products;
+  /* ---- Stock adjustments: damaged / expired / lost stock and count corrections, with a log ---- */
+  const ADJ = {
+    damage: { label: 'Damaged', sign: -1, pl: true }, expired: { label: 'Expired', sign: -1, pl: true },
+    lost: { label: 'Lost / stolen', sign: -1, pl: true }, own: { label: 'Own use', sign: -1, pl: true },
+    'fix-': { label: 'Count correction (−)', sign: -1, pl: false }, 'fix+': { label: 'Count correction (+)', sign: 1, pl: false },
+    found: { label: 'Found / extra stock', sign: 1, pl: false }
+  };
+  Object.assign(Products, {
+    adjust(id) {
+      const p = findProduct(id); if (!p) return;
+      if (p.track === false) { toast('⚠️ Stock is not tracked for this product'); return; }
+      const m = Modal.open({ title: 'Adjust stock', body: `
+        <div class="tc mb3"><div class="fw6">${esc(p.name)}</div><div class="muted xs mt1">Current stock</div><div class="xl fw7 ptext">${p.stock} ${esc(p.unit || '')}</div></div>
+        <div class="field"><label class="label">Reason</label><select id="ad-type" class="input">${Object.keys(ADJ).map(k => `<option value="${k}">${esc(ADJ[k].label)}</option>`).join('')}</select></div>
+        <div class="field"><label class="label">Quantity</label><input id="ad-qty" type="number" min="0" step="any" class="input" autofocus></div>
+        <div class="field"><label class="label">Note (optional)</label><input id="ad-note" class="input"></div>
+        <p class="xs muted" id="ad-hint"></p>`,
+        foot: `<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" id="ad-ok">Save</button>` });
+      const hint = () => { const a = ADJ[$('ad-type').value]; $('ad-hint').textContent = a.pl ? 'Counted as a loss at cost price (' + money(p.cost || 0) + ' each) in profit reports.' : 'Changes stock only. No effect on profit.'; };
+      m.querySelector('#ad-type').onchange = hint; hint();
+      m.querySelector('#ad-ok').onclick = () => {
+        const t = $('ad-type').value, a = ADJ[t], q = num($('ad-qty').value);
+        if (!(q > 0)) { toast('⚠️ Enter a quantity'); return; }
+        if (a.sign < 0 && q > num(p.stock)) { toast('⚠️ Only ' + p.stock + ' in stock'); return; }
+        p.stock = r2(num(p.stock) + a.sign * q);
+        DB.adjust.unshift({ id: genId(), date: new Date().toISOString(), productId: p.id, name: p.name, type: t, qty: r2(a.sign * q), cost: num(p.cost), pl: a.pl, note: $('ad-note').value.trim() });
+        C.save('products'); C.save('adjust'); Modal.close(m);
+        const f = $('pf-stock'); if (f) f.value = p.stock;
+        toast('Stock updated ✓'); App.refresh();
+      };
+    },
+    adjLog() {
+      const arr = DB.adjust.slice().sort((a, b) => a.date < b.date ? 1 : -1).slice(0, 150);
+      const loss = r2(DB.adjust.filter(a => a.pl && a.qty < 0 && C.inRange(a.date, C.monthStart(), C.todayKey())).reduce((t, a) => t + (-a.qty) * num(a.cost), 0));
+      Modal.open({ title: 'Stock adjustment log', body: `<div class="card pad-s mb3 sumrow" style="margin-top:0"><span class="muted">Write-offs this month (at cost)</span><b class="bad">${money(loss)}</b></div>` +
+        (arr.length ? arr.map(a => `<div class="row" style="cursor:default"><div class="grow"><div class="t">${esc(a.name)}</div><div class="s">${C.fmtDT(a.date)} · ${esc((ADJ[a.type] || {}).label || a.type)}${a.note ? ' · ' + esc(a.note) : ''}</div></div><div class="fw7 ${a.qty < 0 ? 'bad' : 'ok'}">${a.qty > 0 ? '+' : ''}${a.qty}</div></div>`).join('') : '<div class="empty"><i class="fas fa-file-lines"></i>No adjustments yet</div>') });
+    }
+  });
   // Hide the cart bar while the on-screen keyboard is in use (like native apps).
   (function keyboardAware() {
     const field = el => !!el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && !/^(checkbox|radio|button|submit|file)$/.test(el.type || '');

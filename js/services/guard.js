@@ -27,19 +27,19 @@
   const needs = v => !!(window.Lock && Lock.has() && lockedList().indexOf(v) >= 0 && Date.now() > openUntil);
   const extend = () => { if (Date.now() <= openUntil) openUntil = Date.now() + minutes() * 60000; };
 
-  function ask(done, name) {
+  function ask(done, name, noOpen) {
     const m = Modal.open({
       title: 'Owner PIN required',
       body: '<p class="muted sm mb3">Enter the owner PIN to open this section.</p>' +
         '<input id="sl-pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" class="input sl-input" placeholder="••••" autofocus>' +
         '<div class="xs sl-msg" id="sl-msg" role="alert"></div>',
-      foot: '<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" id="sl-ok"><i class="fas fa-lock-open"></i> Unlock</button>'
+      foot: '<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" id="sl-ok"><i class="fas fa-lock"></i> Unlock</button>'
     });
     const inp = m.querySelector('#sl-pin'), msg = m.querySelector('#sl-msg'); let busy = false;
     const go = async () => {
       if (busy || inp.value.length < 4) return; busy = true;
       const r = await Lock.check(inp.value);
-      if (r === 'ok') { log('Unlocked: ' + (name || 'section')); openUntil = Date.now() + minutes() * 60000; Modal.close(m); done(); }
+      if (r === 'ok') { log('Unlocked: ' + (name || 'section')); if (!noOpen) openUntil = Date.now() + minutes() * 60000; Modal.close(m); done(); }
       else {
         log(r === 'wait' ? 'PIN lock-out (too many wrong attempts)' : 'Wrong PIN for ' + (name || 'section'));
         msg.textContent = r === 'wait' ? '⚠️ Too many wrong attempts. Wait ' + Math.max(1, Math.ceil((Lock.until - Date.now()) / 1000)) + ' seconds.' : '⚠️ Wrong PIN';
@@ -84,12 +84,12 @@
       '<p class="xs muted mt2">5 wrong PINs lock the keypad (30 s, then longer).</p></div>';
     const L2 = logs().slice(0, 10), last = parseInt(localStorage.getItem('esypos_g_last') || '0', 10), cnt = parseInt(localStorage.getItem('esypos_g_cnt') || '0', 10);
     const on = localStorage.getItem('esypos_g_on') === '1', dirty = localStorage.getItem('esypos_g_dirty') === '1';
-    const health = '<div class="card pad mb3" id="health-card"><div class="sec-title"><i class="fas fa-heart-pulse ptext"></i> Backup health</div>' +
+    const health = '<div class="card pad mb3" id="health-card"><div class="sec-title"><i class="fas fa-shield-halved ptext"></i> Backup health</div>' +
       '<div class="kv"><span>Cloud backup</span><b>' + (on ? (dirty ? 'Waiting to sync' : 'Verified ✓') : 'Not connected') + '</b></div>' +
       '<div class="kv"><span>Last verified backup</span><b>' + (last ? C.fmtDT(new Date(last).toISOString()) : '—') + '</b></div>' +
       '<div class="kv"><span>Records in last backup</span><b>' + (cnt || '—') + '</b></div>' +
       '</div>' +
-      '<div class="card pad mb3" id="audit-card"><div class="sec-title"><i class="fas fa-clipboard-list ptext"></i> Security log</div>' +
+      '<div class="card pad mb3" id="audit-card"><div class="sec-title"><i class="fas fa-file-lines ptext"></i> Security log</div>' +
       (L2.length ? L2.map(x => '<div class="kv"><span>' + esc(x.m) + '</span><b class="xs">' + esc(C.fmtDT(new Date(x.t).toISOString())) + '</b></div>').join('') + '<button class="btn btn-ghost btn-block mt3" onclick="Guard.clearLog()">Clear log</button>' : '<p class="xs muted">No unlock or wrong-PIN events yet.</p>') + '</div>';
     const anchor = t.closest('.card'); if (anchor && !$('guard-card')) anchor.insertAdjacentHTML('afterend', html + health);
   }
@@ -97,7 +97,8 @@
   const Guard = window.Guard = {
     toggle(id, on) { const L = lockedList().slice(), i = L.indexOf(id); if (on && i < 0) L.push(id); if (!on && i >= 0) L.splice(i, 1); DB.settings.lockedViews = L; C.save('settings'); },
     set(k, v) { DB.settings[k] = parseInt(v, 10) || 1; C.save('settings'); toast('Saved ✓'); },
-    needs,
+    needs, log,
+    confirmPin(cb, name) { if (window.Lock && Lock.has()) ask(cb, name, true); else cb(); },   // always asks for the PIN (used before deleting a bill)
     clearLog() { try { localStorage.removeItem(LOGK); } catch (_) {} App.refresh(); }
   };
 

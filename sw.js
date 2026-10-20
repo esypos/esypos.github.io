@@ -1,7 +1,7 @@
-/* EsyPOS Service Worker (v10.7) - cache-first app shell, so the app opens instantly even on a slow or missing network.
+/* EsyPOS Service Worker (v10.16) - cache-first app shell, so the app opens instantly even on a slow or missing network.
    Every release ships a new cache (CACHE_VERSION), so users always get a complete, consistent set of files.
    App data lives in localStorage + the user's Google Drive; this cache only holds the app files. */
-const CACHE_VERSION = 'v10.15.0';
+const CACHE_VERSION = 'v10.16.0';
 const APP_CACHE = `esypos-app-${CACHE_VERSION}`;
 
 const APP_SHELL = [

@@ -258,7 +258,7 @@
       const sh = DB.settings; const cust = C.findCustomer(s.customerId); const bal = cust ? C.customerBalance(cust.id) : 0; const L = [];
       const MN = { cash: 'Cash', card: 'Card', mobile: 'Mobile', due: 'Due' };
       L.push({ t: sh.shopName || 'EsyPOS', a: 'c', b: 1, s: 28 });
-      if (sh.shopAddress) L.push({ t: sh.shopAddress, a: 'c', s: 20 }); if (sh.shopPhone) L.push({ t: 'Phone: ' + sh.shopPhone, a: 'c', s: 20 });
+      if (sh.shopAddress) L.push({ t: sh.shopAddress, a: 'c', s: 20 }); if (sh.shopPhone) L.push({ t: 'Phone: ' + sh.shopPhone, a: 'c', s: 20 }); if (sh.taxId) L.push({ t: 'VAT/BIN: ' + sh.taxId, a: 'c', s: 20 });
       L.push({ hr: 1 }, { t: 'Receipt no.', t2: '#' + C.invLabel(s), s: 21 }, { t: 'Date', t2: C.fmtDT(s.date), s: 21 });
       if (cust) L.push({ t: 'Customer', t2: cust.name, s: 21 }); L.push({ t: 'Payment', t2: MN[s.paymentMethod] || '', s: 21 }, { hr: 1 });
       s.items.forEach(i => { L.push({ t: i.name, s: 22, b: 1 }); if (i.note) L.push({ t: '+ ' + i.note, s: 19 }); L.push({ t: i.qty + ' × ' + fmt(i.price), t2: fmt(i.price * i.qty), s: 21 }); });
@@ -296,7 +296,7 @@
       const sh = DB.settings; const w = sh.paper === '80' ? 48 : 32; const asc = t => String(t || '').replace(/[^\x20-\x7E]/g, '?');
       const lr = (a, b) => { a = asc(a); b = asc(b); return a.slice(0, Math.max(1, w - b.length - 1)).padEnd(w - b.length) + b + '\n'; };
       const e = new TextEncoder(); const o = []; const t = x => e.encode(x).forEach(c => o.push(c));
-      o.push(0x1B, 0x40, 0x1B, 0x61, 0x01, 0x1B, 0x21, 0x30); t(asc(sh.shopName || 'EsyPOS') + '\n'); o.push(0x1B, 0x21, 0x00); if (sh.shopPhone) t('Tel: ' + asc(sh.shopPhone) + '\n'); t('-'.repeat(w) + '\n'); o.push(0x1B, 0x61, 0x00);
+      o.push(0x1B, 0x40, 0x1B, 0x61, 0x01, 0x1B, 0x21, 0x30); t(asc(sh.shopName || 'EsyPOS') + '\n'); o.push(0x1B, 0x21, 0x00); if (sh.shopPhone) t('Tel: ' + asc(sh.shopPhone) + '\n'); if (sh.taxId) t('VAT/BIN: ' + asc(sh.taxId) + '\n'); t('-'.repeat(w) + '\n'); o.push(0x1B, 0x61, 0x00);
       t(lr('No', '#' + C.invLabel(s))); t(lr('Date', C.dkey(s.date))); t('-'.repeat(w) + '\n');
       s.items.forEach(i => { t(asc(i.name) + '\n'); if (i.note) t('  + ' + asc(i.note) + '\n'); t(lr('  ' + i.qty + ' x ' + i.price.toFixed(2), (i.price * i.qty).toFixed(2))); });
       t('-'.repeat(w) + '\n'); t(lr('Subtotal', s.subtotal.toFixed(2))); if (s.discount > 0) t(lr('Discount', '-' + s.discount.toFixed(2))); if (s.tax > 0) t(lr('Tax', s.tax.toFixed(2)));
@@ -325,6 +325,7 @@
         <p class="xs muted mt1">Adds matching fields to the product form.</p></div>
         <div class="grid2"><div class="field"><label class="label">Currency symbol</label><input id="st-cur" class="input" maxlength="4" value="${esc(s.currency)}" placeholder="$"></div><div class="field"><label class="label">Example</label><div class="input" style="display:flex;align-items:center;background:var(--hover)">${esc(s.currency)}1,250.50</div></div></div>
         <div class="field"><label class="label">Receipt footer text</label><input id="st-foot" class="input" value="${esc(s.footer)}"></div>
+        <div class="field"><label class="label">VAT / BIN / Tax ID (printed on receipt, optional)</label><input id="st-taxid" class="input" maxlength="40" value="${esc(s.taxId || '')}"></div>
         <div class="grid3"><div class="field"><label class="label">Invoice prefix</label><input id="st-pre" class="input" value="${esc(s.invPrefix)}" placeholder="INV-"></div><div class="field"><label class="label">Paper</label><select id="st-paper" class="input"><option value="58" ${s.paper === '58' ? 'selected' : ''}>58 mm</option><option value="80" ${s.paper === '80' ? 'selected' : ''}>80 mm</option></select></div><div class="field"><label class="label">Low stock (default)</label><input id="st-low" type="number" min="0" class="input" value="${s.lowStockDefault == null ? 5 : s.lowStockDefault}"></div></div>
         <div class="grid2"><div class="field"><label class="label">Barcode prefix</label><input id="st-bcpre" class="input" maxlength="6" value="${esc(s.barcodePrefix||'ESY')}" placeholder="ESY"></div>
           <div class="field"><label class="label">Default barcode format</label><select id="st-bcfmt" class="input"><option value="code128" ${(s.barcodeFormat||'code128')==='code128'?'selected':''}>Code 128</option><option value="ean13" ${s.barcodeFormat==='ean13'?'selected':''}>EAN-13</option><option value="qr" ${s.barcodeFormat==='qr'?'selected':''}>QR Code</option></select></div></div>
@@ -344,6 +345,8 @@
       <div class="card pad mb3"><div class="sec-title"><i class="fab fa-google ptext"></i> Google Drive Cloud Backup</div><div class="js-cloud-body"></div></div>
       <div class="card pad mb3"><div class="sec-title"><i class="fas fa-database ptext"></i> Data management</div>
         <p class="xs muted mt2">Sales save to <b>Google Drive</b> instantly; this device keeps a working copy for offline use.</p>
+        <div class="grid2 mt3"><button class="btn btn-ghost" onclick="exportBackupFile()"><i class="fas fa-file-export"></i> Save backup file</button><label class="btn btn-ghost" style="cursor:pointer"><i class="fas fa-file-import"></i> Restore from file<input type="file" accept=".json,application/json" class="hidden" onchange="importData(this)"></label></div>
+        <p class="xs muted mt2">Optional copy to keep outside Google Drive. Nothing is downloaded automatically, and the file does not contain your PIN.</p>
         <button class="btn btn-danger-soft btn-block mt2" onclick="wipeAllData()"><i class="fas fa-trash"></i> Delete all data</button></div>
       <div class="card pad mb3"><div class="sec-title"><i class="fas fa-scale-balanced ptext"></i> Legal</div>
         <div class="grid2"><a class="btn btn-ghost" href="privacy.html" target="_blank" rel="noopener"><i class="fas fa-user-shield"></i> Privacy Policy</a><a class="btn btn-ghost" href="terms.html" target="_blank" rel="noopener"><i class="fas fa-file-contract"></i> Terms of Service</a></div></div>
@@ -352,7 +355,7 @@
     },
     save() {
       const s = DB.settings; s.shopName = $('st-name').value.trim() || 'My Shop'; s.shopAddress = $('st-addr').value.trim(); s.shopPhone = $('st-phone').value.trim();
-      s.defaultTax = Math.max(0, num($('st-tax').value)); s.footer = $('st-foot').value.trim(); s.invPrefix = $('st-pre').value.trim(); s.currency = ($('st-cur').value || '').trim().slice(0, 4) || C.DEFAULTS.currency; s.paper = $('st-paper').value; const lw = parseFloat($('st-low').value); s.lowStockDefault = isFinite(lw) && lw >= 0 ? lw : 5;
+      s.defaultTax = Math.max(0, num($('st-tax').value)); s.footer = $('st-foot').value.trim(); s.taxId = ($('st-taxid') ? $('st-taxid').value.trim() : (s.taxId || '')).slice(0, 40); s.invPrefix = $('st-pre').value.trim(); s.currency = ($('st-cur').value || '').trim().slice(0, 4) || C.DEFAULTS.currency; s.paper = $('st-paper').value; const lw = parseFloat($('st-low').value); s.lowStockDefault = isFinite(lw) && lw >= 0 ? lw : 5;
       s.businessType = ($('st-biz') && $('st-biz').value) || 'retail';
       s.barcodePrefix = (($('st-bcpre') && $('st-bcpre').value) || 'ESY').replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 6) || 'ESY';
       s.barcodeFormat = ($('st-bcfmt') && $('st-bcfmt').value) || 'code128';

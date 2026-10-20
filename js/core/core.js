@@ -5,16 +5,16 @@
     products: 'esypos_products', sales: 'esypos_sales', customers: 'esypos_customers',
     payments: 'esypos_payments', suppliers: 'esypos_suppliers', purchases: 'esypos_purchases',
     spayments: 'esypos_spayments', expenses: 'esypos_expenses', returns: 'esypos_returns',
-    hold: 'esypos_hold', cart: 'esypos_cart', settings: 'esypos_settings'
+    hold: 'esypos_hold', cart: 'esypos_cart', settings: 'esypos_settings', adjust: 'esypos_adjust'
   };
   const DEFAULTS = {
     shopName: 'My Shop', shopAddress: '', shopPhone: '', defaultTax: 0,
     footer: 'Thank you! Come again', paper: '58', btMode: 'image',
     invPrefix: '', nextInvoice: 1, pinHash: '', pinSalt: '', lowStockDefault: 5, currency: '\u09F3',
-    businessType: 'retail', barcodePrefix: 'ESY', nextBarcode: 1000001, barcodeFormat: 'code128'
+    businessType: 'retail', barcodePrefix: 'ESY', nextBarcode: 1000001, barcodeFormat: 'code128', taxId: ''
   };
   const DB = { products: [], sales: [], customers: [], payments: [], suppliers: [], purchases: [],
-               spayments: [], expenses: [], returns: [], hold: [], cart: [], settings: Object.assign({}, DEFAULTS) };
+               spayments: [], expenses: [], returns: [], hold: [], cart: [], adjust: [], settings: Object.assign({}, DEFAULTS) };
   function safeLoad(key, fallback) {
     try {
       const raw = root.localStorage.getItem(key);
@@ -234,6 +234,7 @@
     const P = DB.payments.filter(p => inRange(p.date, from, to));
     const PU = DB.purchases.filter(p => inRange(p.date, from, to));
     const SP = DB.spayments.filter(p => inRange(p.date, from, to));
+    const A = (DB.adjust || []).filter(a => inRange(a.date, from, to));
     const sum = (arr, f) => r2(arr.reduce((t, x) => t + num(f(x)), 0));
     const grossSales = sum(S, s => s.total);
     const returnsTotal = sum(R, r => r.amount);
@@ -243,10 +244,14 @@
     const retRevenue = sum(R, r => r.revenue);
     const grossProfit = r2(salesRevenue - cogs - (retRevenue - retCogs));
     const expenses = sum(E, e => e.amount);
+    const writeOff = r2(A.reduce((t, a) => t + (a.pl && num(a.qty) < 0 ? -num(a.qty) * num(a.cost) : 0), 0));   // damaged / expired / lost stock, at cost
     const byMethod = { cash: 0, card: 0, mobile: 0 };
     S.forEach(s => { const m = byMethod[s.paymentMethod] !== undefined ? s.paymentMethod : 'cash'; byMethod[m] += num(s.paid); });
     const collected = {};
     ['cash', 'card', 'mobile'].forEach(m => { collected[m] = r2(byMethod[m] + sum(P.filter(p => (p.method || 'cash') === m), p => p.amount)); });
+    const cashRefundAmt = sum(R.filter(r => r.refundType === 'cash'), r => r.amount);
+    const cashSupplier = r2(sum(SP.filter(p => (p.method || 'cash') === 'cash'), p => p.amount) + sum(PU, p => p.paid));
+    const cashNet = r2(collected.cash - cashRefundAmt - cashSupplier - expenses);   // estimate: purchases and expenses are assumed to be paid in cash
     const prod = {}; const cat = {};
     S.forEach(s => s.items.forEach(i => {
       const t = prod[i.id] = prod[i.id] || { name: i.name, qty: 0, amount: 0, profit: 0 };
@@ -257,9 +262,9 @@
     return {
       from, to, count: S.length, grossSales, returnsTotal, netSales: r2(grossSales - returnsTotal),
       discount: sum(S, s => s.discount), tax: sum(S, s => s.tax), cogs: r2(cogs - retCogs), grossProfit,
-      expenses, netProfit: r2(grossProfit - expenses), newDue: sum(S, s => s.due),
+      expenses, writeOff, netProfit: r2(grossProfit - expenses - writeOff), newDue: sum(S, s => s.due),
       dueCollected: sum(P, p => p.amount), supplierPaid: sum(SP, p => p.amount) + sum(PU, p => p.paid),
-      purchases: sum(PU, p => p.total), cashRefund: sum(R.filter(r => r.refundType === 'cash'), r => r.amount),
+      purchases: sum(PU, p => p.total), cashRefund: cashRefundAmt, cashSupplier, cashNet,
       collected, topProducts: Object.values(prod).sort((a, b) => b.amount - a.amount).slice(0, 10),
       categories: Object.entries(cat).sort((a, b) => b[1] - a[1]), S, R, E, P, PU
     };

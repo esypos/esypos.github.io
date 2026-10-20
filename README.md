@@ -20,6 +20,15 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
 ---
 
+## v10.16.0 — Stock control, bill delete, cash drawer, bug fixes
+- **Stock adjustments** (Products → *Adjust stock* / *Stock log*): record damaged, expired, lost or own-use stock and count corrections. Loss reasons are written off at cost and reduce net profit in Reports; every change (also a hand-edited stock number) is kept in a log.
+- **Delete bill** (Receipt): puts the items back in stock and removes the bill's due. Needs the owner PIN when a PIN is set, is refused when the bill has returns, and is written to the Security log.
+- **Cash drawer (estimate)** in Reports: cash sales + due collected − cash refunds − cash supplier payments − expenses. Also in CSV and print.
+- **Edit expenses** (tap a row). **VAT / BIN / Tax ID** field (Settings) printed on receipts, WhatsApp text and Bluetooth prints.
+- **Optional backup file** (Settings → Data management): *Save backup file* and *Restore from file*. Nothing downloads automatically; the file has no PIN hash, and a restore keeps this device's PIN.
+- **Fixes:** discount selector and purchase form used a hard-coded currency sign instead of the Settings currency; five icons missing from the font subset showed blank (Security log, Backup health, Unlock, Preview, USB printer); unreachable code removed from cloud sync; Dashboard 7-day chart now reads the data once instead of building seven full reports.
+- Sync: stock adjustments sync between devices like other records; older app versions still accept the new backups.
+
 ## v10.15.0 — Drive-first backup, cleaner wording
 - Backup never downloads a file; everything goes straight to Google Drive about a second after each change. "Replace with latest backup" first sends any unsent changes, then loads the newest backup.
 - Branding: EsyPOS everywhere. Shorter, cleaner on-screen text.

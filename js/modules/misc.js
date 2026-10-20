@@ -13,7 +13,7 @@
       const sh = DB.settings; const cust = findCustomer(s.customerId); const ret = C.returnedAmount(s.id);
       const bal = cust ? C.customerBalance(cust.id) : 0;
       return `<div class="rc-c rc-b" style="font-size:15px">${esc(sh.shopName || 'EsyPOS')}</div>
-        ${sh.shopAddress ? `<div class="rc-c rc-s">${esc(sh.shopAddress)}</div>` : ''}${sh.shopPhone ? `<div class="rc-c rc-s">Phone: ${esc(sh.shopPhone)}</div>` : ''}
+        ${sh.shopAddress ? `<div class="rc-c rc-s">${esc(sh.shopAddress)}</div>` : ''}${sh.shopPhone ? `<div class="rc-c rc-s">Phone: ${esc(sh.shopPhone)}</div>` : ''}${sh.taxId ? `<div class="rc-c rc-s">VAT/BIN: ${esc(sh.taxId)}</div>` : ''}
         <div class="rc-hr"></div>
         <div class="rc-row rc-s"><span>Receipt no.</span><b>#${C.invLabel(s)}</b></div>
         <div class="rc-row rc-s"><span>Date</span><span>${C.fmtDT(s.date)}</span></div>
@@ -36,7 +36,7 @@
     },
     text(s) {
       const sh = DB.settings; const cust = findCustomer(s.customerId);
-      let t = `*${sh.shopName}*\n` + (sh.shopPhone ? 'Phone: ' + sh.shopPhone + '\n' : '') + `Receipt #${C.invLabel(s)} · ${C.fmtDT(s.date)}\n` + (cust ? 'Customer: ' + cust.name + '\n' : '') + '------------------\n';
+      let t = `*${sh.shopName}*\n` + (sh.shopPhone ? 'Phone: ' + sh.shopPhone + '\n' : '') + (sh.taxId ? 'VAT/BIN: ' + sh.taxId + '\n' : '') + `Receipt #${C.invLabel(s)} · ${C.fmtDT(s.date)}\n` + (cust ? 'Customer: ' + cust.name + '\n' : '') + '------------------\n';
       s.items.forEach(i => { t += `${i.name}${i.note ? ' (+ ' + i.note + ')' : ''} ${i.qty}×${fmt(i.price)} = ${fmt(i.price * i.qty)}\n`; });
       t += '------------------\n';
       if (s.discount > 0) t += `Discount: -${fmt(s.discount)}\n`; if (s.tax > 0) t += `Tax: ${fmt(s.tax)}\n`;
@@ -53,7 +53,8 @@
           <div class="grid2 mb2"><button class="btn btn-primary" onclick="Receipt.print()"><i class="fas fa-print"></i> Print</button><button class="btn btn-soft" onclick="Receipt.bt()"><i class="fab fa-bluetooth-b"></i> ${btOk ? 'Bluetooth print' : 'Bluetooth connect'}</button></div>
           <div class="grid2 mb2"><button class="btn btn-ghost" onclick="Receipt.share('wa')"><i class="fab fa-whatsapp ok"></i> WhatsApp</button><button class="btn btn-ghost" onclick="Receipt.share('sms')"><i class="fas fa-message"></i> SMS</button></div>
           <div class="grid2">${s.due > 0 && s.customerId ? `<button class="btn btn-ok" onclick="People.collect('${s.customerId}')"><i class="fas fa-hand-holding-dollar"></i> Due Collected</button>` : '<span></span>'}
-          <button class="btn btn-danger-soft" onclick="Receipt.ret('${s.id}')"><i class="fas fa-rotate-left"></i> Return items</button></div></div>`,
+          <button class="btn btn-danger-soft" onclick="Receipt.ret('${s.id}')"><i class="fas fa-rotate-left"></i> Return items</button></div>
+          <button class="btn btn-ghost btn-block mt2" onclick="Receipt.del('${s.id}')"><i class="fas fa-trash bad"></i> Delete bill</button></div>`,
         foot: `<button class="btn btn-primary" onclick="Modal.closeFrom(this)">${opt.fresh ? 'New sale' : 'Close'}</button>` });
     },
     print() {
@@ -62,6 +63,18 @@
     },
     bt() { Printer.print(this.cur); },
     share(kind) { const s = this.cur; const c = findCustomer(s.customerId); const ph = c ? c.phone : ''; if (kind === 'wa') shareWA(ph, this.text(s)); else shareSMS(ph, this.text(s)); },
+    del(id) {
+      const s = C.findSale(id); if (!s) return;
+      if (DB.returns.some(r => r.saleId === id)) { toast('⚠️ This bill has returns, so it cannot be deleted'); return; }
+      const run = () => askConfirm('Delete bill #' + C.invLabel(s) + '? Its items go back to stock' + (s.due > 0 ? ' and its due is removed from the customer' : '') + '. Money already collected stays on record. This cannot be undone.', () => {
+        s.items.forEach(i => { const p = findProduct(i.id); if (p && p.track !== false) p.stock = r2(num(p.stock) + num(i.qty)); });
+        DB.sales = DB.sales.filter(x => x.id !== id);
+        C.save('products'); C.save('sales');
+        if (window.Guard && Guard.log) Guard.log('Bill #' + C.invLabel(s) + ' deleted (' + money(s.total) + ')');
+        Modal.closeAll(); toast('Bill deleted'); App.refresh();
+      }, { title: 'Delete bill?', yes: 'Yes, delete', danger: true });
+      if (window.Guard && Guard.confirmPin) Guard.confirmPin(run, 'delete bill'); else run();
+    },
     ret(saleId) {
       const s = C.findSale(saleId); if (!s) return;
       const rows = s.items.map(i => ({ ...i, left: r2(i.qty - C.returnedQty(s.id, i.id, i.key)) })).filter(i => i.left > 0);
@@ -141,17 +154,20 @@
       arr.forEach(e => by[e.category] = r2((by[e.category] || 0) + num(e.amount)));
       $('ex-sum').innerHTML = `<div class="stats"><div class="stat hl"><div class="k">Total Expenses</div><div class="v">${money(tot)}</div></div><div class="stat"><div class="k">Entries</div><div class="v">${arr.length}</div></div></div>` +
         (Object.keys(by).length ? `<div class="chips mb3">${Object.entries(by).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<span class="badge b-p" style="padding:6px 12px;font-size:12px">${esc(k)}: ${money(v)}</span>`).join('')}</div>` : '');
-      $('ex-list').innerHTML = arr.length ? arr.map(e => `<div class="row" style="cursor:default"><div class="avatar"><i class="fas fa-wallet"></i></div><div class="grow"><div class="t">${esc(e.category)}</div><div class="s">${C.fmtDate(e.date)}${e.note ? ' · ' + esc(e.note) : ''}</div></div><div class="fw7 bad">${money(e.amount)}</div><button class="icon-btn" aria-label="Delete" title="Delete" onclick="Exp.del('${e.id}')"><i class="fas fa-trash bad"></i></button></div>`).join('') : '<div class="empty"><i class="fas fa-wallet"></i>No expenses</div>';
+      $('ex-list').innerHTML = arr.length ? arr.map(e => `<div class="row" onclick="Exp.add('${e.id}')"><div class="avatar"><i class="fas fa-wallet"></i></div><div class="grow"><div class="t">${esc(e.category)}</div><div class="s">${C.fmtDate(e.date)}${e.note ? ' · ' + esc(e.note) : ''}</div></div><div class="fw7 bad">${money(e.amount)}</div><button class="icon-btn" aria-label="Delete" title="Delete" onclick="event.stopPropagation();Exp.del('${e.id}')"><i class="fas fa-trash bad"></i></button></div>`).join('') : '<div class="empty"><i class="fas fa-wallet"></i>No expenses</div>';
     },
-    add() {
+    add(id) {
+      const ex = id ? DB.expenses.find(e => e.id === id) : null;
       const cats = [...new Set([...CATS, ...DB.expenses.map(e => e.category)])];
-      const m = Modal.open({ title: 'New expense', body: `<div class="field"><label class="label">Category *</label><input id="ex-cat" class="input" list="ex-cats" placeholder="e.g. rent" autofocus><datalist id="ex-cats">${cats.map(c => `<option value="${esc(c)}">`).join('')}</datalist></div>
-        <div class="grid2"><div class="field"><label class="label">Amount *</label><input id="ex-amt" type="number" step="any" min="0" class="input"></div><div class="field"><label class="label">Date</label><input id="ex-date" type="date" class="input" value="${C.todayKey()}"></div></div>
-        <div class="field"><label class="label">Note</label><input id="ex-note" class="input"></div>`, foot: `<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" id="ex-ok">Save</button>` });
+      const m = Modal.open({ title: ex ? 'Edit expense' : 'New expense', body: `<div class="field"><label class="label">Category *</label><input id="ex-cat" class="input" list="ex-cats" placeholder="e.g. rent" autofocus value="${esc(ex ? ex.category : '')}"><datalist id="ex-cats">${cats.map(c => `<option value="${esc(c)}">`).join('')}</datalist></div>
+        <div class="grid2"><div class="field"><label class="label">Amount *</label><input id="ex-amt" type="number" step="any" min="0" class="input" value="${ex ? ex.amount : ''}"></div><div class="field"><label class="label">Date</label><input id="ex-date" type="date" class="input" value="${ex ? C.dkey(ex.date) : C.todayKey()}"></div></div>
+        <div class="field"><label class="label">Note</label><input id="ex-note" class="input" value="${esc(ex ? ex.note : '')}"></div>`, foot: `<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" id="ex-ok">Save</button>` });
       m.querySelector('#ex-ok').onclick = () => {
         const cat = $('ex-cat').value.trim(), amt = num($('ex-amt').value); if (!cat || amt <= 0) { toast('⚠️ Enter category & amount'); return; }
         const d = $('ex-date').value || C.todayKey(); const now = new Date(); const iso = new Date(d + 'T' + C.z2(now.getHours()) + ':' + C.z2(now.getMinutes()) + ':00').toISOString();
-        DB.expenses.push({ id: genId(), date: iso, category: cat, amount: r2(amt), note: $('ex-note').value.trim() }); C.save('expenses'); Modal.close(m); toast('Expense saved ✓'); this.list();
+        const rec = { category: cat, amount: r2(amt), note: $('ex-note').value.trim() };
+        if (ex) { Object.assign(ex, rec); if (C.dkey(ex.date) !== d) ex.date = iso; } else DB.expenses.push(Object.assign({ id: genId(), date: iso }, rec));
+        C.save('expenses'); Modal.close(m); toast('Expense saved ✓'); this.list();
       };
     },
     del(id) { askConfirm('Delete this expense?', () => { DB.expenses = DB.expenses.filter(e => e.id !== id); C.save('expenses'); toast('Deleted'); this.list(); }, { danger: true, yes: 'Delete' }); }
@@ -171,31 +187,38 @@
     body() {
       const r = this.data();
       $('rep-body').innerHTML = `
-      <div class="stats"><div class="stat hl"><div class="k">Net profit (after expenses)</div><div class="v">${money(r.netProfit)}</div></div><div class="stat"><div class="k">Net Sales</div><div class="v">${money(r.netSales)}</div></div>
+      <div class="stats"><div class="stat hl"><div class="k">Net profit (after expenses & write-offs)</div><div class="v">${money(r.netProfit)}</div></div><div class="stat"><div class="k">Net Sales</div><div class="v">${money(r.netSales)}</div></div>
         <div class="stat"><div class="k">Gross Profit</div><div class="v ok">${money(r.grossProfit)}</div></div><div class="stat"><div class="k">Expenses</div><div class="v bad">${money(r.expenses)}</div></div></div>
       <div class="card pad mb3"><div class="sec-title"><i class="fas fa-cash-register ptext"></i> Sales breakdown</div>
-        ${[['Invoices', r.count], ['Gross Sales', money(r.grossSales)], ['Returns', '-' + money(r.returnsTotal)], ['Discount applied', money(r.discount)], ['Tax Collected', money(r.tax)], ['COGS of sold products', money(r.cogs)]].map(x => `<div class="kv"><span class="muted">${x[0]}</span><b>${x[1]}</b></div>`).join('')}</div>
+        ${[['Invoices', r.count], ['Gross Sales', money(r.grossSales)], ['Returns', '-' + money(r.returnsTotal)], ['Discount applied', money(r.discount)], ['Tax Collected', money(r.tax)], ['COGS of sold products', money(r.cogs)], ['Stock write-offs (at cost)', money(r.writeOff)]].map(x => `<div class="kv"><span class="muted">${x[0]}</span><b>${x[1]}</b></div>`).join('')}</div>
       <div class="card pad mb3"><div class="sec-title"><i class="fas fa-hand-holding-dollar ptext"></i> Collections & dues</div>
         ${[['New due given', `<span class="bad">${money(r.newDue)}</span>`], ['Due collected', `<span class="ok">${money(r.dueCollected)}</span>`], ['Cash collected (sales+due)', money(r.collected.cash)], ['Card collected', money(r.collected.card)], ['Mobile banking collected', money(r.collected.mobile)], ['Purchases (stock)', money(r.purchases)], ['Paid to suppliers', money(r.supplierPaid)], ['Cash refunds', money(r.cashRefund)]].map(x => `<div class="kv"><span class="muted">${x[0]}</span><b>${x[1]}</b></div>`).join('')}
         <div class="kv"><span class="muted">Total customer due (now)</span><b class="bad">${money(C.totalCustomerDue())}</b></div></div>
+      <div class="card pad mb3"><div class="sec-title"><i class="fas fa-cash-register ptext"></i> Cash drawer (estimate)</div>
+        ${[['Cash from sales + due collected', money(r.collected.cash)], ['Cash refunds', '-' + money(r.cashRefund)], ['Supplier payments (cash)', '-' + money(r.cashSupplier)], ['Expenses', '-' + money(r.expenses)]].map(x => `<div class="kv"><span class="muted">${x[0]}</span><b>${x[1]}</b></div>`).join('')}
+        <div class="kv"><span class="fw6">Net cash movement</span><b class="${r.cashNet >= 0 ? 'ok' : 'bad'}">${money(r.cashNet)}</b></div><p class="xs muted mt2">Estimate: purchases and expenses are treated as paid in cash.</p></div>
       <div class="card pad mb3"><div class="sec-title"><i class="fas fa-trophy ptext"></i> Top selling products</div>${r.topProducts.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Product</th><th class="r">Qty</th><th class="r">Sales</th><th class="r">Profit</th></tr></thead><tbody>${r.topProducts.map(p => `<tr><td>${esc(p.name)}</td><td class="r">${p.qty}</td><td class="r">${money(p.amount)}</td><td class="r ok">${money(p.profit)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">No data</div>'}</div>
       <div class="card pad"><div class="sec-title"><i class="fas fa-tags ptext"></i> Sales by category</div>${r.categories.length ? r.categories.map(([k, v]) => `<div class="kv"><span>${esc(k)}</span><b>${money(v)}</b></div>`).join('') : '<div class="empty">No data</div>'}</div>`;
     },
     label() { const [f, t] = this.range(); return f || t ? `${f || '…'} → ${t || '…'}` : 'All time'; },
     csv() {
       const r = this.data();
-      C.download('esypos-report.csv', C.toCSV([['EsyPOS Report', this.label()], [], ['Invoices', r.count], ['Gross Sales', r.grossSales], ['Returns', r.returnsTotal], ['Net Sales', r.netSales], ['COGS', r.cogs], ['Gross Profit', r.grossProfit], ['Expenses', r.expenses], ['Net Profit', r.netProfit], ['New Due', r.newDue], ['Due Collected', r.dueCollected], [], ['Product', 'Qty', 'Sales', 'Profit'], ...r.topProducts.map(p => [p.name, p.qty, p.amount, p.profit])]), 'text/csv');
+      C.download('esypos-report.csv', C.toCSV([['EsyPOS Report', this.label()], [], ['Invoices', r.count], ['Gross Sales', r.grossSales], ['Returns', r.returnsTotal], ['Net Sales', r.netSales], ['COGS', r.cogs], ['Gross Profit', r.grossProfit], ['Expenses', r.expenses], ['Stock write-offs', r.writeOff], ['Net Profit', r.netProfit], ['Net cash movement (estimate)', r.cashNet], ['New Due', r.newDue], ['Due Collected', r.dueCollected], [], ['Product', 'Qty', 'Sales', 'Profit'], ...r.topProducts.map(p => [p.name, p.qty, p.amount, p.profit])]), 'text/csv');
     },
     print() {
       const r = this.data(); const row = (a, b) => `<tr><td>${a}</td><td style="text-align:right"><b>${b}</b></td></tr>`;
-      printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Reports</title><style>body{font-family:sans-serif;padding:20px;color:#111}table{width:100%;border-collapse:collapse}td,th{padding:7px 4px;border-bottom:1px solid #ddd;font-size:14px}h2{margin:0}</style></head><body><h2>${esc(DB.settings.shopName)} — Reports</h2><p>${esc(this.label())}</p><table>${row('Invoices', r.count)}${row('Gross Sales', money(r.grossSales))}${row('Returns', money(r.returnsTotal))}${row('Net Sales', money(r.netSales))}${row('COGS', money(r.cogs))}${row('Gross Profit', money(r.grossProfit))}${row('Expenses', money(r.expenses))}${row('Net Profit', money(r.netProfit))}${row('New Due', money(r.newDue))}${row('Due Collected', money(r.dueCollected))}</table></body></html>`);
+      printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Reports</title><style>body{font-family:sans-serif;padding:20px;color:#111}table{width:100%;border-collapse:collapse}td,th{padding:7px 4px;border-bottom:1px solid #ddd;font-size:14px}h2{margin:0}</style></head><body><h2>${esc(DB.settings.shopName)} — Reports</h2><p>${esc(this.label())}</p><table>${row('Invoices', r.count)}${row('Gross Sales', money(r.grossSales))}${row('Returns', money(r.returnsTotal))}${row('Net Sales', money(r.netSales))}${row('COGS', money(r.cogs))}${row('Gross Profit', money(r.grossProfit))}${row('Expenses', money(r.expenses))}${row('Stock write-offs', money(r.writeOff))}${row('Net Profit', money(r.netProfit))}${row('Net cash movement (estimate)', money(r.cashNet))}${row('New Due', money(r.newDue))}${row('Due Collected', money(r.dueCollected))}</table></body></html>`);
     }
   };
   App.Views.reports = Rep;
   App.Views.dashboard = {
     render() {
       const t = C.todayKey(); const td = C.buildReport(t, t); const mo = C.buildReport(C.monthStart(), t);
-      const days = []; for (let i = 6; i >= 0; i--) { const k = C.addDays(t, -i); days.push({ k, v: C.buildReport(k, k).netSales }); }
+      const days = []; const dn = {};
+      for (let i = 6; i >= 0; i--) { const k = C.addDays(t, -i); dn[k] = 0; days.push({ k, v: 0 }); }
+      DB.sales.forEach(s => { const k = C.dkey(s.date); if (k in dn) dn[k] += num(s.total); });
+      DB.returns.forEach(r => { const k = C.dkey(r.date); if (k in dn) dn[k] -= num(r.amount); });
+      days.forEach(d => { d.v = r2(dn[d.k]); });
       const mx = Math.max.apply(null, days.map(d => d.v).concat([1]));
       const low = DB.products.filter(p => p.track !== false && p.stock <= (p.minStock || 0)).slice(0, 8);
       const soon = C.addDays(t, 30); const exp = DB.products.filter(p => p.expiry && p.expiry <= soon).sort((a, b) => a.expiry < b.expiry ? -1 : 1).slice(0, 6);
@@ -542,7 +565,7 @@
         </div>
 
         <div class="card pad bc-prev-card">
-          <div class="sec-title"><i class="fas fa-display ptext"></i> Preview</div>
+          <div class="sec-title"><i class="fas fa-receipt ptext"></i> Preview</div>
           <div id="bc-preview" class="bc-preview"></div>
           <p class="xs warn tc mt2" id="bc-note"></p>
         </div>

@@ -111,6 +111,14 @@
     if (!force) return;
     try { localStorage.setItem('esypos_last_backup', String(Date.now())); localStorage.removeItem('esypos_dirty'); } catch (_) {}
   };
+  // Manual, optional backup file (never automatic). The PIN hash is left out so the file cannot be used to guess the PIN.
+  window.exportBackupFile = function () {
+    const out = { app: 'EsyPOS', version: 4, exportDate: new Date().toISOString() };
+    Object.keys(K).forEach(k => { if (k === 'cart') return; out[k] = k === 'settings' ? Object.assign({}, DB.settings, { pinHash: '', pinSalt: '' }) : DB[k]; });
+    Core.download('esypos-backup-' + Core.todayKey() + '.json', JSON.stringify(out), 'application/json');
+    try { localStorage.setItem('esypos_last_backup', String(Date.now())); } catch (_) {}
+    toast('✓ Backup file saved');
+  };
   window.importData = function (input) {
     const file = input.files && input.files[0]; input.value = ''; if (!file) return;
     const rd = new FileReader();
@@ -119,7 +127,7 @@
         const d = JSON.parse(e.target.result);
         if (!d || !Array.isArray(d.products)) throw new Error('bad');
         askConfirm(`Backup has ${d.products.length} products, ${(d.sales || []).length} sales, ${(d.customers || []).length} customers. Current data will be replaced.`, () => {
-          Object.keys(K).forEach(k => { if (k === 'settings') DB.settings = Object.assign({}, Core.DEFAULTS, d.settings || {}); else if (k === 'cart') DB.cart = []; else DB[k] = Array.isArray(d[k]) ? d[k] : []; });
+          Object.keys(K).forEach(k => { if (k === 'settings') { const keep = { pinHash: DB.settings.pinHash || '', pinSalt: DB.settings.pinSalt || '' }; DB.settings = Object.assign({}, Core.DEFAULTS, d.settings || {}); if (!DB.settings.pinHash) Object.assign(DB.settings, keep); } else if (k === 'cart') DB.cart = []; else DB[k] = Array.isArray(d[k]) ? d[k] : []; });
           Core.migrate(); saveAll(); toast('Restore successful ✓'); setTimeout(() => location.reload(), 700);
         }, { title: 'Restore backup?', yes: 'Yes, restore', danger: true });
       } catch (err) { toast('⚠️ Not a valid EsyPOS backup file'); }
