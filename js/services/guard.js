@@ -8,7 +8,8 @@
   const $ = id => document.getElementById(id);
   const ITEMS = [
     ['reports', 'Reports (sales & profit analysis)', 'fa-chart-column'],
-    ['dashboard', 'Dashboard (income & profit totals)', 'fa-gauge-high'],
+    ['profit', 'Dashboard profit (today & monthly, tap lock to view)', 'fa-eye-slash'],
+    ['dashboard', 'Dashboard (whole page)', 'fa-gauge-high'],
     ['purchases', 'Purchases & Suppliers (cost prices)', 'fa-truck'],
     ['expenses', 'Expenses', 'fa-money-bill-wave'],
     ['history', 'Sales History (view / delete bills)', 'fa-file-invoice'],
@@ -17,7 +18,7 @@
     ['barcodes', 'Barcode Labels', 'fa-barcode'],
     ['settings', 'Settings, backup & data', 'fa-sliders']
   ];
-  const DEFAULT_LOCKED = ['reports', 'dashboard', 'purchases', 'expenses', 'settings'];
+  const DEFAULT_LOCKED = ['reports', 'profit', 'purchases', 'expenses', 'settings'];
   let openUntil = 0;
   const LOGK = 'esypos_audit';
   function log(msg) { try { const a = JSON.parse(localStorage.getItem(LOGK) || '[]'); a.unshift({ t: Date.now(), m: msg }); localStorage.setItem(LOGK, JSON.stringify(a.slice(0, 40))); } catch (_) {} }
@@ -53,7 +54,7 @@
   }
 
   function hook() {
-    if (!window.App || App.__guarded) return; App.__guarded = true;
+    if (!window.App || App.__guarded) return; App.__guarded = true; hookDash(); migrate();
     const go0 = App.go.bind(App);
     App.go = function (v) { if (needs(v)) { ask(() => go0(v), v); return; } extend(); go0(v); };
     if (window.Cloud && Cloud.panel) {
@@ -62,15 +63,40 @@
     }
     if (window.Lock) {
       const l0 = Lock.lockNow.bind(Lock);
-      Lock.lockNow = function () { openUntil = 0; if (Lock.has() && App.view !== 'pos' && lockedList().indexOf(App.view) >= 0) App.go('pos'); l0(); };
+      Lock.lockNow = function () { openUntil = 0; profitOpen = 0; if (Lock.has() && App.view !== 'pos' && lockedList().indexOf(App.view) >= 0) App.go('pos'); l0(); };
     }
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') openUntil = 0; });
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { openUntil = 0; profitOpen = 0; } });
     const s = App.Views.settings, r0 = s.render.bind(s);
     s.render = function () { r0(); try { card(); } catch (e) { console.warn('[Guard]', e); } };
   }
 
+
+  /* ---- dashboard profit mask: lock icon, tap + PIN to reveal ---- */
+  let profitOpen = 0;
+  const profitLocked = () => !!(window.Lock && Lock.has() && lockedList().indexOf('profit') >= 0 && Date.now() > profitOpen);
+  function maskProfit() {
+    const view = $('view'); if (!view || !profitLocked()) return;
+    view.querySelectorAll('.stat[data-profit]').forEach(el => {
+      const v = el.querySelector('.v'); if (!v || el.classList.contains('stat-locked')) return;
+      el.classList.add('stat-locked'); el.setAttribute('role', 'button'); el.tabIndex = 0;
+      el.setAttribute('aria-label', 'Profit hidden. Tap to enter PIN');
+      v.dataset.real = v.innerHTML; v.innerHTML = '<span class="lock-mask"><i class="fas fa-lock"></i><em>Tap to view</em></span>';
+      const open = () => ask(() => { profitOpen = Date.now() + minutes() * 60000; log('Profit revealed'); if (App.view === 'dashboard') App.refresh(); }, 'profit', true);
+      el.onclick = open; el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } };
+    });
+  }
+  function migrate() {
+    if (DB.settings.profitLockInit) return; DB.settings.profitLockInit = 1;
+    if (Array.isArray(DB.settings.lockedViews) && DB.settings.lockedViews.indexOf('profit') < 0) DB.settings.lockedViews.push('profit');
+    C.save('settings');
+  }
+  function hookDash() {
+    const d = App.Views && App.Views.dashboard; if (!d || d.__masked) return; d.__masked = true;
+    const r0 = d.render.bind(d); d.render = function () { r0(); try { maskProfit(); } catch (e) { console.warn('[Guard]', e); } };
+  }
+
   function card() {
-    const t = Array.from(document.querySelectorAll('#view .sec-title')).find(e => /Security/.test(e.textContent)); if (!t) return;
+    const host = document.querySelector('#view .st-sec[data-s="security"]'); if (!host) return;
     const has = Lock.has(), L = lockedList(), mins = minutes(), auto = parseInt(DB.settings.autoLockMin, 10) || 1;
     const opt = (v, cur, txt) => '<option value="' + v + '"' + (v === cur ? ' selected' : '') + '>' + txt + '</option>';
     const html = '<div class="card pad mb3" id="guard-card"><div class="sec-title"><i class="fas fa-user-shield ptext"></i> Section lock (for staff)</div>' +
@@ -91,7 +117,7 @@
       '</div>' +
       '<div class="card pad mb3" id="audit-card"><div class="sec-title"><i class="fas fa-file-lines ptext"></i> Security log</div>' +
       (L2.length ? L2.map(x => '<div class="kv"><span>' + esc(x.m) + '</span><b class="xs">' + esc(C.fmtDT(new Date(x.t).toISOString())) + '</b></div>').join('') + '<button class="btn btn-ghost btn-block mt3" onclick="Guard.clearLog()">Clear log</button>' : '<p class="xs muted">No unlock or wrong-PIN events yet.</p>') + '</div>';
-    const anchor = t.closest('.card'); if (anchor && !$('guard-card')) anchor.insertAdjacentHTML('afterend', html + health);
+    if (!$('guard-card')) host.insertAdjacentHTML('beforeend', html + health);
   }
 
   const Guard = window.Guard = {

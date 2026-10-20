@@ -1156,3 +1156,45 @@ html.dark .seg button.on{background:var(--primary);color:#fff}
 }
 @media(max-width:1023px){.st-sec-head .st-back{display:inline-flex}}
 .grid2>.btn{white-space:normal;min-width:0;text-align:center;line-height:1.25}
+
+/* ===== v10.18 — profit lock, security panel, responsive & smoothness polish ===== */
+.stat-locked{cursor:pointer;position:relative;overflow:hidden;-webkit-tap-highlight-color:transparent;transition:transform .16s var(--ease),border-color .2s,background .2s}
+.stat-locked:hover{border-color:var(--primary)}
+.stat-locked:active{transform:scale(.97)}
+.stat-locked .v{display:flex;align-items:center;min-height:30px}
+.lock-mask{display:inline-flex;align-items:center;gap:8px;padding:5px 11px;border-radius:999px;background:var(--psoft);color:var(--ptext);font-size:13px;font-weight:700;letter-spacing:0}
+.lock-mask i{font-size:13px}
+.lock-mask em{font-style:normal;font-size:12px;font-weight:600;opacity:.85}
+#guard-card .switch{gap:10px}
+#guard-card .switch>span{min-width:0;line-height:1.35}
+#guard-card .switch>span i{width:20px;text-align:center;margin-right:4px}
+#guard-card .grid2{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.st-sec #guard-card,.st-sec #health-card,.st-sec #audit-card{margin-top:12px}
+.sl-input{text-align:center;font-size:24px;letter-spacing:.6em;font-weight:700}
+.sl-msg{min-height:18px;margin-top:8px;color:var(--bad,#dc2626);text-align:center}
+
+/* touch comfort & no accidental zoom on phones */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button,.btn,.chip,.icon-btn,.switch,.st-item{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+@media(max-width:767px){
+  input.input,select.input,textarea.input{font-size:16px}
+  .btn,.icon-btn,.chip{min-height:44px}
+  .switch{min-height:52px}
+  .page-head h2{font-size:21px}
+  .tbl{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .modal,.modal-box{max-width:100vw}
+}
+@media(max-width:360px){
+  .main{padding:10px}
+  .stat{padding:12px}
+  .stat .v{font-size:17px}
+  .lock-mask em{display:none}
+}
+@media(min-width:1400px){.view{max-width:1560px}}
+img,svg,video,canvas{max-width:100%}
+.card,.stat,.pcard,.btn{backface-visibility:hidden}
+
+/* keyboard focus + calmer motion */
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:8px}
+.btn:active:not(:disabled),.icon-btn:active,.chip:active{transform:scale(.96)}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
