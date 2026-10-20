@@ -120,6 +120,7 @@
     document.querySelectorAll('.js-ucount').forEach(e => { e.textContent = n ? n.toLocaleString('en-US') : '—'; });
   }
   // Default counter: free public CounterAPI (no account). One "up" per install; clearing browser data counts again.
+  const ABACUS = 'https://abacus.jasoncameron.dev', NS = 'esypos.github.io/total-users';
   const CAPI = 'https://api.counterapi.dev/v1/esypos-github-io/total-users';
   const pick = j => { const v = j && (j.count !== undefined ? j.count : j.value !== undefined ? j.value : j.data && (j.data.up_count !== undefined ? j.data.up_count : j.data.count)); const n = parseInt(v, 10); return isNaN(n) ? 0 : n; };
   async function count() {
@@ -135,13 +136,21 @@
         if (r2.ok) { const j = await r2.json(); LS.set('esypos_uc', String(j ? Object.keys(j).length : 0)); }
       } else {
         const first = LS.get('esypos_uc_reg') !== '1';
-        const r = await fetch(CAPI + (first ? '/up' : '/'), { signal: ctl.signal });
-        if (r.ok) { const n = pick(await r.json()); if (n) LS.set('esypos_uc', String(n)); if (first && n) LS.set('esypos_uc_reg', '1'); }
+        let n = 0;
+        try { const r = await fetch(ABACUS + (first ? '/hit/' : '/get/') + NS, { signal: ctl.signal }); if (r.ok) n = pick(await r.json()); } catch (_) {}
+        if (!n) { try { const r = await fetch(CAPI + (first ? '/up' : '/'), { signal: ctl.signal }); if (r.ok) n = pick(await r.json()); } catch (_) {} }
+        if (n) { LS.set('esypos_uc', String(n)); if (first) LS.set('esypos_uc_reg', '1'); }
       }
     } catch (_) { /* offline or blocked: keep the last known number */ }
     clearTimeout(to); pill();
   }
 
-  function start() { hook(); pill(); setTimeout(count, 2500); }
+  Guard.refreshCount = () => { count(); };
+  function start() {
+    hook(); pill(); setTimeout(count, 1500);
+    window.addEventListener('online', count);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && !parseInt(LS.get('esypos_uc') || '0', 10)) count(); });
+    setInterval(() => { if (document.visibilityState === 'visible' && navigator.onLine) count(); }, 60000);   // keeps the shown number fresh
+  }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(start, 0)); else setTimeout(start, 0);
 })();

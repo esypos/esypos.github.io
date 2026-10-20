@@ -153,7 +153,7 @@
     if (!isOn() || S.applying) return;
     set(KEY.dirty, '1'); S.seq++;
     if (S.status !== 'syncing' && S.status !== 'auth' && S.status !== 'offline') setStatus('pending'); else renderUI();
-    clearTimeout(S.timer); S.timer = setTimeout(() => push(), 12000);
+    clearTimeout(S.timer); S.timer = setTimeout(() => push(), 4000);
   }
   async function push(force, manual) {
     if (!isOn() || S.busy || S.applying || !hasLocal()) return;
@@ -358,6 +358,8 @@
       <div class="sync-line ${l.c}"><i class="fas ${l.i}"></i><span>${l.long}</span></div>
       ${S.status === 'error' && S.detail ? `<p class="xs muted mt2" style="overflow-wrap:anywhere">Details: ${esc(S.detail)}</p>` : ''}
       <button class="btn btn-primary btn-block btn-lg mt3" onclick="Cloud.syncNow()"><i class="fas fa-cloud-arrow-up"></i> Back up</button>
+      <button class="btn btn-soft btn-block mt2" onclick="Cloud.replaceNow()"><i class="fas fa-cloud-arrow-down"></i> Replace with latest backup</button>
+      <label class="switch mt3"><span class="sm fw6"><i class="fas fa-rotate ptext"></i> Live sync every 5 seconds</span><input type="checkbox" ${autoOn() ? 'checked' : ''} onchange="Cloud.autoToggle(this.checked)"></label>
       <button class="btn btn-danger-soft btn-block mt2" onclick="Cloud.signOut()"><i class="fas fa-right-from-bracket"></i> Log out</button>
       <p class="xs muted mt3">🔒 Backs up automatically after every change to one file, <b>EsyPOS-Backup.json</b>, in your Google Drive. Sign in with the same Google account on any device and your data is restored automatically.</p>`;
   }
@@ -446,6 +448,47 @@
     try { await afterSignIn(); } catch (e) { fail(e); }
   }
   function chip() { if (isOn() && S.status === 'auth') return syncNow(); return panel(); }
+  // ---- Live sync: the newest verified backup (from any device) replaces this device's data, checked every 5 seconds ----
+  const autoOn = () => get('esypos_g_auto') !== '0';
+  const uiBusy = () => !!((window.Modal && Modal.stack && Modal.stack.length) || (window.Scanner && Scanner.isOpen && Scanner.isOpen()) || document.querySelector('.lock,.welcome,.authgate'));
+  function applySoft(d, f) {
+    if (!d || !Array.isArray(d.products)) throw mk('badfile');
+    if (d.integrity) { const g = integrity(d); if (g.h !== d.integrity.h || g.t !== d.integrity.t) throw mk('badfile'); }
+    S.applying = true;
+    try {
+      Object.keys(K).forEach(k => {
+        if (k === 'cart') return;                                  // an open bill on this device is never touched
+        if (k === 'settings') DB.settings = Object.assign({}, C.DEFAULTS, d.settings || {});
+        else DB[k] = Array.isArray(d[k]) ? d[k] : [];
+      });
+      C.migrate(); C.saveAll();
+      set(KEY.rev, f.modifiedTime); set(KEY.fid, f.id); set(KEY.last, String(Date.now())); set('esypos_g_cnt', String(total(integrity(d).n)));
+      del(KEY.dirty); del('esypos_dirty');
+    } finally { setTimeout(() => { S.applying = false; del(KEY.dirty); del('esypos_dirty'); setStatus('ok'); }, 800); }
+    try { if (window.App) App.refresh(); if (window.POS && POS.renderCart) POS.renderCart(); } catch (_) {}
+    toast('↻ Updated from the latest backup');
+  }
+  let polling = false;
+  async function poll() {
+    if (polling || !autoOn() || !isOn() || S.busy || S.applying || !validTok() || !navigator.onLine || document.visibilityState !== 'visible') return;
+    if (get(KEY.dirty) === '1' || uiBusy()) return;                // unsent local changes go up first; never replace while a form is open
+    const fid = get(KEY.fid); if (!fid) return;
+    polling = true;
+    try {
+      const m = await getMeta(fid);
+      if (m.modifiedTime && m.modifiedTime !== get(KEY.rev) && get(KEY.dirty) !== '1' && !S.busy) applySoft(await download(fid), m);
+    } catch (_) { /* next tick tries again */ }
+    polling = false;
+  }
+  async function replaceNow() {
+    if (!isOn()) return signIn();
+    try { setStatus('syncing'); await requestToken(true); const fid = get(KEY.fid); const f = fid ? await getMeta(fid) : await findMain(); if (!f) { setStatus('ok'); return toast('No cloud backup found yet'); }
+      const d = await download(f.id); setStatus(get(KEY.dirty) === '1' ? 'pending' : 'ok');
+      const when = d.exportDate ? C.fmtDT(d.exportDate) : C.fmtDT(f.modifiedTime), n = sum(d);
+      askConfirm('Replace this device\'s data with the latest cloud backup (' + when + (d.device ? ', ' + d.device : '') + ')? It has ' + n.p + ' products, ' + n.s + ' sales and ' + n.c + ' customers. A copy of this device\'s current data will be downloaded first.',
+        () => { try { C.download('esypos-before-replace-' + C.todayKey() + '.json', JSON.stringify(payload()), 'application/json'); } catch (_) {} try { applySoft(d, f); } catch (e) { fail(e, true); } }, { title: 'Replace with latest backup', yes: 'Replace', icon: 'fa-cloud-arrow-down' });
+    } catch (e) { fail(e, true); }
+  }
   let inited = false;
   function init() {
     if (inited) { renderUI(); return; } inited = true;
@@ -458,6 +501,7 @@
     } else showGate('new');
     renderUI();
     if (clientId() && navigator.onLine) loadGIS().catch(() => {});
+    setInterval(poll, 5000);
     window.addEventListener('online', () => { if (!isOn()) return; if (!validTok()) resume(); else if (get(KEY.dirty) === '1') { setStatus('pending'); push(); } });
     window.addEventListener('offline', () => { if (isOn()) { if (!validTok()) S.status = 'offline'; renderUI(); } });
     document.addEventListener('visibilitychange', () => {
@@ -481,7 +525,7 @@
     // Renew the token a few minutes before it expires so sync never stops while the shop is open.
     setInterval(() => { if (isOn() && document.visibilityState === 'visible' && !S.busy && S.tok && S.exp - Date.now() < 8 * 60 * 1000 && S.exp - Date.now() > 0) { resume(true); } }, 60 * 1000);
   }
-  window.Cloud = { init, chip, markDirty, signIn, signOut, resetPin, syncNow, pull, snapshots, panel, setup, renderUI, isOn };
+  window.Cloud = { replaceNow, autoToggle(on) { set('esypos_g_auto', on ? '1' : '0'); toast(on ? 'Live sync on' : 'Live sync off'); }, init, chip, markDirty, signIn, signOut, resetPin, syncNow, pull, snapshots, panel, setup, renderUI, isOn };
   if (!isOn()) showGate('new');
   window.addEventListener('storage', e => { if (e.key === KEY.on && e.newValue !== '1') location.reload(); });
 })();
