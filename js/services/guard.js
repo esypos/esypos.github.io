@@ -119,16 +119,25 @@
     const n = parseInt(LS.get('esypos_uc') || '0', 10);
     document.querySelectorAll('.js-ucount').forEach(e => { e.textContent = n ? n.toLocaleString('en-US') : '—'; });
   }
+  // Default counter: free public CounterAPI (no account). One "up" per install; clearing browser data counts again.
+  const CAPI = 'https://api.counterapi.dev/v1/esypos-github-io/total-users';
+  const pick = j => { const v = j && (j.count !== undefined ? j.count : j.value !== undefined ? j.value : j.data && (j.data.up_count !== undefined ? j.data.up_count : j.data.count)); const n = parseInt(v, 10); return isNaN(n) ? 0 : n; };
   async function count() {
-    const b = base(); if (!b || !navigator.onLine) return pill();
-    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 8000);
+    if (!navigator.onLine) return pill();
+    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 9000), b = base();
     try {
-      if (LS.get('esypos_uc_reg') !== '1') {
-        const r = await fetch(b + '/users/' + uid() + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: Date.now() }), signal: ctl.signal });
-        if (r.ok || r.status === 401 || r.status === 403) LS.set('esypos_uc_reg', '1');   // 401/403 = already registered (rules allow one write)
+      if (b) {                                              // optional: your own Firebase database
+        if (LS.get('esypos_uc_reg') !== '1') {
+          const r = await fetch(b + '/users/' + uid() + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: Date.now() }), signal: ctl.signal });
+          if (r.ok || r.status === 401 || r.status === 403) LS.set('esypos_uc_reg', '1');
+        }
+        const r2 = await fetch(b + '/users.json?shallow=true', { signal: ctl.signal });
+        if (r2.ok) { const j = await r2.json(); LS.set('esypos_uc', String(j ? Object.keys(j).length : 0)); }
+      } else {
+        const first = LS.get('esypos_uc_reg') !== '1';
+        const r = await fetch(CAPI + (first ? '/up' : '/'), { signal: ctl.signal });
+        if (r.ok) { const n = pick(await r.json()); if (n) LS.set('esypos_uc', String(n)); if (first && n) LS.set('esypos_uc_reg', '1'); }
       }
-      const r2 = await fetch(b + '/users.json?shallow=true', { signal: ctl.signal });
-      if (r2.ok) { const j = await r2.json(); LS.set('esypos_uc', String(j ? Object.keys(j).length : 0)); }
     } catch (_) { /* offline or blocked: keep the last known number */ }
     clearTimeout(to); pill();
   }
