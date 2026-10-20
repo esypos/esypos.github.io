@@ -20,6 +20,11 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
 ---
 
+## v10.20.0 — Quick sell
+- **Quick sell** button on the Sales Counter: sell an item that is not in Products. Enter name (optional), price, qty and an optional cost. Stock is not changed.
+- If the cost is left empty the bill is marked **Cost pending**. Open the bill in **Sales History** → **Add cost (quick-sell items)** to enter the real cost later (asks the Admin PIN if one is set). Profit in Reports and Dashboard updates automatically, and returns on that bill stay consistent.
+- Sales History has a new **Cost pending** filter; Reports show a notice while any quick-sell cost is missing.
+
 ## v10.19.0 — Settings in sections
 - **Settings** is now a short list: Shop info, Billing & receipt, Barcode, Appearance & sound, Security, Printers, Backup & data, About & legal. Tap one to open it. On phones the list opens a section with a back arrow (the phone Back button works too); on desktop the list stays on the left and the section opens on the right, with no empty gaps. All settings are still there.
 

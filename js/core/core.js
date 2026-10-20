@@ -253,14 +253,16 @@
     const cashSupplier = r2(sum(SP.filter(p => (p.method || 'cash') === 'cash'), p => p.amount) + sum(PU, p => p.paid));
     const cashNet = r2(collected.cash - cashRefundAmt - cashSupplier - expenses);   // estimate: purchases and expenses are assumed to be paid in cash
     const prod = {}; const cat = {};
+    const quickPending = S.reduce((n, s) => n + s.items.filter(i => i.quick && i.costPending).length, 0);
     S.forEach(s => s.items.forEach(i => {
-      const t = prod[i.id] = prod[i.id] || { name: i.name, qty: 0, amount: 0, profit: 0 };
+      const pk = i.quick ? 'quick:' + String(i.name || '').toLowerCase() : i.id;   // quick-sell items are grouped by name
+      const t = prod[pk] = prod[pk] || { name: i.name, qty: 0, amount: 0, profit: 0 };
       t.qty += i.qty; t.amount = r2(t.amount + i.price * i.qty); t.profit = r2(t.profit + (i.price - num(i.cost)) * i.qty);
       const p = findProduct(i.id); const cn = (p && p.category) || 'Other';
       cat[cn] = r2((cat[cn] || 0) + i.price * i.qty);
     }));
     return {
-      from, to, count: S.length, grossSales, returnsTotal, netSales: r2(grossSales - returnsTotal),
+      from, to, count: S.length, quickPending, grossSales, returnsTotal, netSales: r2(grossSales - returnsTotal),
       discount: sum(S, s => s.discount), tax: sum(S, s => s.tax), cogs: r2(cogs - retCogs), grossProfit,
       expenses, writeOff, netProfit: r2(grossProfit - expenses - writeOff), newDue: sum(S, s => s.due),
       dueCollected: sum(P, p => p.amount), supplierPaid: sum(SP, p => p.amount) + sum(PU, p => p.paid),
