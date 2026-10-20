@@ -120,6 +120,7 @@
               <input id="pos-search" class="input has-ico" placeholder="Search product or barcode" value="${esc(this.q)}" oninput="POS.search(this.value)" onkeydown="if(event.key==='Enter')POS.enter()" autocomplete="off"></div>
             <button class="btn btn-soft only-desk" onclick="POS.scan()" title="Camera scan" aria-label="Camera scan"><i class="fas fa-barcode"></i></button>
             <button class="btn btn-soft" onclick="POS.showHold()" title="Held bills" aria-label="Held bills"><i class="fas fa-pause"></i><span class="hold-lbl">Held bills</span><span id="hold-count"></span></button>
+            <button class="btn btn-soft" onclick="POS.quick()" title="Quick sell (item not in Products)" aria-label="Quick sell"><i class="fas fa-cash-register"></i><span class="hold-lbl">Quick sell</span></button>
             <span class="scan-ready only-desk" title="USB/Bluetooth barcode scanner ready"><i class="fas fa-plug"></i> Scanner</span>
           </div>
           <div class="chips" id="pos-cats"></div>
@@ -146,7 +147,7 @@
     renderGrid() {
       const g = $('pgrid'); if (!g) return;
       const list = this.filtered(); const shown = list.slice(0, this.limit);
-      if (!DB.products.length) g.innerHTML = '<div class="empty card" style="grid-column:1/-1"><i class="fas fa-box-open"></i>No products yet.<br><button class="btn btn-primary mt3" onclick="Products.edit()">+ Add first product</button></div>';
+      if (!DB.products.length) g.innerHTML = '<div class="empty card" style="grid-column:1/-1"><i class="fas fa-box-open"></i>No products yet.<br><button class="btn btn-primary mt3" onclick="Products.edit()">+ Add first product</button> <button class="btn btn-soft mt3" onclick="POS.quick()"><i class="fas fa-cash-register"></i> Quick sell</button></div>';
       else if (!list.length) g.innerHTML = '<div class="empty" style="grid-column:1/-1"><i class="fas fa-magnifying-glass"></i>No products found</div>';
       else g.innerHTML = shown.map(p => {
         const low = p.track !== false && p.stock <= (p.minStock || 0);
@@ -217,6 +218,27 @@
       if (p.expiry && p.expiry < C.todayKey()) askConfirm(`"${p.name}"  has expired. Sell anyway?`, go, { title: 'Expired product', danger: true, yes: 'Yes, add' });
       else go();
     },
+    /* Quick sell: sell something that is not in Products. No stock is touched; cost can be filled in later from Sales History. */
+    quick() {
+      const m = Modal.open({ title: 'Quick sell', body: `<p class="muted sm mb3">Sell an item that is not in Products. Stock is not changed. If you leave the cost empty, you can add it later from Sales History.</p>
+        <div class="field"><label class="label">Item name (optional)</label><input id="qs-name" class="input" maxlength="60" placeholder="Quick sale" autocomplete="off"></div>
+        <div class="grid2"><div class="field"><label class="label">Selling price *</label><input id="qs-price" type="number" inputmode="decimal" step="any" min="0" class="input" style="font-size:18px;font-weight:700"></div>
+        <div class="field"><label class="label">Qty</label><input id="qs-qty" type="number" inputmode="decimal" step="any" min="0" class="input" value="1"></div></div>
+        <div class="field"><label class="label">Cost price per unit (optional)</label><input id="qs-cost" type="number" inputmode="decimal" step="any" min="0" class="input" placeholder="Leave empty to add later"></div>`,
+        foot: `<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" id="qs-ok"><i class="fas fa-plus"></i> Add to cart</button>` });
+      const go = () => {
+        const price = num($('qs-price').value), qty = num($('qs-qty').value), costRaw = $('qs-cost').value.trim();
+        if (!(price > 0)) { toast('⚠️ Enter the selling price'); $('qs-price').focus(); return; }
+        if (!(qty > 0)) { toast('⚠️ Enter a valid qty'); return; }
+        const cost = costRaw === '' ? 0 : Math.max(0, num(costRaw));
+        const id = 'q_' + genId();
+        DB.cart.push({ id, productId: null, quick: true, name: $('qs-name').value.trim() || 'Quick sale', price, cost, costPending: costRaw === '', qty, unit: '', note: '' });
+        C.save('cart'); this.lastAdded = { id, isNew: true }; Modal.close(m); this.renderCart(); toast('✓ Quick item added');
+      };
+      m.querySelector('#qs-ok').onclick = go;
+      m.querySelectorAll('input').forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } }));
+      setTimeout(() => { const f = $('qs-price'); if (f) f.focus(); }, 80);
+    },
     qty(id, d) {
       const it = DB.cart.find(c => c.id === id); if (!it) return;
       const p = findProduct(it.productId || id); const n = it.qty + d;
@@ -247,7 +269,7 @@
       const t = this.totals(); const cust = this.customerId ? findCustomer(this.customerId) : null;
       const la = this.lastAdded;
       const items = DB.cart.length ? DB.cart.map(c => `<div class="cart-item${la && la.id === c.id ? (la.isNew ? ' new' : ' bumped') : ''}" data-id="${c.id}">
-          <div class="grow" onclick="POS.editItem('${c.id}')"><div class="fw6 sm trunc">${esc(c.name)}</div>${c.note ? `<div class="xs muted cart-note">+ ${esc(c.note)}</div>` : ''}<div class="xs muted">${money(c.price)} × ${c.qty} <i class="fas fa-pen" style="font-size:9px;opacity:.5"></i></div></div>
+          <div class="grow" onclick="POS.editItem('${c.id}')"><div class="fw6 sm trunc">${esc(c.name)}${c.quick ? ' <span class="badge b-warn">Quick</span>' : ''}</div>${c.note ? `<div class="xs muted cart-note">+ ${esc(c.note)}</div>` : ''}<div class="xs muted">${money(c.price)} × ${c.qty} <i class="fas fa-pen" style="font-size:9px;opacity:.5"></i></div></div>
           <div class="qty"><button onclick="POS.qty('${c.id}',-1)">−</button><span>${c.qty}</span><button onclick="POS.qty('${c.id}',1)">+</button></div>
           <div class="fw7 ptext sm" style="min-width:56px;text-align:right">${money(c.price * c.qty)}</div>
           <button class="icon-btn" aria-label="Remove" title="Remove" style="width:28px;height:28px" onclick="POS.remove('${c.id}')"><i class="fas fa-xmark"></i></button></div>`).join('')
@@ -372,7 +394,7 @@
         DB.cart.forEach(it => { const p = findProduct(it.productId || it.id); if (p && p.track !== false) p.stock = r2(p.stock - it.qty); });
         const sale = {
           id: genId(), no: DB.settings.nextInvoice++, date: new Date().toISOString(), customerId: this.customerId || null,
-          items: DB.cart.map(c => ({ id: c.productId || c.id, key: c.id, name: c.name, price: c.price, cost: (findProduct(c.productId || c.id) || {}).cost || c.cost || 0, qty: c.qty, unit: c.unit, note: c.note || '' })),
+          items: DB.cart.map(c => ({ id: c.productId || c.id, key: c.id, name: c.name, price: c.price, cost: (findProduct(c.productId || c.id) || {}).cost || c.cost || 0, qty: c.qty, unit: c.unit, note: c.note || '', ...(c.quick ? { quick: true, costPending: !!c.costPending } : {}) })),
           subtotal: t.subtotal, discount: t.discount, tax: t.tax, total: t.total, paid, due, change,
           paymentMethod: this.payMethod === 'due' ? (paid > 0 ? 'cash' : 'due') : this.payMethod,
           note: ($('co-note') ? $('co-note').value.trim() : '')

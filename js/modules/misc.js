@@ -52,6 +52,7 @@
         <div style="max-width:380px;margin:14px auto 0">
           <div class="grid2 mb2"><button class="btn btn-primary" onclick="Receipt.print()"><i class="fas fa-print"></i> Print</button><button class="btn btn-soft" onclick="Receipt.bt()"><i class="fab fa-bluetooth-b"></i> ${btOk ? 'Bluetooth print' : 'Bluetooth connect'}</button></div>
           <div class="grid2 mb2"><button class="btn btn-ghost" onclick="Receipt.share('wa')"><i class="fab fa-whatsapp ok"></i> WhatsApp</button><button class="btn btn-ghost" onclick="Receipt.share('sms')"><i class="fas fa-message"></i> SMS</button></div>
+          ${s.items.some(i => i.quick) ? `<button class="btn btn-soft btn-block mb2" onclick="Receipt.costs('${s.id}')"><i class="fas fa-pen"></i> ${s.items.some(i => i.quick && i.costPending) ? 'Add cost (quick-sell items)' : 'Edit cost (quick-sell items)'}</button>` : ''}
           <div class="grid2">${s.due > 0 && s.customerId ? `<button class="btn btn-ok" onclick="People.collect('${s.customerId}')"><i class="fas fa-hand-holding-dollar"></i> Due Collected</button>` : '<span></span>'}
           <button class="btn btn-danger-soft" onclick="Receipt.ret('${s.id}')"><i class="fas fa-rotate-left"></i> Return items</button></div>
           <button class="btn btn-ghost btn-block mt2" onclick="Receipt.del('${s.id}')"><i class="fas fa-trash bad"></i> Delete bill</button></div>`,
@@ -63,6 +64,31 @@
     },
     bt() { Printer.print(this.cur); },
     share(kind) { const s = this.cur; const c = findCustomer(s.customerId); const ph = c ? c.phone : ''; if (kind === 'wa') shareWA(ph, this.text(s)); else shareSMS(ph, this.text(s)); },
+    /* Fill in / correct the real cost of quick-sell items on a finished bill. Reports use item.cost, so profit updates by itself. */
+    costs(id) {
+      const s = C.findSale(id); if (!s) return;
+      const rows = s.items.map((i, k) => ({ i, k })).filter(x => x.i.quick); if (!rows.length) return;
+      const run = () => {
+        const m = Modal.open({ title: 'Quick-sell cost · #' + C.invLabel(s), body: `<p class="muted sm mb3">Enter what each item really cost you <b>per unit</b>. Profit in Reports and Dashboard updates automatically. Leave empty to keep it pending.</p>
+          ${rows.map(({ i, k }) => `<div class="flex items-c gap3 mb2"><div class="grow"><div class="fw6 sm">${esc(i.name)}</div><div class="xs muted">Sold ${i.qty} × ${money(i.price)}</div></div><input type="number" inputmode="decimal" step="any" min="0" class="input qc-in" data-k="${k}" style="width:110px" placeholder="Cost" value="${i.costPending ? '' : (num(i.cost) || 0)}"></div>`).join('')}
+          <div class="card pad-s sumrow big" style="margin:8px 0 0"><span>Profit on these items</span><span class="ptext" id="qc-profit"></span></div>`,
+          foot: `<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" id="qc-ok"><i class="fas fa-floppy-disk"></i> Save cost</button>` });
+        const calc = () => { let pr = 0, pend = false; m.querySelectorAll('.qc-in').forEach(inp => { const x = s.items[+inp.dataset.k]; if (inp.value.trim() === '') { pend = true; return; } pr += (x.price - Math.max(0, num(inp.value))) * x.qty; }); $('qc-profit').textContent = pend ? 'Cost pending' : money(r2(pr)); };
+        m.querySelectorAll('.qc-in').forEach(inp => inp.addEventListener('input', calc)); calc();
+        m.querySelector('#qc-ok').onclick = () => {
+          m.querySelectorAll('.qc-in').forEach(inp => {
+            const i = s.items[+inp.dataset.k]; const raw = inp.value.trim();
+            if (raw === '') { i.cost = 0; i.costPending = true; return; }
+            i.cost = Math.max(0, num(raw)); i.costPending = false;
+            DB.returns.filter(r => r.saleId === s.id).forEach(r => { (r.items || []).forEach(ri => { if (ri.id === i.id && ri.key === i.key) ri.cost = i.cost; }); r.cogs = r2((r.items || []).reduce((t, ri) => t + num(ri.cost) * num(ri.qty), 0)); });
+          });
+          C.save('sales'); C.save('returns');
+          if (window.Guard && Guard.log) Guard.log('Quick-sell cost updated on bill #' + C.invLabel(s));
+          Modal.close(m); toast('Cost saved ✓'); Modal.closeAll(); App.refresh(); setTimeout(() => Receipt.show(C.findSale(id) || s), 60);
+        };
+      };
+      if (window.Guard && Guard.confirmPin) Guard.confirmPin(run, 'update cost'); else run();
+    },
     del(id) {
       const s = C.findSale(id); if (!s) return;
       if (DB.returns.some(r => r.saleId === id)) { toast('⚠️ This bill has returns, so it cannot be deleted'); return; }
@@ -115,7 +141,7 @@
       <div class="card pad-s mb3"><div class="chips mb2">${[['today', 'Today'], ['week', '7 Days'], ['month', 'This Month'], ['all', 'All'], ['custom', 'Custom']].map(p => `<button class="chip ${this.preset === p[0] ? 'on' : ''}" onclick="Hist.setP('${p[0]}')">${p[1]}</button>`).join('')}</div>
         ${this.preset === 'custom' ? `<div class="grid2 mb2"><input type="date" class="input" value="${this.from}" onchange="Hist.from=this.value;Hist.list()"><input type="date" class="input" value="${this.to}" onchange="Hist.to=this.value;Hist.list()"></div>` : ''}
         <div class="relative mb2"><i class="fas fa-magnifying-glass search-ico"></i><input class="input has-ico" placeholder="Receipt #, customer or product..." value="${esc(this.q)}" oninput="Hist.q=this.value;Hist.list()"></div>
-        <div class="chips">${[['all', 'All'], ['due', 'Due'], ['ret', 'Has returns']].map(p => `<button class="chip ${this.st === p[0] ? 'on' : ''}" onclick="Hist.st='${p[0]}';Hist.render()">${p[1]}</button>`).join('')}</div></div>
+        <div class="chips">${[['all', 'All'], ['due', 'Due'], ['ret', 'Has returns'], ['cost', 'Cost pending']].map(p => `<button class="chip ${this.st === p[0] ? 'on' : ''}" onclick="Hist.st='${p[0]}';${p[0] === 'cost' ? "Hist.preset='all';" : ''}Hist.render()">${p[1]}</button>`).join('')}</div></div>
       <div class="stats" id="h-stats"></div><div class="card" id="h-list"></div>`;
       this.list();
     },
@@ -123,7 +149,7 @@
     rows() {
       const [f, t] = this.range(); const q = this.q.trim().toLowerCase();
       return DB.sales.filter(s => C.inRange(s.date, f, t)).filter(s => {
-        if (this.st === 'due' && !(s.due > 0)) return false; if (this.st === 'ret' && !C.returnedAmount(s.id)) return false;
+        if (this.st === 'due' && !(s.due > 0)) return false; if (this.st === 'ret' && !C.returnedAmount(s.id)) return false; if (this.st === 'cost' && !s.items.some(i => i.quick && i.costPending)) return false;
         if (!q) return true; const c = findCustomer(s.customerId);
         return C.invLabel(s).toLowerCase().includes(q) || (c && (c.name.toLowerCase().includes(q) || (c.phone || '').includes(q))) || s.items.some(i => i.name.toLowerCase().includes(q));
       });
@@ -133,7 +159,7 @@
       $('h-stats').innerHTML = `<div class="stat"><div class="k">Bills</div><div class="v">${arr.length}</div></div><div class="stat"><div class="k">Gross Sales</div><div class="v">${money(tot)}</div></div><div class="stat"><div class="k">Due given</div><div class="v bad">${money(due)}</div></div>`;
       const lim = this.lim || 100; $('h-list').innerHTML = arr.length ? arr.slice(0, lim).map(s => { const c = findCustomer(s.customerId); const ret = C.returnedAmount(s.id); return `<div class="row" onclick="Receipt.showId('${s.id}')"><div class="avatar"><i class="fas fa-receipt"></i></div>
         <div class="grow"><div class="t">#${C.invLabel(s)} · ${esc(c ? c.name : 'Walk-in')}</div><div class="s">${C.fmtDT(s.date)} · ${esc(s.items.map(i => i.name + '×' + i.qty).join(', '))}</div></div>
-        <div class="tr"><div class="fw7 ptext">${money(s.total)}</div><div class="flex gap1" style="justify-content:flex-end">${s.due > 0 ? `<span class="badge b-bad">Due ${money(s.due)}</span>` : `<span class="badge b-ok">${MN[s.paymentMethod] || 'Cash'}</span>`}${ret ? '<span class="badge b-warn">Returns</span>' : ''}</div></div></div>`; }).join('') + (arr.length > lim ? `<div class="tc mt3"><button class="btn btn-ghost" onclick="Hist.more()">Show more (${arr.length - lim} left)</button></div>` : '') : '<div class="empty"><i class="fas fa-receipt"></i>No sales</div>';
+        <div class="tr"><div class="fw7 ptext">${money(s.total)}</div><div class="flex gap1" style="justify-content:flex-end">${s.due > 0 ? `<span class="badge b-bad">Due ${money(s.due)}</span>` : `<span class="badge b-ok">${MN[s.paymentMethod] || 'Cash'}</span>`}${ret ? '<span class="badge b-warn">Returns</span>' : ''}${s.items.some(i => i.quick && i.costPending) ? '<span class="badge b-warn">Cost pending</span>' : ''}</div></div></div>`; }).join('') + (arr.length > lim ? `<div class="tc mt3"><button class="btn btn-ghost" onclick="Hist.more()">Show more (${arr.length - lim} left)</button></div>` : '') : '<div class="empty"><i class="fas fa-receipt"></i>No sales</div>';
     },
     csv() { const arr = this.rows(); C.download('esypos-sales.csv', C.toCSV([['Receipt', 'Date', 'Customer', 'Subtotal', 'Discount', 'Tax', 'Total', 'Paid', 'Due', 'Payment', 'Product'], ...arr.map(s => { const c = findCustomer(s.customerId); return [C.invLabel(s), C.dkey(s.date), c ? c.name : '', s.subtotal, s.discount, s.tax, s.total, s.paid, s.due, MN[s.paymentMethod], s.items.map(i => i.name + '×' + i.qty).join('; ')]; })]), 'text/csv'); }
   };
@@ -187,6 +213,7 @@
     body() {
       const r = this.data();
       $('rep-body').innerHTML = `
+      ${r.quickPending ? `<div class="card pad-s mb3 flex items-c gap3"><i class="fas fa-triangle-exclamation warn"></i><div class="grow sm">${r.quickPending} quick-sell item${r.quickPending > 1 ? 's have' : ' has'} no cost yet, so profit is shown higher than real.</div><button class="btn btn-sm btn-soft" onclick="Hist.st='cost';Hist.preset='all';App.go('history')">Add cost</button></div>` : ''}
       <div class="stats"><div class="stat hl"><div class="k">Net profit (after expenses & write-offs)</div><div class="v">${money(r.netProfit)}</div></div><div class="stat"><div class="k">Net Sales</div><div class="v">${money(r.netSales)}</div></div>
         <div class="stat"><div class="k">Gross Profit</div><div class="v ok">${money(r.grossProfit)}</div></div><div class="stat"><div class="k">Expenses</div><div class="v bad">${money(r.expenses)}</div></div></div>
       <div class="card pad mb3"><div class="sec-title"><i class="fas fa-cash-register ptext"></i> Sales breakdown</div>
