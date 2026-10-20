@@ -1012,3 +1012,40 @@ html.dark .sidebar,html.dark .topbar,html.dark .bottom-nav{background:var(--card
 /* v10.13 — comfortable touch targets for small icon buttons (cart remove, row delete) */
 .icon-btn[aria-label="Remove"],.icon-btn[aria-label="Delete"]{min-width:36px;min-height:36px;color:var(--muted)}
 .icon-btn[aria-label="Delete"]:hover,.icon-btn[aria-label="Remove"]:hover{color:var(--bad);background:var(--badsoft);border-color:transparent}
+
+/* ===== v10.14 — calmer motion, smoother touch, fully responsive ===== */
+.view{animation:fadeIn .14s ease-out}
+.pcard,.card,.stat{animation:none}
+.pcard.added .added-fx,.fly-ring,.pqty.pop,.bump,.cart-item.new,.cart-item.bumped,.sync-chip.pulse{animation:none!important}
+.scan .frame .beam{animation-duration:2.6s;opacity:.55}
+.btn,.input,.pcard,.nav-link,.icon-btn,.card{transition-duration:.12s}
+.btn:active,.pcard:active,.nav-link:active{transform:scale(.98)}
+.pcard:hover{transform:none}
+:focus-visible{outline:2px solid var(--primary2);outline-offset:2px}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+img,video,canvas,svg{max-width:100%}
+.card{max-width:100%}
+.card:has(>table.tbl),.tbl-wrap,.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.modal-sheet{max-height:92vh;max-height:92dvh;overflow-y:auto;overscroll-behavior:contain}
+.page-head{flex-wrap:wrap;gap:8px}
+.sl-input{text-align:center;font-size:26px;letter-spacing:.5em;font-weight:700}
+.sl-msg{min-height:18px;margin-top:8px;color:var(--bad);text-align:center}
+.uc-pill{display:flex;align-items:center;justify-content:center;gap:6px;margin:2px 0 6px;padding:6px 10px;border-radius:999px;background:var(--psoft);color:var(--primary);font-size:12px}
+.uc-pill b{font-variant-numeric:tabular-nums}
+@media(pointer:coarse){
+  .btn,.nav-link,.icon-btn,select.input{min-height:44px}
+  .input,select,textarea{font-size:16px}          /* stops iOS zooming into fields */
+}
+@media(max-width:480px){
+  .grid2,.grid3{grid-template-columns:1fr 1fr;gap:8px}
+  .modal-sheet{border-radius:18px 18px 0 0}
+  .page-head h2{font-size:20px}
+}
+@media(max-width:360px){
+  .grid3{grid-template-columns:1fr}
+  .pgrid{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
+  .btn{padding-left:10px;padding-right:10px}
+}
+@media(max-height:480px) and (orientation:landscape){.modal-sheet{max-height:100vh;max-height:100dvh}}
+@media(prefers-reduced-motion:reduce){.view{animation:none}}

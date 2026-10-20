@@ -20,6 +20,16 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
 ---
 
+## v10.14.0 — Section lock, security, calmer UI
+- **Section lock** (Settings → *Section lock*): pick which sections (Reports, Dashboard, Purchases, Expenses, Settings…) need the owner PIN. Salesmen can sell but cannot open locked sections. Locks re-engage after 1–15 minutes or when the app goes to the background.
+- **Security:** PIN is stored as PBKDF2-SHA256 (old PINs upgrade automatically); wrong-PIN lock-out grows 30 s → 1 → 5 → 15 → 30 min; configurable idle auto-lock; Content-Security-Policy added.
+- **Cloud backup:** every backup carries a checksum, is read back from Drive and verified; a restore of a damaged file is refused; automatic backups never replace a much larger cloud copy with an almost empty one.
+- **UI:** fewer and shorter animations, larger touch targets, no iOS input zoom, better 320 px / landscape / tablet layouts.
+- **User counter:** set `userCounterUrl` in `js/core/config.js` to your Firebase Realtime Database URL. Each install registers one random anonymous ID; the total shows in the sidebar/menu. Database rules:
+```json
+{"rules":{"users":{".read":true,"$uid":{".write":"$uid.matches(/^[a-f0-9]{40}$/) && !data.exists()","t":{".validate":"newData.isNumber()"},"$other":{".validate":false}}}}}
+```
+
 ## v10.13.0 — Accessibility labels, metadata refresh
 - Icon-only delete/remove buttons now have accessible labels; images have empty alt text where decorative.
 - Backup: single visible file `EsyPOS-Backup.json` in Google Drive, automatic retry, clearer errors.

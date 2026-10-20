@@ -133,10 +133,27 @@
   };
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && Scanner.isOpen()) Scanner.close(); });
   window.addEventListener('pagehide', () => { if (Scanner.isOpen()) Scanner.close(); });
-  async function hashPin(pin, salt) {
+  async function legacyHash(pin, salt) {
     const s = salt + ':' + pin;
     if (window.crypto && crypto.subtle) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join(''); }
     let h1 = 5381, h2 = 52711; for (let i = 0; i < s.length; i++) { h1 = (h1 * 33) ^ s.charCodeAt(i); h2 = (h2 * 33) ^ s.charCodeAt(s.length - 1 - i); } return 'x' + (h1 >>> 0).toString(16) + (h2 >>> 0).toString(16);
+  }
+  // v10.14: PIN is stored as PBKDF2-SHA256 (150,000 rounds) with a per-device salt; old SHA-256 PINs upgrade silently on the next correct entry.
+  async function hashPin(pin, salt) {
+    if (window.crypto && crypto.subtle) {
+      try {
+        const enc = new TextEncoder(), key = await crypto.subtle.importKey('raw', enc.encode(String(pin)), 'PBKDF2', false, ['deriveBits']);
+        const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode('esypos:' + salt), iterations: 150000 }, key, 256);
+        return 'p2$' + Array.from(new Uint8Array(bits)).map(x => x.toString(16).padStart(2, '0')).join('');
+      } catch (_) {}
+    }
+    return legacyHash(pin, salt);
+  }
+  async function verifyPin(pin) {
+    const st = DB.settings.pinHash, salt = DB.settings.pinSalt; if (!st) return false;
+    if (st.indexOf('p2$') === 0) return (await hashPin(pin, salt)) === st;
+    if ((await legacyHash(pin, salt)) === st) { try { DB.settings.pinHash = await hashPin(pin, salt); C.save('settings'); } catch (_) {} return true; }
+    return false;
   }
   const Lock = window.Lock = {
     hiddenAt: 0, el: null,
@@ -148,7 +165,17 @@
     init(start) { if (this.has()) this.show(start); else start(); },
     lockNow() { if (!this.has()) { toast('Set PIN in Settings first'); return; } this.show(() => {}); },
     onHide() { this.hiddenAt = Date.now(); },
-    onResume() { if (this.has() && !this.el && this.hiddenAt && Date.now() - this.hiddenAt > 60000) this.show(() => {}); },
+    onResume() { if (this.has() && !this.el && this.hiddenAt && Date.now() - this.hiddenAt > (parseInt(DB.settings.autoLockMin, 10) || 1) * 60000) this.show(() => {}); },
+    penalty() {                                   // 30s, 1m, 5m, 15m, 30m for repeated lock-outs
+      let lv = 0; try { lv = parseInt(localStorage.getItem('esypos_lk_l') || '0', 10) || 0; localStorage.setItem('esypos_lk_l', String(lv + 1)); } catch (_) {}
+      const secs = [30, 60, 300, 900, 1800][Math.min(4, lv)]; this.until = Date.now() + secs * 1000; this.fails = 0; return secs;
+    },
+    async check(pin) {                            // used by section locks: 'ok' | 'bad' | 'wait'
+      if (Date.now() < this.until) return 'wait';
+      if (await verifyPin(pin)) { this.fails = 0; try { localStorage.removeItem('esypos_lk_l'); } catch (_) {} return 'ok'; }
+      this.fails = this.fails + 1; if (this.fails >= 5) { this.penalty(); return 'wait'; }
+      return 'bad';
+    },
     show(done) {
       if (this.el) return; let pin = '';
       const el = document.createElement('div'); el.className = 'lock';
@@ -162,11 +189,10 @@
         const k = b.dataset.k; if (k === '⌫') pin = pin.slice(0, -1); else if (pin.length < 4) pin += k; paint();
         if (pin.length === 4) {
           if (Date.now() < this.until) { toast('⚠️ Too many wrong attempts — ' + Math.ceil((this.until - Date.now()) / 1000) + ' seconds, try later'); pin = ''; paint(); return; }
-          const h = await hashPin(pin, DB.settings.pinSalt);
-          if (h === DB.settings.pinHash) { this.fails = 0; el.remove(); this.el = null; syncLock(); done && done(); }
+          if (await verifyPin(pin)) { this.fails = 0; try { localStorage.removeItem('esypos_lk_l'); } catch (_) {} el.remove(); this.el = null; syncLock(); done && done(); }
           else {
             this.fails = this.fails + 1;
-            if (this.fails >= 5) { this.until = Date.now() + 30000; this.fails = 0; toast('⚠️ Too many wrong attempts — wait 30 seconds'); }
+            if (this.fails >= 5) { const secs = this.penalty(); toast('⚠️ Too many wrong attempts — wait ' + (secs >= 60 ? Math.round(secs / 60) + ' minutes' : secs + ' seconds')); }
             const d = el.querySelector('#lk-dots'); d.classList.add('shake'); if (navigator.vibrate) navigator.vibrate(120); setTimeout(() => { d.classList.remove('shake'); pin = ''; paint(); }, 450);
           }
         }
@@ -183,14 +209,14 @@
         <div class="field"><label class="label">Re-enter</label><input id="pn-new2" type="password" inputmode="numeric" maxlength="4" class="input"></div>
         <p class="xs muted">⚠️ If you forget the PIN you must reset data — keep cloud backup enabled.</p>`, foot: `<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-primary" id="pn-ok">Save</button>` });
       m.querySelector('#pn-ok').onclick = async () => {
-        if (has && (await hashPin($('pn-old').value, DB.settings.pinSalt)) !== DB.settings.pinHash) { toast('⚠️ Current PIN is wrong'); return; }
+        if (has && !(await verifyPin($('pn-old').value))) { toast('⚠️ Current PIN is wrong'); return; }
         const a = $('pn-new').value, b = $('pn-new2').value; if (!/^\d{4}$/.test(a)) { toast('⚠️ Enter exactly 4 digits'); return; } if (a !== b) { toast('⚠️ PINs do not match'); return; }
         const salt = C.genId(); DB.settings.pinSalt = salt; DB.settings.pinHash = await hashPin(a, salt); C.save('settings'); Modal.close(m); toast('PIN set ✓'); App.refresh();
       };
     },
     remove() {
       const m = Modal.open({ title: 'Disable PIN', body: '<div class="field"><label class="label">Current PIN</label><input id="pn-old" type="password" inputmode="numeric" maxlength="4" class="input" autofocus></div>', foot: `<button class="btn" onclick="Modal.closeFrom(this)">Cancel</button><button class="btn btn-bad" id="pn-ok">Disable PIN</button>` });
-      m.querySelector('#pn-ok').onclick = async () => { if ((await hashPin($('pn-old').value, DB.settings.pinSalt)) !== DB.settings.pinHash) { toast('⚠️ Wrong PIN'); return; } DB.settings.pinHash = ''; DB.settings.pinSalt = ''; C.save('settings'); Modal.close(m); toast('PIN disabled'); App.refresh(); };
+      m.querySelector('#pn-ok').onclick = async () => { if (!(await verifyPin($('pn-old').value))) { toast('⚠️ Wrong PIN'); return; } DB.settings.pinHash = ''; DB.settings.pinSalt = ''; C.save('settings'); Modal.close(m); toast('PIN disabled'); App.refresh(); };
     }
   };
   const SERVICES = ['000018f0-0000-1000-8000-00805f9b34fb', '49535343-fe7d-4ae5-8fa9-9fafd205e455', 'e7810a71-73ae-499d-8c15-faa9aef0c3f2', '0000ff00-0000-1000-8000-00805f9b34fb', '0000ffe0-0000-1000-8000-00805f9b34fb', '0000ffb0-0000-1000-8000-00805f9b34fb'];

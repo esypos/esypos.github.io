@@ -120,11 +120,21 @@
   function payload() {
     const out = { app: 'EsyPOS', version: 4, exportDate: new Date().toISOString(), device: (navigator.platform || '') };
     Object.keys(K).forEach(k => { if (k !== 'cart') out[k] = k === 'settings' ? DB.settings : DB[k]; });
+    out.integrity = integrity(out);
     return out;
   }
+  // Integrity stamp: record counts + a checksum of the data, so a damaged or half-written backup is never restored or trusted.
+  function integrity(o) {
+    const names = Object.keys(K).filter(k => k !== 'cart' && k !== 'settings'), n = {}; let str = '';
+    names.forEach(k => { const a = Array.isArray(o[k]) ? o[k] : []; n[k] = a.length; str += k + JSON.stringify(a); });
+    let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return { n, h: (h >>> 0).toString(16), t: str.length };
+  }
+  const total = n => Object.keys(n || {}).reduce((a, k) => a + (n[k] || 0), 0);
   const sum = d => ({ p: (d.products || []).length, s: (d.sales || []).length, c: (d.customers || []).length });
   function applyRemote(d, f, pushAfter) {
     if (!d || !Array.isArray(d.products)) throw mk('badfile');
+    if (d.integrity) { const g = integrity(d); if (g.h !== d.integrity.h || g.t !== d.integrity.t) throw mk('badfile'); }
     S.applying = true;
     Object.keys(K).forEach(k => {
       if (k === 'settings') DB.settings = Object.assign({}, C.DEFAULTS, d.settings || {});
@@ -145,7 +155,7 @@
     if (S.status !== 'syncing' && S.status !== 'auth' && S.status !== 'offline') setStatus('pending'); else renderUI();
     clearTimeout(S.timer); S.timer = setTimeout(() => push(), 12000);
   }
-  async function push(force) {
+  async function push(force, manual) {
     if (!isOn() || S.busy || S.applying || !hasLocal()) return;
     clearTimeout(S.timer);
     if (!validTok()) { setStatus(navigator.onLine ? 'auth' : 'offline'); return; }
@@ -155,9 +165,15 @@
       if (cached) { try { f = await getMeta(cached); } catch (e) { if (e.status !== 404) throw e; } }
       if (!f) f = await findMain();
       if (f && !force && get(KEY.rev) !== f.modifiedTime) { S.busy = false; setStatus('pending'); await conflict(f); return; }
+      const pl = payload(), cnt = total(pl.integrity.n), last = parseInt(get('esypos_g_cnt') || '0', 10);
+      // Safety: an automatic backup never replaces a much bigger cloud copy with a nearly empty one (e.g. after a wipe or storage reset).
+      if (!force && !manual && last >= 20 && cnt < last * 0.5) throw mk('shrink');
       if (f) await snapshotBefore(f);
       const hidden = f && (f.spaces || []).indexOf('appDataFolder') >= 0;   // older hidden file: create the visible one, keep the old as a copy
-      const res = await writeMain(f && !hidden ? f.id : null, JSON.stringify(payload()));
+      const res = await writeMain(f && !hidden ? f.id : null, JSON.stringify(pl));
+      const back = await download(res.id);                          // read it back: only call it a backup if it matches
+      if (!back || !back.integrity || back.integrity.h !== pl.integrity.h) throw mk('verify');
+      set('esypos_g_cnt', String(cnt));
       set(KEY.fid, res.id); set(KEY.rev, res.modifiedTime); set(KEY.last, String(Date.now()));
       S.retries = 0;
       if (S.seq === seq) { del(KEY.dirty); del('esypos_dirty'); setStatus('ok'); }
@@ -168,8 +184,8 @@
   async function syncNow() {
     if (!isOn()) return signIn();
     try { setStatus('syncing'); await requestToken(true); } catch (e) { return fail(e, true); }
-    await push();
-    if (S.status === 'ok') toast('✓ Synced to cloud');
+    await push(false, true);
+    if (S.status === 'ok') toast('✓ Backup saved and verified');
   }
   async function conflict(f) {
     let d;
@@ -298,6 +314,8 @@
     else if (c === 'offline' || e instanceof TypeError || !navigator.onLine) st = 'offline';
     else if (/popup|access_denied|interaction|immediate/.test(c)) { st = 'auth'; msg = '⚠️ Sign-in incomplete'; }
     else if (c === 'noclient') { setup(); st = 'off'; }
+    else if (c === 'shrink') { msg = '⚠️ Backup paused: this device has far less data than your last backup. Tap Back up to confirm, or restore from cloud'; }
+    else if (c === 'verify') msg = '⚠️ Backup could not be verified, retrying';
     else if (c === 'badfile') msg = '⚠️ Cloud file is not valid EsyPOS data';
     else if (e.status === 403 && e.why === 'scope') { st = 'auth'; S.needConsent = true; S.tok = null; S.exp = 0; clearTok(); msg = '⚠️ Drive permission was not given. Tap Reconnect and allow the Drive access checkbox'; }
     else if (e.status === 403 && e.why === 'full') msg = '⚠️ Your Google Drive storage is full. Free some space, then tap Back up';
@@ -307,7 +325,7 @@
     console.warn('[Cloud]', e);
     S.detail = (st === 'error' && e && e.detail) ? e.detail : '';
     setStatus(isOn() ? st : 'off');
-    if (st === 'error' && isOn() && e && e.why !== 'api' && e.why !== 'full' && (S.retries || 0) < 5) {
+    if (st === 'error' && isOn() && c !== 'shrink' && e && e.why !== 'api' && e.why !== 'full' && (S.retries || 0) < 5) {
       const wait = Math.min(600, 30 * Math.pow(2, S.retries || 0)) * 1000; S.retries = (S.retries || 0) + 1;
       clearTimeout(S.timer); S.timer = setTimeout(() => push(), wait);   // try again by itself, like a phone backup
     }
