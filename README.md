@@ -20,6 +20,11 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
 ---
 
+## v10.21.0 — Design switch, more responsive, Quick sell everywhere
+- **Settings → Appearance & sound → Design**: choose **Modern** (current flat look) or **Classic** (the original v10.7 look). Saved on the device and applied instantly on every screen.
+- Extra responsive polish for small phones (≤330px), tablets, landscape phones and very wide screens: stat cards, product grid, checkout buttons, dialog footers and long names no longer overflow.
+- **Quick sell** is also inside the cart panel (phone and desktop), so it is always one tap away.
+
 ## v10.20.0 — Quick sell
 - **Quick sell** button on the Sales Counter: sell an item that is not in Products. Enter name (optional), price, qty and an optional cost. Stock is not changed.
 - If the cost is left empty the bill is marked **Cost pending**. Open the bill in **Sales History** → **Add cost (quick-sell items)** to enter the real cost later (asks the Admin PIN if one is set). Profit in Reports and Dashboard updates automatically, and returns on that bill stay consistent.

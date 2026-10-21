@@ -368,6 +368,9 @@
         <div class="field"><label class="label">Next barcode number</label><input id="st-bcnext" type="number" min="1" step="1" class="input" value="${parseInt(s.nextBarcode, 10) || 1000001}"><p class="xs muted mt1">Next code: <b>${esc((window.BarcodeGen ? BarcodeGen.uniqueCode(s.barcodePrefix || 'ESY', s.nextBarcode) : ''))}</b> · each Generate uses this number, then adds 1</p></div>
         ${SAVE}</div>`)}
       ${sec('appearance', `<div class="card pad mb3">
+        <div class="field"><label class="label">Design</label><div class="design-pick" role="group" aria-label="Design">
+          <button type="button" data-d="modern" class="${window.Design && Design.mode === 'classic' ? '' : 'on'}" onclick="Design.set('modern')"><span class="dp-sw dp-modern" style="display:block"></span><b>Modern</b><small>Flat, clean (current)</small></button>
+          <button type="button" data-d="classic" class="${window.Design && Design.mode === 'classic' ? 'on' : ''}" onclick="Design.set('classic')"><span class="dp-sw dp-classic" style="display:block"></span><b>Classic</b><small>Original v10.7 look</small></button></div></div>
         <div class="field"><label class="label">Theme</label><select id="theme-select" class="input" onchange="Theme.set(this.value)"><option value="auto">Auto (device setting)</option><option value="light">Light mode</option><option value="dark">Dark mode</option></select></div>
         <label class="switch"><span class="sm fw6"><i class="fas fa-volume-high ptext"></i> Click sound</span><input type="checkbox" ${Sound.isEnabled() ? 'checked' : ''} onchange="Sound.setEnabled(this.checked)"></label>
         ${Haptic.supported() ? `<label class="switch mt2"><span class="sm fw6"><i class="fas fa-mobile-screen ptext"></i> Vibration feedback</span><input type="checkbox" ${Haptic.isEnabled() ? 'checked' : ''} onchange="Haptic.setEnabled(this.checked)"></label>` : ''}</div>`)}
@@ -391,7 +394,7 @@
       <div class="tc muted xs">EsyPOS · Simple POS for Every Business<br>© EsyPOS · <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> · <a href="license.html" target="_blank" rel="noopener">MIT License</a> · <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a></div>`)}
       </div></div></div>`;
       this.open(this.sec === undefined ? (window.matchMedia('(min-width:1024px)').matches ? 'shop' : '') : this.sec, true);
-      Theme.apply(); Printer.ui(); if (window.Cloud) Cloud.renderUI();
+      Theme.apply(); if (window.Design) Design.apply(); Printer.ui(); if (window.Cloud) Cloud.renderUI();
     },
     save() {
       const s = DB.settings; s.shopName = $('st-name').value.trim() || 'My Shop'; s.shopAddress = $('st-addr').value.trim(); s.shopPhone = $('st-phone').value.trim();

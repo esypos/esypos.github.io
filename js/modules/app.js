@@ -277,6 +277,7 @@
       return `<div class="flex between items-c mb3"><div class="sec-title" style="margin:0"><i class="fas fa-bag-shopping ptext cart-ico"></i> Cart <span class="badge b-p">${DB.cart.reduce((s, c) => s + c.qty, 0)}</span></div>
           <div class="flex gap1"><button class="btn btn-sm btn-ghost" onclick="POS.hold()"><i class="fas fa-pause"></i> Hold</button><button class="btn btn-sm btn-danger-soft" onclick="POS.clear()"><i class="fas fa-trash"></i></button></div></div>
         <div style="max-height:38vh;overflow-y:auto;margin-bottom:10px">${items}</div>
+        <button type="button" class="btn btn-soft btn-block mb3" onclick="App.closeDrawers();POS.quick()"><i class="fas fa-cash-register"></i> Quick sell <span class="muted xs">(item not in Products)</span></button>
         <button class="btn btn-ghost btn-block mb3" onclick="POS.pickCust()"><i class="fas fa-user"></i> ${cust ? esc(cust.name) + (C.customerBalance(cust.id) > 0 ? ' · Due ' + money(C.customerBalance(cust.id)) : '') : 'Customer: Walk-in (select for due)'}</button>
         <div class="disc-row mb2">
           <label class="label">Discount</label>

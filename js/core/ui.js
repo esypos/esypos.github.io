@@ -102,6 +102,18 @@
     toggle() { this.set(this.isDark() ? 'light' : 'dark'); }
   };
   window.Theme = Theme;
+  /* Design: "modern" (current look) or "classic" (the original v10.7 look). Stored on this device, applied before first paint by a tiny script in index.html. */
+  const Design = {
+    mode: (function () { try { return localStorage.getItem('esypos_design') === 'classic' ? 'classic' : 'modern'; } catch (_) { return 'modern'; } })(),
+    apply() {
+      document.documentElement.classList.toggle('classic', this.mode === 'classic');
+      document.querySelectorAll('.design-pick button').forEach(b => b.classList.toggle('on', b.dataset.d === this.mode));
+    },
+    set(mode) { this.mode = mode === 'classic' ? 'classic' : 'modern'; try { localStorage.setItem('esypos_design', this.mode); } catch (_) {} this.apply(); }
+  };
+  window.Design = Design;
+  document.addEventListener('DOMContentLoaded', () => Design.apply());
+  Design.apply();
   if (mq && mq.addEventListener) mq.addEventListener('change', () => Theme.mode === 'auto' && Theme.apply());
   document.addEventListener('DOMContentLoaded', () => Theme.apply());
   Theme.apply();
