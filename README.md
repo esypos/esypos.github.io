@@ -20,6 +20,14 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
 ---
 
+## v11.0.0 — UI/UX overhaul
+- **Sales Counter toolbar redesigned**: search box, Scan, Held bills, Quick sell and scanner status now share one height and radius and line up on phone, tablet and desktop. Labels appear automatically when there is room (container queries); otherwise clean icon buttons with a count badge. Search has a clear (×) button, Esc clears it.
+- **Desktop shortcuts**: F2 Quick sell · F3 focus search · F9 checkout.
+- One control size everywhere: buttons, inputs, selects, dates, icon buttons, chips and quantity steppers use the same height/radius, so side-by-side boxes always match.
+- Product tiles: stock shown as a tidy pill (red when low); cart panel: scrollable item list with sticky Checkout on desktop; duplicate Quick sell removed from the desktop cart.
+- "Install app" button no longer covers the cart bar on phones.
+- Motion: page transitions, softer tile entrance, bottom-sheet slide on phones / pop-in on desktop, total tick animation, hover lift on cards (all switched off for "reduce motion").
+
 ## v10.21.0 — Design switch, more responsive, Quick sell everywhere
 - **Settings → Appearance & sound → Design**: choose **Modern** (current flat look) or **Classic** (the original v10.7 look). Saved on the device and applied instantly on every screen.
 - Extra responsive polish for small phones (≤330px), tablets, landscape phones and very wide screens: stat cards, product grid, checkout buttons, dialog footers and long names no longer overflow.

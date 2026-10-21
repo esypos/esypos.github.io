@@ -25,6 +25,7 @@
       document.querySelectorAll('.nav-link[data-v]').forEach(b => b.classList.toggle('active', b.dataset.v === v));
       try {
         const viewEl = document.getElementById('view');
+        if (viewEl) { viewEl.classList.remove('view-in'); void viewEl.offsetWidth; viewEl.classList.add('view-in'); }
         if (viewEl && Views[v] && typeof Views[v].render === 'function') Views[v].render();
       } catch (err) { console.error('EsyPOS view render', v, err); }
       window.scrollTo(0, 0);
@@ -114,14 +115,17 @@
     render() {
       $('view').innerHTML = `
       <div class="pos-grid"><div>
-        <div class="card search-wrap">
-          <div class="flex gap2 mb2">
-            <div class="relative grow"><i class="fas fa-magnifying-glass search-ico"></i>
-              <input id="pos-search" class="input has-ico" placeholder="Search product or barcode" value="${esc(this.q)}" oninput="POS.search(this.value)" onkeydown="if(event.key==='Enter')POS.enter()" autocomplete="off"></div>
-            <button class="btn btn-soft only-desk" onclick="POS.scan()" title="Camera scan" aria-label="Camera scan"><i class="fas fa-barcode"></i></button>
-            <button class="btn btn-soft" onclick="POS.showHold()" title="Held bills" aria-label="Held bills"><i class="fas fa-pause"></i><span class="hold-lbl">Held bills</span><span id="hold-count"></span></button>
-            <button class="btn btn-soft" onclick="POS.quick()" title="Quick sell (item not in Products)" aria-label="Quick sell"><i class="fas fa-cash-register"></i><span class="hold-lbl">Quick sell</span></button>
-            <span class="scan-ready only-desk" title="USB/Bluetooth barcode scanner ready"><i class="fas fa-plug"></i> Scanner</span>
+        <div class="card search-wrap pos-toolbar">
+          <div class="pos-tools">
+            <div class="pos-search"><i class="fas fa-magnifying-glass search-ico"></i>
+              <input id="pos-search" class="input has-ico" type="search" enterkeyhint="search" placeholder="${window.innerWidth < 700 ? 'Search products…' : 'Search product or barcode  (F3)'}" value="${esc(this.q)}" oninput="POS.search(this.value)" onkeydown="if(event.key==='Enter')POS.enter();else if(event.key==='Escape')POS.clearSearch()" autocomplete="off" autocapitalize="off" spellcheck="false">
+              <button type="button" class="pos-clear" aria-label="Clear search" title="Clear" onclick="POS.clearSearch()" ${this.q ? '' : 'hidden'}><i class="fas fa-xmark"></i></button></div>
+            <div class="pos-actions" role="toolbar" aria-label="Sales tools">
+              <button type="button" class="tool-btn only-desk" onclick="POS.scan()" title="Camera scan" aria-label="Camera scan"><i class="fas fa-barcode"></i><span class="tl">Scan</span></button>
+              <button type="button" class="tool-btn" onclick="POS.showHold()" title="Held bills" aria-label="Held bills"><i class="fas fa-pause"></i><span class="tl">Held bills</span><span id="hold-count" class="tool-count"></span></button>
+              <button type="button" class="tool-btn tool-accent" onclick="POS.quick()" title="Quick sell — item not in Products (F2)" aria-label="Quick sell"><i class="fas fa-cash-register"></i><span class="tl">Quick sell</span></button>
+              <span class="scan-ready only-desk" title="USB/Bluetooth barcode scanner ready"><i class="fas fa-plug"></i><span class="tl">Scanner ready</span></span>
+            </div>
           </div>
           <div class="chips" id="pos-cats"></div>
         </div>
@@ -157,16 +161,18 @@
           <div class="pimg">${p.image ? `<img src="${esc(C.imgSrc(p))}" alt="" loading="lazy" decoding="async" draggable="false">` : '<i class="fas fa-box"></i>'}</div>
           ${exp ? '<span class="ptag">Expired</span>' : (p.track !== false && p.stock <= 0 ? '<span class="ptag">Out of stock</span>' : (low ? '<span class="ptag" style="background:#d97706">Low Stock</span>' : ''))}
           <div class="pname">${esc(p.name)}</div>
-          <div class="pmeta"><span class="pprice">${money(p.price)}</span><span class="${low ? 'bad fw6' : 'muted'}">${p.track === false ? '∞' : p.stock + ' ' + esc(C.unitLabel ? C.unitLabel(p.unit) : (p.unit || ''))}</span></div></div>`;
+          <div class="pmeta"><span class="pprice">${money(p.price)}</span><span class="pstock${low ? ' low' : ''}">${p.track === false ? '∞' : p.stock + ' ' + esc(C.unitLabel ? C.unitLabel(p.unit) : (p.unit || ''))}</span></div></div>`;
       }).join('');
       const more = $('pos-more'); if (more) more.classList.toggle('hidden', list.length <= this.limit);
-      const hc = $('hold-count'); if (hc) hc.textContent = DB.hold.length ? ' ' + DB.hold.length : '';
+      const hc = $('hold-count'); if (hc) hc.textContent = DB.hold.length ? String(DB.hold.length) : '';
+      const cl = document.querySelector('.pos-clear'); if (cl) cl.hidden = !this.q;
       this.markCards();
     },
     markCards() {
       const m = {}; DB.cart.forEach(c => { const k = c.productId || c.id; m[k] = (m[k] || 0) + c.qty; });
       document.querySelectorAll('#pgrid .pcard').forEach(el => { const q = m[el.dataset.id]; el.classList.toggle('sel', !!q); const b = el.querySelector('.pqty'); if (b) b.textContent = q ? '×' + q : ''; });
     },
+    clearSearch() { this.q = ''; const s = $('pos-search'); if (s) { s.value = ''; s.focus(); } this.renderGrid(); },
     search(v) { this.q = v; this.limit = 120; if (this._st) cancelAnimationFrame(this._st); clearTimeout(this._sd); this._sd = setTimeout(() => { this._st = requestAnimationFrame(() => this.renderGrid()); }, 90); },
     setCat(c) { this.cat = c; this.limit = 120; this.renderCats(); this.renderGrid(); },
     more() { this.limit += 120; this.renderGrid(); },
@@ -276,8 +282,8 @@
         : '<div class="empty"><i class="fas fa-bag-shopping"></i>Cart empty</div>';
       return `<div class="flex between items-c mb3"><div class="sec-title" style="margin:0"><i class="fas fa-bag-shopping ptext cart-ico"></i> Cart <span class="badge b-p">${DB.cart.reduce((s, c) => s + c.qty, 0)}</span></div>
           <div class="flex gap1"><button class="btn btn-sm btn-ghost" onclick="POS.hold()"><i class="fas fa-pause"></i> Hold</button><button class="btn btn-sm btn-danger-soft" onclick="POS.clear()"><i class="fas fa-trash"></i></button></div></div>
-        <div style="max-height:38vh;overflow-y:auto;margin-bottom:10px">${items}</div>
-        <button type="button" class="btn btn-soft btn-block mb3" onclick="App.closeDrawers();POS.quick()"><i class="fas fa-cash-register"></i> Quick sell <span class="muted xs">(item not in Products)</span></button>
+        <div class="cart-items">${items}</div>
+        <button type="button" class="cart-quick" onclick="App.closeDrawers();POS.quick()"><i class="fas fa-cash-register"></i> Quick sell <span class="muted xs">· item not in Products</span></button>
         <button class="btn btn-ghost btn-block mb3" onclick="POS.pickCust()"><i class="fas fa-user"></i> ${cust ? esc(cust.name) + (C.customerBalance(cust.id) > 0 ? ' · Due ' + money(C.customerBalance(cust.id)) : '') : 'Customer: Walk-in (select for due)'}</button>
         <div class="disc-row mb2">
           <label class="label">Discount</label>
@@ -304,7 +310,7 @@
       }
       this.markCards();
     },
-    updTotals() { const t = this.totals(); const set = (c, v) => document.querySelectorAll(c).forEach(e => e.textContent = v); set('.js-sub', money(t.subtotal)); set('.js-disc', '-' + money(t.discount)); set('.js-tax', money(t.tax)); set('.js-total', money(t.total)); set('.cb-total', money(t.total)); },
+    updTotals() { const t = this.totals(); const set = (c, v) => document.querySelectorAll(c).forEach(e => e.textContent = v); set('.js-sub', money(t.subtotal)); set('.js-disc', '-' + money(t.discount)); set('.js-tax', money(t.tax)); set('.js-total', money(t.total)); set('.cb-total', money(t.total)); document.querySelectorAll('.js-total,.cb-total').forEach(e => { e.classList.remove('tick'); void e.offsetWidth; e.classList.add('tick'); }); },
     setDisc(v) { this.disc = num(v); this.updTotals(); },
     setDiscType(v) {
       this.discType = v === 'percent' ? 'percent' : 'amount';
@@ -413,6 +419,14 @@
     }
   };
   Views.pos = POS;
+  /* Desktop shortcuts on the Sales Counter: F2 Quick sell · F3 search · F9 checkout */
+  document.addEventListener('keydown', e => {
+    if (App.view !== 'pos' || e.ctrlKey || e.metaKey || e.altKey) return;
+    if ((window.Modal && Modal.stack.length) || App.drawerOpen() || document.querySelector('.lock,.welcome,.authgate,.scan')) return;
+    if (e.key === 'F2') { e.preventDefault(); POS.quick(); }
+    else if (e.key === 'F3') { e.preventDefault(); const s = $('pos-search'); if (s) { s.focus(); s.select(); } }
+    else if (e.key === 'F9' && DB.cart.length) { e.preventDefault(); POS.checkout(); }
+  });
   const UNITS = ['Pcs', 'Kg', 'g', 'L', 'Packet', 'Bottle', 'Cup', 'Dozen', 'm', 'Box', 'Pair'];
   const Products = window.Products = {
     q: '', filter: 'all', img: null,
