@@ -133,7 +133,7 @@
   }
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
-  const r2 = n => Math.round((n + Number.EPSILON) * 100) / 100;
+  const r2 = n => { n = Number(n); if (!isFinite(n)) return 0; const a = Math.abs(n), v = Math.round((a + Number.EPSILON) * 100) / 100; return n < 0 && v !== 0 ? -v : v; };   // symmetric rounding: -1.005 and 1.005 round the same way
   const fmt = n => Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
   /* Legacy unit names saved by older versions (escaped so the source stays pure ASCII) -> English units */
   const UNIT_MAP = { '\u09AA\u09BF\u09B8':'Pcs', '\u0995\u09C7\u099C\u09BF':'Kg', '\u0997\u09CD\u09B0\u09BE\u09AE':'g', '\u09B2\u09BF\u099F\u09BE\u09B0':'L', '\u09AE\u09BF\u099F\u09BE\u09B0':'m', '\u09A1\u099C\u09A8':'Dozen', '\u09AC\u0995\u09CD\u09B8':'Box', '\u09AA\u09CD\u09AF\u09BE\u0995\u09C7\u099F':'Packet', '\u09AC\u09CB\u09A4\u09B2':'Bottle', '\u099C\u09CB\u09A1\u09BC\u09BE':'Pair', '\u0995\u09BE\u09AA':'Cup' };

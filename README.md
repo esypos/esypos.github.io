@@ -20,6 +20,13 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
 ---
 
+## v11.2.0 — Smoother Google connection, layout fixes, App & device panel
+- **No more sudden jumps to Google.** The app used to renew its Google access every hour in the background (on open, on returning to the tab, on reconnect and on a timer), and each renewal briefly opened Google's page. Now it renews only when there is something to back up, only after a tap, never during a sale or while a dialog is open, and at most once every 2 minutes. Opening the app with nothing to back up never touches Google. Signing in the first time still shows Google's account chooser (Google requires it).
+- Layout: date fields in Expenses and the barcode option pills no longer run past the screen edge on small phones; long names wrap instead of stretching cards.
+- Rounding: negative amounts now round the same way as positive ones (a 1.005 refund and a -1.005 adjustment no longer differ by a paisa).
+- Settings → **App & device**: offline status, install button, storage protection, storage used, version, Check update, Repair offline files.
+- Print: install bar, update bar and navigation are hidden when printing.
+
 ## v11.1.0 — Security, PWA and splash
 - **Security**
   - Backup *files* no longer contain the Admin PIN hash (only the home-screen PIN hash was removed before), and restoring a file can never set, replace or remove either PIN.

@@ -2,7 +2,7 @@
    offline/online badge, self-repair of the offline cache, persistent storage, and a small window.PWA API. */
 (function () {
   'use strict';
-  const CACHE_VERSION = 'v11.1.0';   // MUST equal sw.js — if they differ, clearOldCaches() deletes the live offline cache
+  const CACHE_VERSION = 'v11.2.0';   // MUST equal sw.js — if they differ, clearOldCaches() deletes the live offline cache
   const LS = {
     get(k) { try { return localStorage.getItem(k); } catch (_) { return null; } },
     set(k, v) { try { localStorage.setItem(k, String(v)); } catch (_) {} }

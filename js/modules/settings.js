@@ -321,6 +321,18 @@
       if (!quiet) window.scrollTo(0, 0);
     },
     back() { this.open(''); },
+    async sysStatus() {
+      const P = window.PWA; if (!P) return;
+      const set = (i, ok, t) => { const d = $('sy-d' + i), x = $('sy-s' + i); if (d) d.className = 'sys-dot ' + (ok === true ? 'ok' : ok === false ? 'warn' : ''); if (x) x.textContent = t; };
+      const ctl = !!(navigator.serviceWorker && navigator.serviceWorker.controller);
+      set(1, ctl, ctl ? 'Opens and sells without internet' : 'Reload once while online to turn on offline mode');
+      const inst = P.isInstalled(); set(2, inst, inst ? 'Running as an installed app' : 'Using the browser — install for a full-screen app');
+      const b = $('sy-inst'); if (b) b.classList.toggle('hidden', inst || !P.canInstall());
+      const per = await P.persisted(); set(3, per, per ? 'The browser will not delete your shop data' : 'The browser may clear data when storage is low — keep Google Drive backup on');
+      const e = await P.estimate(), s4 = $('sy-s4');
+      if (s4 && e && e.usage != null) s4.textContent = (e.usage / 1048576).toFixed(1) + ' MB used' + (e.quota ? ' of ' + (e.quota > 1073741824 ? (e.quota / 1073741824).toFixed(1) + ' GB' : Math.round(e.quota / 1048576) + ' MB') : '');
+    },
+    async checkUpdate(btn) { if (btn) btn.disabled = true; try { await (window.PWA && PWA.checkUpdate()); } catch (_) {} toast('Checked for updates ✓'); if (btn) btn.disabled = false; },
     render() {
       const s = DB.settings; let bytes = 0; try { Object.keys(localStorage).forEach(k => { bytes += (k.length + (localStorage.getItem(k) || '').length) * 2; }); } catch (_) {}
       const kb = Math.round(bytes / 1024); const last = parseInt(localStorage.getItem('esypos_last_backup') || '0', 10);
@@ -332,6 +344,7 @@
         ['security', 'fa-lock', 'Security', 'PIN lock'],
         ['printers', 'fa-print', 'Printers', 'Label and Bluetooth receipt printer'],
         ['backup', 'fa-cloud-arrow-up', 'Backup & data', 'Google Drive, backup file, reset'],
+        ['system', 'fa-microchip', 'App & device', 'Install, updates, offline, storage'],
         ['about', 'fa-scale-balanced', 'About & legal', 'Privacy, terms, license']
       ];
       const sec = (id, body) => { const m = SEC.find(x => x[0] === id); return `<section class="st-sec" data-s="${id}"><div class="st-sec-head"><button type="button" class="icon-btn st-back" onclick="Settings.back()" aria-label="Back to settings"><i class="fas fa-chevron-right fa-rotate-180"></i></button><div class="st-ico"><i class="fas ${m[1]}"></i></div><div><h3>${m[2]}</h3><p>${m[3]}</p></div></div>${body}</section>`; };
@@ -389,12 +402,19 @@
         <div class="grid2 mt3"><button class="btn btn-ghost" onclick="exportBackupFile()"><i class="fas fa-file-export"></i> Save backup file</button><label class="btn btn-ghost" style="cursor:pointer"><i class="fas fa-file-import"></i> Restore from file<input type="file" accept=".json,application/json" class="hidden" onchange="importData(this)"></label></div>
         <p class="xs muted mt2">Optional copy to keep outside Google Drive. Nothing is downloaded automatically, and the file does not contain your PIN.</p>
         <button class="btn btn-danger-soft btn-block mt2" onclick="wipeAllData()"><i class="fas fa-trash"></i> Delete all data</button></div>`)}
+      ${sec('system', `<div class="card pad mb3" id="sys-card">
+        <div class="sys-row"><span class="sys-dot" id="sy-d1"></span><div class="sys-k">Works offline<small id="sy-s1">Checking…</small></div></div>
+        <div class="sys-row"><span class="sys-dot" id="sy-d2"></span><div class="sys-k">Installed as an app<small id="sy-s2">Checking…</small></div><button type="button" class="btn btn-primary hidden" id="sy-inst" onclick="PWA.install()">Install</button></div>
+        <div class="sys-row"><span class="sys-dot" id="sy-d3"></span><div class="sys-k">Data protected from cleanup<small id="sy-s3">Checking…</small></div></div>
+        <div class="sys-row"><span class="sys-dot ok"></span><div class="sys-k">Version<small>EsyPOS v11.2.0</small></div><button type="button" class="btn btn-ghost" onclick="Settings.checkUpdate(this)">Check update</button></div>
+        <div class="sys-row"><div class="sys-k">Storage used<small id="sy-s4">—</small></div></div>
+        <div class="sys-row"><div class="sys-k">Repair offline files<small>Re-downloads the app files if something looks broken. Your shop data is not touched.</small></div><button type="button" class="btn btn-ghost" onclick="PWA.reset()">Repair</button></div></div>`)}
       ${sec('about', `<div class="card pad mb3">
         <div class="grid2"><a class="btn btn-ghost" href="privacy.html" target="_blank" rel="noopener"><i class="fas fa-user-shield"></i> Privacy Policy</a><a class="btn btn-ghost" href="terms.html" target="_blank" rel="noopener"><i class="fas fa-file-contract"></i> Terms of Service</a></div></div>
       <div class="tc muted xs">EsyPOS · Simple POS for Every Business<br>© EsyPOS · <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> · <a href="license.html" target="_blank" rel="noopener">MIT License</a> · <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a></div>`)}
       </div></div></div>`;
       this.open(this.sec === undefined ? (window.matchMedia('(min-width:1024px)').matches ? 'shop' : '') : this.sec, true);
-      Theme.apply(); if (window.Design) Design.apply(); Printer.ui(); if (window.Cloud) Cloud.renderUI();
+      Theme.apply(); if (window.Design) Design.apply(); Printer.ui(); if (window.Cloud) Cloud.renderUI(); this.sysStatus();
     },
     save() {
       const s = DB.settings; s.shopName = $('st-name').value.trim() || 'My Shop'; s.shopAddress = $('st-addr').value.trim(); s.shopPhone = $('st-phone').value.trim();

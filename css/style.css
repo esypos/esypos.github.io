@@ -1383,3 +1383,23 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
   #view.view-in,.pcard,.modal-sheet,.modal-back,.tool-count,.pos-clear{animation:none!important}
   .js-total.tick,.cb-total.tick{animation:none}
 }
+
+/* ===== v11.2 polish: layout safety (nothing may push past the screen edge) ===== */
+.grid2>*,.grid3>*,.stats>*,.row .grow{min-width:0}
+input[type=date],input[type=time],input[type=month],input[type=datetime-local]{min-width:0;max-width:100%;width:100%;-webkit-appearance:none;appearance:none;display:block}
+input[type=date]::-webkit-date-and-time-value{text-align:left;min-height:1.2em}
+.bc-toggles{display:flex;flex-wrap:wrap}
+.check-pill{max-width:100%}
+.modal-sheet,.card{min-width:0}
+img,svg,video,canvas{max-width:100%}
+.t,.s{overflow-wrap:anywhere}
+@media (max-width:380px){.check-pill{padding:6px 10px;font-size:12px}}
+/* settings: status rows */
+.sys-row{display:flex;align-items:center;gap:12px;padding:11px 2px;border-bottom:1px solid var(--border)}
+.sys-row:last-child{border-bottom:0}
+.sys-row .sys-k{flex:1;min-width:0;font-weight:600;font-size:14px}
+.sys-row .sys-k small{display:block;font-weight:500;color:var(--muted);font-size:12px;margin-top:2px}
+.sys-dot{width:9px;height:9px;border-radius:50%;background:#94a3b8;flex:none}
+.sys-dot.ok{background:#16a34a;box-shadow:0 0 0 4px rgba(22,163,74,.15)}
+.sys-dot.warn{background:#f59e0b;box-shadow:0 0 0 4px rgba(245,158,11,.15)}
+@media print{#splash,.pwa-install-btn,.pwa-update-bar,#net-badge,.bottom-nav,.cart-bar,.topbar,.sidebar{display:none!important}}

@@ -536,34 +536,36 @@
       S.status = get(KEY.dirty) === '1' ? 'pending' : 'ok';
       // Only offer "Restore" when this account has synced before (so a cloud copy exists). A brand-new empty shop just opens.
       if (!hasLocal() && get(KEY.rev)) { del(KEY.rev); showGate('restore'); }
-      else if (!validTok()) { S.status = navigator.onLine ? 'syncing' : 'offline'; setTimeout(resume, 400); }
+      else if (!validTok()) { S.status = !navigator.onLine ? 'offline' : (get(KEY.dirty) === '1' ? 'auth' : 'ok'); }   // v11.2: no Google pop-up on open; renewal waits until there is something to back up
       else if (get(KEY.dirty) === '1') { setStatus('pending'); S.timer = setTimeout(() => push(), 3000); }
     } else showGate('new');
     renderUI();
     if (clientId() && navigator.onLine) loadGIS().catch(() => {});
     setInterval(poll, 5000);
-    window.addEventListener('online', () => { if (!isOn()) return; if (!validTok()) resume(); else if (get(KEY.dirty) === '1') { setStatus('pending'); push(); } });
+    window.addEventListener('online', () => { if (!isOn()) return; if (!validTok()) { if (get(KEY.dirty) === '1') setStatus('auth'); } else if (get(KEY.dirty) === '1') { setStatus('pending'); push(); } });
     window.addEventListener('offline', () => { if (isOn()) { if (!validTok()) S.status = 'offline'; renderUI(); } });
     document.addEventListener('visibilitychange', () => {
       if (!isOn()) return;
       if (document.visibilityState === 'hidden') { if (get(KEY.dirty) === '1' && validTok()) push(); }
-      else if (!validTok()) resume();
+      else if (!validTok() && get(KEY.dirty) === '1') gestureHint();
     });
     // Google only lets a silent (no-prompt) renewal run inside a real tap or key press; without one the browser blocks Google's tiny popup.
     // So the first touch after the token gets old renews it invisibly — no "Reconnect" tap needed. The connection stays ON until Sign out.
     let gTry = 0;
     const onGesture = e => {
       if (!isOn() || S.applying || S.authP || !clientId() || !navigator.onLine) return;
+      if (get(KEY.dirty) !== '1') return;                        // nothing to back up → never open Google
+      try { if ((window.Modal && Modal.stack && Modal.stack.length) || C.DB.cart.length || document.querySelector('.lock,.scan')) return; } catch (_) {}   // not during a sale
       if (e && e.target && e.target.closest && e.target.closest('.js-chip,.acct,.welcome,.authgate,.gate,.lock')) return;   // those taps start a normal sign-in
       const left = S.tok ? S.exp - Date.now() : 0;
       if (left > 10 * 60 * 1000) return;                       // still fresh
-      if (Date.now() - gTry < 20000) return;                   // do not retry on every tap
+      if (Date.now() - gTry < 120000) return;                  // at most one silent renewal every 2 minutes
       gTry = Date.now(); S.lastTry = 0;
       resume(left > 60000);                                    // soon to expire → refresh in place; expired → full silent resume
     };
     ['pointerup', 'touchend', 'keydown'].forEach(ev => document.addEventListener(ev, onGesture, { capture: true, passive: true }));
     // Renew the token a few minutes before it expires so sync never stops while the shop is open.
-    setInterval(() => { if (isOn() && document.visibilityState === 'visible' && !S.busy && S.tok && S.exp - Date.now() < 8 * 60 * 1000 && S.exp - Date.now() > 0) { resume(true); } }, 60 * 1000);
+    setInterval(() => { if (isOn() && get(KEY.dirty) === '1' && document.visibilityState === 'visible' && !S.busy && S.tok && S.exp - Date.now() < 8 * 60 * 1000 && S.exp - Date.now() > 0) { resume(true); } }, 60 * 1000);
   }
   window.Cloud = { replaceNow, autoToggle(on) { set('esypos_g_auto', on ? '1' : '0'); toast(on ? 'Live sync on' : 'Live sync off'); }, init, chip, markDirty, signIn, signOut, resetPin, syncNow, pull, snapshots, panel, setup, renderUI, isOn };
   if (!isOn()) showGate('new');
