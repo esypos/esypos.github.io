@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.googleapis.com https://accounts.google.com https://abacus.jasoncameron.dev https://api.counterapi.dev https://*.firebaseio.com https://*.firebasedatabase.app; frame-src https://accounts.google.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.googleapis.com https://accounts.google.com https://abacus.jasoncameron.dev https://api.counterapi.dev https://*.firebaseio.com https://*.firebasedatabase.app; frame-src https://accounts.google.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; media-src 'self' blob:">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="color-scheme" content="light dark">
@@ -30,12 +30,40 @@
     <meta name="twitter:title" content="EsyPOS – Free Offline POS Software for Small Business">
     <meta name="twitter:description" content="Free open-source offline POS: billing, barcode scanning, inventory, dues, reports and Google Drive backup.">
     <meta name="twitter:image" content="https://esypos.github.io/assets/icons/og-image.png">
-    <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://esypos.github.io/#website","url":"https://esypos.github.io/","name":"EsyPOS","description":"Free open-source POS software that works offline. Fast billing, barcode scanning, inventory, customer dues, expenses and profit reports, with Google Drive backup.","inLanguage":"en","publisher":{"@id":"https://esypos.github.io/#author"}},{"@type":"Person","@id":"https://esypos.github.io/#author","name":"Mehedi Hasan","sameAs":["https://www.facebook.com/mehedi.exx"]},{"@type":"SoftwareApplication","@id":"https://esypos.github.io/#app","name":"EsyPOS","alternateName":"EsyPOS Simple POS for Every Business","url":"https://esypos.github.io/","description":"Free, open-source, offline-first point of sale (POS) web app for small and medium businesses: billing, barcode scanning, inventory, customer dues, suppliers, expenses, profit reports and automatic Google Drive backup.","applicationCategory":"BusinessApplication","applicationSubCategory":"Point of Sale","operatingSystem":"Web, Android, iOS, Windows, macOS, Linux","browserRequirements":"Requires a modern browser (Chrome, Edge, Safari, Firefox)","softwareVersion":"10.14","inLanguage":"en","isAccessibleForFree":true,"license":"https://opensource.org/licenses/MIT","image":"https://esypos.github.io/assets/icons/og-image.png","screenshot":["https://esypos.github.io/assets/screenshots/02-dashboard.png","https://esypos.github.io/assets/screenshots/03-products.png","https://esypos.github.io/assets/screenshots/08-reports.png"],"featureList":["Works offline","Fast billing and checkout","Barcode scanning with the phone camera","Bluetooth thermal receipt printing","Customer due ledger","Inventory with low-stock and expiry alerts","Purchases and supplier ledger","Expense tracking","Sales and profit reports","PIN lock","Automatic Google Drive backup","Installable on Android, iPhone, Windows and Mac"],"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@id":"https://esypos.github.io/#author"}}]}</script>
+    <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://esypos.github.io/#website","url":"https://esypos.github.io/","name":"EsyPOS","description":"Free open-source POS software that works offline. Fast billing, barcode scanning, inventory, customer dues, expenses and profit reports, with Google Drive backup.","inLanguage":"en","publisher":{"@id":"https://esypos.github.io/#author"}},{"@type":"Person","@id":"https://esypos.github.io/#author","name":"Mehedi Hasan","sameAs":["https://www.facebook.com/mehedi.exx"]},{"@type":"SoftwareApplication","@id":"https://esypos.github.io/#app","name":"EsyPOS","alternateName":"EsyPOS Simple POS for Every Business","url":"https://esypos.github.io/","description":"Free, open-source, offline-first point of sale (POS) web app for small and medium businesses: billing, barcode scanning, inventory, customer dues, suppliers, expenses, profit reports and automatic Google Drive backup.","applicationCategory":"BusinessApplication","applicationSubCategory":"Point of Sale","operatingSystem":"Web, Android, iOS, Windows, macOS, Linux","browserRequirements":"Requires a modern browser (Chrome, Edge, Safari, Firefox)","softwareVersion":"11.1.0","inLanguage":"en","isAccessibleForFree":true,"license":"https://opensource.org/licenses/MIT","image":"https://esypos.github.io/assets/icons/og-image.png","screenshot":["https://esypos.github.io/assets/screenshots/02-dashboard.png","https://esypos.github.io/assets/screenshots/03-products.png","https://esypos.github.io/assets/screenshots/08-reports.png"],"featureList":["Works offline","Fast billing and checkout","Barcode scanning with the phone camera","Bluetooth thermal receipt printing","Customer due ledger","Inventory with low-stock and expiry alerts","Purchases and supplier ledger","Expense tracking","Sales and profit reports","PIN lock","Automatic Google Drive backup","Installable on Android, iPhone, Windows and Mac"],"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@id":"https://esypos.github.io/#author"}}]}</script>
     <noscript><style>body::before{content:"EsyPOS needs JavaScript. Please enable it to open your shop.";display:block;padding:20px;text-align:center}</style></noscript>
     <script>(function(){try{var m=localStorage.getItem('esypos_theme')||'auto';if(m==='dark'||(m==='auto'&&window.matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}})()</script>
 
 <script>(function(){var n=true;try{n=localStorage.getItem('esypos_g_on')!=='1'}catch(e){}if(n)document.documentElement.classList.add('needs-login')})();</script>
     <style>html.needs-login .sidebar,html.needs-login .topbar,html.needs-login .main,html.needs-login .cart-bar,html.needs-login .bottom-nav,html.needs-login .drawer,html.needs-login #scrim{display:none!important}html.needs-login body{background:#1e40af}</style>
+    <style id="splash-css">
+#splash{position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;color:#fff;background:radial-gradient(120% 90% at 50% 18%,#2f63e6 0%,#1e40af 48%,#172554 100%);padding:24px;padding-top:calc(24px + env(safe-area-inset-top));padding-bottom:calc(24px + env(safe-area-inset-bottom));transition:opacity .45s ease,transform .45s ease,visibility .45s;overflow:hidden;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-user-select:none;user-select:none}
+#splash.out{opacity:0;visibility:hidden;transform:scale(1.04);pointer-events:none}
+#splash .sp-glow{position:absolute;width:520px;height:520px;max-width:140vw;max-height:140vw;border-radius:50%;background:radial-gradient(circle,rgba(96,165,250,.45) 0%,rgba(96,165,250,0) 65%);animation:spGlow 2.6s ease-in-out infinite}
+#splash .sp-dots{position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.10) 1px,transparent 1.5px);background-size:26px 26px;-webkit-mask-image:radial-gradient(circle at 50% 42%,#000 0%,transparent 70%);mask-image:radial-gradient(circle at 50% 42%,#000 0%,transparent 70%);animation:spDrift 14s linear infinite}
+#splash .sp-logo{position:relative;width:132px;height:132px;display:flex;align-items:center;justify-content:center;animation:spPop .8s cubic-bezier(.2,1.3,.35,1) both}
+#splash .sp-logo img{width:84px;height:84px;border-radius:22px;box-shadow:0 14px 40px rgba(2,6,23,.45);display:block;position:relative;z-index:2;animation:spFloat 3s ease-in-out .8s infinite}
+#splash .sp-ring{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+#splash .sp-ring circle{fill:none;stroke-width:3.5;stroke-linecap:round}
+#splash .sp-ring .bg{stroke:rgba(255,255,255,.16)}
+#splash .sp-ring .fg{stroke:#fff;stroke-dasharray:90 316;animation:spSpin 1.5s linear infinite;transform-origin:50% 50%}
+#splash .sp-name{position:relative;margin-top:26px;font-size:32px;font-weight:800;letter-spacing:.2px;animation:spUp .7s ease .25s both}
+#splash .sp-name span{color:#93c5fd}
+#splash .sp-tag{position:relative;margin-top:6px;font-size:14px;opacity:.82;animation:spUp .7s ease .4s both;text-align:center}
+#splash .sp-bar{position:relative;margin-top:34px;width:min(240px,64vw);height:5px;border-radius:99px;background:rgba(255,255,255,.18);overflow:hidden;animation:spUp .6s ease .55s both}
+#splash .sp-bar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#bfdbfe,#fff);box-shadow:0 0 14px rgba(255,255,255,.7);transition:width .5s ease;animation:spBar 1.9s cubic-bezier(.3,.7,.2,1) .5s forwards}
+#splash.done .sp-bar i{animation:none;width:100%;transition:width .3s ease}
+#splash .sp-status{position:relative;margin-top:12px;font-size:12.5px;opacity:.8;min-height:18px;animation:spUp .6s ease .7s both}
+#splash .sp-ver{position:absolute;bottom:calc(18px + env(safe-area-inset-bottom));font-size:11.5px;opacity:.55;letter-spacing:.4px}
+@keyframes spPop{0%{opacity:0;transform:scale(.4) rotate(-12deg)}100%{opacity:1;transform:none}}
+@keyframes spUp{0%{opacity:0;transform:translateY(14px)}100%{opacity:1;transform:none}}
+@keyframes spFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes spSpin{to{transform:rotate(360deg)}}
+@keyframes spGlow{0%,100%{transform:scale(.9);opacity:.75}50%{transform:scale(1.08);opacity:1}}
+@keyframes spDrift{to{background-position:26px 26px}}
+@keyframes spBar{0%{width:0}60%{width:72%}100%{width:90%}}
+@media (prefers-reduced-motion:reduce){#splash *{animation-duration:.01s!important;animation-iteration-count:1!important}#splash .sp-ring .fg{stroke-dasharray:316 0}}
+</style>
     <link rel="manifest" href="manifest.webmanifest">
     <script>try{if(localStorage.getItem('esypos_design')==='classic')document.documentElement.classList.add('classic')}catch(e){}</script>
     <meta name="theme-color" content="#1e40af">
@@ -44,7 +72,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="EsyPOS">
-    <link rel="icon" href="favicon.ico?v=11.0.0" sizes="any">
+    <link rel="icon" href="favicon.ico?v=11.1.0" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16.png">
     <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
@@ -52,11 +80,44 @@
 
     <link rel="preload" href="fonts/inter-latin-var.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="fonts/fa-solid-subset.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="css/icons.css?v=11.0.0">
+    <link rel="stylesheet" href="css/icons.css?v=11.1.0">
     <style>.hidden{display:none!important}.drawer{position:fixed;top:0;height:100%;transition:transform .28s}.drawer.left{left:0;transform:translateX(-100%)}.drawer.right{right:0;transform:translateX(100%)}.drawer.open{transform:none}</style>
-    <link rel="stylesheet" href="css/style.css?v=11.0.0">
+    <link rel="stylesheet" href="css/style.css?v=11.1.0">
 </head>
 <body data-view="pos">
+
+<!-- Splash: shows instantly while the app files and shop data load -->
+<div id="splash" role="status" aria-live="polite" aria-label="Loading EsyPOS">
+    <div class="sp-dots"></div><div class="sp-glow"></div>
+    <div class="sp-logo">
+        <svg class="sp-ring" viewBox="0 0 132 132" aria-hidden="true"><circle class="bg" cx="66" cy="66" r="62.5"/><circle class="fg" cx="66" cy="66" r="62.5"/></svg>
+        <img src="assets/icons/icon-192.png" alt="" draggable="false" width="84" height="84">
+    </div>
+    <div class="sp-name">Esy<span>POS</span></div>
+    <div class="sp-tag">Simple POS for Every Business</div>
+    <div class="sp-bar"><i></i></div>
+    <div class="sp-status" id="sp-status">Starting…</div>
+    <div class="sp-ver">v11.1.0 · Secure · Works offline</div>
+</div>
+<script>
+(function(){
+  var sp=document.getElementById('splash'); if(!sp) return;
+  var st=document.getElementById('sp-status'), t0=Date.now(), gone=false;
+  var again=false; try{again=sessionStorage.getItem('esypos_splash')==='1';sessionStorage.setItem('esypos_splash','1')}catch(e){}
+  var MIN=again?650:1500;                       // first open of the session shows the full animation, reloads are quick
+  var msgs=['Starting…','Loading your shop data…','Securing your session…','Preparing the sales counter…'];
+  var i=0, tick=setInterval(function(){ if(st&&i<msgs.length-1){ st.textContent=msgs[++i]; } },520);
+  function hide(){
+    if(gone) return; gone=true; clearInterval(tick);
+    if(st) st.textContent='Ready ✓'; sp.classList.add('done');
+    setTimeout(function(){ sp.classList.add('out'); setTimeout(function(){ if(sp.parentNode) sp.parentNode.removeChild(sp); },520); },260);
+  }
+  function ready(){ var wait=Math.max(0,MIN-(Date.now()-t0)); setTimeout(hide,wait); }
+  if(document.readyState==='complete') ready(); else window.addEventListener('load',ready);
+  setTimeout(hide,8000);                        // failsafe: never trap the user on the splash
+  window.Splash={hide:hide};
+})();
+</script>
 
 <!-- Desktop sidebar -->
 <aside class="sidebar" id="sidebar">
@@ -121,20 +182,21 @@
 </section>
 
 
-<script defer src="js/core/core.js?v=11.0.0"></script>
-<script defer src="js/core/barcode.js?v=11.0.0"></script>
-<script defer src="js/core/wedge.js?v=11.0.0"></script>
-<script defer src="js/core/linear.js?v=11.0.0"></script>
-<script defer src="js/core/ui.js?v=11.0.0"></script>
-<script defer src="js/modules/app.js?v=11.0.0"></script>
-<script defer src="js/modules/people.js?v=11.0.0"></script>
-<script defer src="js/modules/misc.js?v=11.0.0"></script>
-<script defer src="js/modules/home.js?v=11.0.0"></script>
-<script defer src="js/modules/settings.js?v=11.0.0"></script>
-<script defer src="js/services/labelprinter.js?v=11.0.0"></script>
-<script defer src="js/services/guard.js?v=11.0.0"></script>
-<script defer src="js/core/config.js?v=11.0.0"></script>
-<script defer src="js/services/cloud.js?v=11.0.0"></script>
-<script defer src="js/services/pwa.js?v=11.0.0"></script>
+<script defer src="js/core/core.js?v=11.1.0"></script>
+<script defer src="js/core/barcode.js?v=11.1.0"></script>
+<script defer src="js/core/wedge.js?v=11.1.0"></script>
+<script defer src="js/core/linear.js?v=11.1.0"></script>
+<script defer src="js/core/ui.js?v=11.1.0"></script>
+<script defer src="js/modules/app.js?v=11.1.0"></script>
+<script defer src="js/modules/people.js?v=11.1.0"></script>
+<script defer src="js/modules/misc.js?v=11.1.0"></script>
+<script defer src="js/modules/home.js?v=11.1.0"></script>
+<script defer src="js/modules/settings.js?v=11.1.0"></script>
+<script defer src="js/services/labelprinter.js?v=11.1.0"></script>
+<script defer src="js/services/guard.js?v=11.1.0"></script>
+<script defer src="js/services/security.js?v=11.1.0"></script>
+<script defer src="js/core/config.js?v=11.1.0"></script>
+<script defer src="js/services/cloud.js?v=11.1.0"></script>
+<script defer src="js/services/pwa.js?v=11.1.0"></script>
 </body>
 </html>

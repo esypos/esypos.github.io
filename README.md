@@ -20,6 +20,20 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
 ---
 
+## v11.1.0 — Security, PWA and splash
+- **Security**
+  - Backup *files* no longer contain the Admin PIN hash (only the home-screen PIN hash was removed before), and restoring a file can never set, replace or remove either PIN.
+  - Restore validates the file (size and structure) before touching your data.
+  - Admin PIN lock-outs now escalate (30 s → 1 m → 5 m → 15 m → 30 m) like the home-screen PIN.
+  - Idle auto-lock: the PIN screen comes back after inactivity (minimum 3 minutes; a sale in progress gets double time) and when the page returns from the browser's back/forward cache.
+  - Clickjacking protection (frame-busting + `frame-ancestors 'none'` sent by the service worker), `nosniff`, strict referrer policy, Permissions-Policy (camera and Bluetooth only), plain-text-only paste/drop into inputs, `javascript:`/`data:` links blocked, self-XSS console warning.
+- **PWA**
+  - Atomic install (a broken release can never replace a working one), self-repair of missing offline files, offline fallback page, `updateViaCache: none` for instant update detection.
+  - Install button remembers "not now" for 7 days, iPhone/iPad "Add to Home Screen" guide, "Back online" toast, persistent-storage request retried after engagement.
+  - Manifest: launch handler (re-opens the running window), link handling, extra shortcuts (Sales history, Expenses), splash colour matched to the app.
+  - `window.PWA` helper (install, update check, repair, reset cache, storage estimate) for support.
+- **Splash screen**: animated logo ring, glow, progress bar and status text while the app starts; full animation on first open, quick on reload, respects "reduce motion", never blocks for more than 8 seconds.
+
 ## v11.0.0 — UI/UX overhaul
 - **Sales Counter toolbar redesigned**: search box, Scan, Held bills, Quick sell and scanner status now share one height and radius and line up on phone, tablet and desktop. Labels appear automatically when there is room (container queries); otherwise clean icon buttons with a count badge. Search has a clear (×) button, Esc clears it.
 - **Desktop shortcuts**: F2 Quick sell · F3 focus search · F9 checkout.

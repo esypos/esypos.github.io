@@ -9,7 +9,7 @@
   "orientation": "any",
   "lang": "en",
   "dir": "ltr",
-  "background_color": "#f3f6fb",
+  "background_color": "#1e40af",
   "theme_color": "#1e40af",
   "categories": [
     "business",
@@ -69,7 +69,8 @@
   ],
   "display_override": [
     "standalone",
-    "minimal-ui"
+    "minimal-ui",
+    "browser"
   ],
   "prefer_related_applications": false,
   "shortcuts": [
@@ -124,6 +125,39 @@
           "type": "image/png"
         }
       ]
+    },
+    {
+      "name": "Sales history",
+      "short_name": "History",
+      "description": "Past bills and returns",
+      "url": "./index.html?go=history",
+      "icons": [
+        {
+          "src": "assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Expenses",
+      "short_name": "Expenses",
+      "description": "Record shop expenses",
+      "url": "./index.html?go=expenses",
+      "icons": [
+        {
+          "src": "assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
-  ]
+  ],
+  "launch_handler": {
+    "client_mode": [
+      "navigate-existing",
+      "auto"
+    ]
+  },
+  "handle_links": "preferred"
 }
