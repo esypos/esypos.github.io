@@ -133,6 +133,9 @@
   }
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
+  // Forgiving number reader for pasted / imported text: Bengali digits, thousands commas, currency signs and spaces are accepted.
+  const cleanNum = v => String(v == null ? '' : v).replace(/[\u09E6-\u09EF]/g, d => String(d.charCodeAt(0) - 0x09E6)).replace(/[,\s\u00A0]/g, '').replace(/^[^\d.+-]+/, '');
+  const numLoose = v => num(cleanNum(v));
   const r2 = n => { n = Number(n); if (!isFinite(n)) return 0; const a = Math.abs(n), v = Math.round((a + Number.EPSILON) * 100) / 100; return n < 0 && v !== 0 ? -v : v; };   // symmetric rounding: -1.005 and 1.005 round the same way
   const fmt = n => Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
   /* Legacy unit names saved by older versions (escaped so the source stays pure ASCII) -> English units */
@@ -162,10 +165,10 @@
   const todayKey = () => dkey(new Date());
   const addDays = (key, n) => { const [y, m, d] = key.split('-').map(Number); const t = new Date(y, m - 1, d + n); return dkey(t); };
   const monthStart = () => { const t = new Date(); return t.getFullYear() + '-' + z2(t.getMonth() + 1) + '-01'; };
-  const fmtDate = iso => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  const fmtTime = iso => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const fmtDate = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
+  const fmtTime = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); };
   const fmtDT = iso => fmtDate(iso) + ' · ' + fmtTime(iso);
-  const invLabel = s => (DB.settings.invPrefix || '') + String(s.no || 0).padStart(4, '0');
+  const invLabel = s => (s.pre !== undefined ? s.pre : (DB.settings.invPrefix || '')) + String(s.no || 0).padStart(4, '0');   // the prefix is stored on each bill, so changing it later never renames old receipts
   let toastTimer = null;
   function toast(msg) {
     if (typeof document === 'undefined') return;
@@ -222,7 +225,7 @@
     if (num(c.openingDue)) rows.push({ date: c.created || '1970-01-01T00:00:00.000Z', type: 'opening', desc: 'Opening payable', debit: num(c.openingDue), credit: 0 });
     DB.purchases.forEach(p => { if (p.supplierId === id) rows.push({ date: p.date, type: 'purchase', desc: 'Purchases #' + p.no + ' (Total ' + money(p.total) + ', Payment ' + money(p.paid) + ')', debit: num(p.due), credit: 0 }); });
     DB.spayments.forEach(p => { if (p.supplierId === id) rows.push({ date: p.date, type: 'payment', desc: 'Payment' + (p.note ? ' — ' + p.note : ''), debit: 0, credit: num(p.amount) }); });
-    rows.sort((a, b) => a.date < b.date ? -1 : 1);
+    rows.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
     let bal = 0; rows.forEach(r => { bal = r2(bal + r.debit - r.credit); r.balance = bal; });
     return rows;
   }
@@ -265,7 +268,7 @@
       from, to, count: S.length, quickPending, grossSales, returnsTotal, netSales: r2(grossSales - returnsTotal),
       discount: sum(S, s => s.discount), tax: sum(S, s => s.tax), cogs: r2(cogs - retCogs), grossProfit,
       expenses, writeOff, netProfit: r2(grossProfit - expenses - writeOff), newDue: sum(S, s => s.due),
-      dueCollected: sum(P, p => p.amount), supplierPaid: sum(SP, p => p.amount) + sum(PU, p => p.paid),
+      dueCollected: sum(P, p => p.amount), supplierPaid: r2(sum(SP, p => p.amount) + sum(PU, p => p.paid)),
       purchases: sum(PU, p => p.total), cashRefund: cashRefundAmt, cashSupplier, cashNet,
       collected, topProducts: Object.values(prod).sort((a, b) => b.amount - a.amount).slice(0, 10),
       categories: Object.entries(cat).sort((a, b) => b[1] - a[1]), S, R, E, P, PU
@@ -303,7 +306,7 @@
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
   }
-  const api = { K, DEFAULTS, DB, safeLoad, safeSave, save, saveAll, flush, rev: () => rev, collator, debounce, imgSrc, cur, load, migrate, esc, num, r2, fmt, money, genId, z2, dkey, todayKey, addDays, monthStart,
+  const api = { K, DEFAULTS, DB, safeLoad, safeSave, save, saveAll, flush, rev: () => rev, collator, debounce, imgSrc, cur, load, migrate, esc, num, cleanNum, numLoose, r2, fmt, money, genId, z2, dkey, todayKey, addDays, monthStart,
     fmtDate, fmtTime, fmtDT, invLabel, toast, unitLabel, findProduct, findCustomer, findSupplier, findSale, customerBalance, supplierBalance, totalCustomerDue,
     totalSupplierDue, returnedQty, returnedAmount, customerLedger, supplierLedger, buildReport, stockValue, toCSV, parseCSV, download, inRange };
   root.Core = api;

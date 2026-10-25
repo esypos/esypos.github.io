@@ -340,7 +340,7 @@
       ${S.status === 'error' && S.detail ? `<p class="xs muted mt2" style="overflow-wrap:anywhere">Details: ${esc(S.detail)}</p>` : ''}
       <button class="btn btn-primary btn-block btn-lg mt3" onclick="Cloud.syncNow()"><i class="fas fa-cloud-arrow-up"></i> Back up</button>
       <button class="btn btn-soft btn-block mt2" onclick="Cloud.replaceNow()"><i class="fas fa-cloud-arrow-down"></i> Replace with latest backup</button>
-      <label class="switch mt3"><span class="sm fw6"><i class="fas fa-rotate ptext"></i> Live sync every 5 seconds</span><input type="checkbox" ${autoOn() ? 'checked' : ''} onchange="Cloud.autoToggle(this.checked)"></label>
+      <label class="switch mt3"><span class="sm fw6"><i class="fas fa-rotate ptext"></i> Live sync between devices</span><input type="checkbox" ${autoOn() ? 'checked' : ''} onchange="Cloud.autoToggle(this.checked)"></label>
       <button class="btn btn-danger-soft btn-block mt2" onclick="Cloud.signOut()"><i class="fas fa-right-from-bracket"></i> Log out</button>
       <p class="xs muted mt3">🔒 Every sale saves to Google Drive instantly. Same Google account on any device — same data.</p>`;
   }
@@ -541,7 +541,12 @@
     } else showGate('new');
     renderUI();
     if (clientId() && navigator.onLine) loadGIS().catch(() => {});
-    setInterval(poll, 5000);
+    // Live sync: checks Google Drive for changes from another device. Starts quick, then slows down while nothing changes (keeps Google's free quota safe for everyone).
+    let idleTicks = 0, lastRev = get(KEY.rev);
+    const nextDelay = () => document.visibilityState !== 'visible' ? 60000 : idleTicks < 6 ? 8000 : idleTicks < 30 ? 20000 : 45000;
+    const loop = async () => { try { await poll(); } catch (_) {} const r = get(KEY.rev); idleTicks = r !== lastRev ? 0 : idleTicks + 1; lastRev = r; setTimeout(loop, nextDelay()); };
+    setTimeout(loop, 5000);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') idleTicks = 0; });
     window.addEventListener('online', () => { if (!isOn()) return; if (!validTok()) { if (get(KEY.dirty) === '1') setStatus('auth'); } else if (get(KEY.dirty) === '1') { setStatus('pending'); push(); } });
     window.addEventListener('offline', () => { if (isOn()) { if (!validTok()) S.status = 'offline'; renderUI(); } });
     document.addEventListener('visibilitychange', () => {

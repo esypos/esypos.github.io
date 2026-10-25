@@ -20,6 +20,36 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
 ---
 
+## v11.4.0 — App-like design + Telegram community
+- **Phone**: installed-app feel — no pull-to-refresh bounce, press feedback on every button, no accidental text selection on buttons, 16px inputs (no iOS zoom), 44px touch targets, safe-area aware spacing above the bottom bar.
+- **Desktop**: desktop-app feel — a window-style title bar (page name, shop, total users, cloud status, theme, lock), thin scrollbars, tidier sidebar, and shortcuts: **Alt+1…5** (Sales / Dashboard / Products / Customers / Reports) and **Ctrl+L** (lock).
+- **Telegram channel invite** ([t.me/esypos](https://t.me/esypos)) shown in five places: sign-in page, desktop sidebar, mobile menu, Dashboard banner, and a one-time welcome pop-up (repeats at most every 7 days until the user taps Join).
+- New files: `css/appshell.css`, `js/services/appshell.js`, `js/services/community.js` (added to the service-worker shell; `CACHE_VERSION` bumped in `sw.js` and `pwa.js`).
+
+## v11.3.0 — Easier for every business, safer data, bug fixes
+**Easier to use**
+- **Dashboard quick actions**: New sale, Add product, Add expense, Stock in and Collect due are one tap away. A short **Get started** guide helps a new shop (shop name → first product → first sale → PIN) and can be hidden.
+- **More business types** in Settings → Shop info: Hardware / Building materials, Bakery / Sweets, Cosmetics / Beauty, **Service / Salon / Repair** and Other. Each adds matching product fields; service items start with stock tracking off, so a haircut or repair never shows "out of stock".
+- **A4 invoice** (Receipt → *A4 invoice*) for wholesale and business customers, and **Print account statement** on every customer — full page with running balance.
+- Forms no longer close when you tap outside them, so a half-filled product, expense or return is never lost by accident (press Cancel or ✕ to close).
+- Number boxes select their old value when tapped, so typing replaces it; phones show the decimal keypad. **Enter** completes the sale in the checkout box.
+- CSV import understands Bengali digits, thousands commas (1,200), currency signs and dates like 31/12/2026.
+
+**Bugs fixed**
+- **Admin PIN bypass**: opening a locked page through an app shortcut (`?go=expenses`, `?go=history` …) skipped the Admin PIN when no home-screen PIN was set. The lock is now applied before the first screen opens.
+- **Stock with decimals**: a product with 2.5 Kg left could be added to the cart as 3 Kg and then fail at checkout. The cart now stops at exactly what is on the shelf (and adds the remaining 0.5 when less than 1 is left).
+- **Invoice prefix**: changing the prefix in Settings used to rename every old receipt. Each bill now keeps the prefix it was created with.
+- **CSV re-import** no longer wipes the category, unit, low-stock limit or expiry of an existing product when those cells are blank, matches names regardless of capital letters, and records stock changes in the Stock log.
+- **Delete all data** now downloads a backup file first (previously the safety copy was never made). **Restore** skips damaged records instead of letting one bad entry break Reports.
+- **Admin PIN lock-out** showed the wrong waiting time. **Re-lock after idle** offered 1 and 2 minutes but always used 3 — the choices are now 3 / 5 / 10 / 15 minutes and really apply.
+- **WhatsApp**: international numbers (+1…, 0044…) are no longer rewritten with the Bangladesh code.
+- Settings → Save no longer resets the tax of a bill in progress. Bluetooth receipts now show returns and the bill note, like the paper receipt.
+- Supplier ledger order is stable for same-time entries; supplier-paid totals no longer show floating-point noise; invalid dates show blank instead of "Invalid Date".
+
+**Faster and lighter**
+- New purchase: the product list is built once instead of once per row (large catalogues stay smooth).
+- Live sync slows down while nothing changes (8 s → 20 s → 45 s) and the user counter refreshes every 30 minutes instead of every minute — less battery and data, and it keeps Google Drive's free quota safe for all users.
+
 ## v11.2.0 — Smoother Google connection, layout fixes, App & device panel
 - **No more sudden jumps to Google.** The app used to renew its Google access every hour in the background (on open, on returning to the tab, on reconnect and on a timer), and each renewal briefly opened Google's page. Now it renews only when there is something to back up, only after a tap, never during a sale or while a dialog is open, and at most once every 2 minutes. Opening the app with nothing to back up never touches Google. Signing in the first time still shows Google's account chooser (Google requires it).
 - Layout: date fields in Expenses and the barcode option pills no longer run past the screen edge on small phones; long names wrap instead of stretching cards.

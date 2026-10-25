@@ -92,7 +92,7 @@
       if (r === 'ok') { log('Unlocked: ' + (name || 'section')); if (!noOpen) openUntil = Date.now() + minutes() * 60000; Modal.close(m); done(); }
       else {
         log(r === 'wait' ? 'PIN lock-out (too many wrong attempts)' : 'Wrong PIN for ' + (name || 'section'));
-        msg.textContent = r === 'wait' ? '⚠️ Too many wrong attempts. Wait ' + Math.max(1, Math.ceil((Lock.until - Date.now()) / 1000)) + ' seconds.' : '⚠️ Wrong PIN';
+        msg.textContent = r === 'wait' ? '⚠️ Too many wrong attempts. Wait ' + Admin.wait() + ' seconds.' : '⚠️ Wrong PIN';
         inp.value = ''; if (navigator.vibrate) navigator.vibrate(100); inp.focus();
       }
       busy = false;
@@ -102,10 +102,14 @@
     setTimeout(() => inp.focus(), 60);
   }
 
-  function hook() {
-    if (!window.App || App.__guarded) return; App.__guarded = true; hookDash(); migrate();
+  function hookGo() {
+    if (!window.App || App.__goGuard) return; App.__goGuard = true;
     const go0 = App.go.bind(App);
     App.go = function (v) { if (needs(v)) { ask(() => go0(v), v); return; } extend(); go0(v); };
+  }
+  function hook() {
+    if (!window.App || App.__guarded) return; App.__guarded = true; hookDash(); migrate();
+    hookGo();
     if (window.Cloud && Cloud.panel) {
       const p0 = Cloud.panel;
       Cloud.panel = function () { if (needs('settings')) { ask(() => p0.apply(Cloud, arguments), 'settings'); return; } return p0.apply(Cloud, arguments); };
@@ -147,7 +151,7 @@
 
   function card() {
     const host = document.querySelector('#view .st-sec[data-s="security"]'); if (!host) return;
-    const has = Admin.has(), L = lockedList(), mins = minutes(), auto = parseInt(DB.settings.autoLockMin, 10) || 1;
+    const has = Admin.has(), L = lockedList(), mins = minutes(), auto = Math.max(3, parseInt(DB.settings.autoLockMin, 10) || 3);
     const opt = (v, cur, txt) => '<option value="' + v + '"' + (v === cur ? ' selected' : '') + '>' + txt + '</option>';
     const html = '<div class="card pad mb3" id="guard-card"><div class="sec-title"><i class="fas fa-user-shield ptext"></i> 2. Admin lock (hide info from staff)</div>' +
       (has ? '<p class="muted sm mb3">ON — ticked sections and profit need the <b>Admin PIN</b>. Staff can still sell.</p><div class="flex gap2 mb3"><button class="btn btn-ghost grow" onclick="AdminLock.setup()">Change Admin PIN</button><button class="btn btn-danger-soft grow" onclick="AdminLock.remove()">Remove</button></div>' :
@@ -157,7 +161,7 @@
       '<div class="grid2 mt3"><div class="field"><label class="label">Re-lock sections after</label><select class="input" onchange="Guard.set(\'sectionLockMin\',this.value)">' +
       opt(1, mins, '1 minute') + opt(2, mins, '2 minutes') + opt(5, mins, '5 minutes') + opt(15, mins, '15 minutes') + '</select></div>' +
       '<div class="field"><label class="label">Home screen re-lock after idle</label><select class="input" onchange="Guard.set(\'autoLockMin\',this.value)">' +
-      opt(1, auto, '1 minute') + opt(2, auto, '2 minutes') + opt(5, auto, '5 minutes') + opt(15, auto, '15 minutes') + '</select></div></div>' +
+      opt(3, auto, '3 minutes') + opt(5, auto, '5 minutes') + opt(10, auto, '10 minutes') + opt(15, auto, '15 minutes') + '</select></div></div>' +
       '<p class="xs muted mt2">5 wrong PINs lock the keypad for 30 seconds.</p></div>';
     const L2 = logs().slice(0, 10), last = parseInt(localStorage.getItem('esypos_g_last') || '0', 10), cnt = parseInt(localStorage.getItem('esypos_g_cnt') || '0', 10);
     const on = localStorage.getItem('esypos_g_on') === '1', dirty = localStorage.getItem('esypos_g_dirty') === '1';
@@ -222,7 +226,8 @@
     hook(); pill(); setTimeout(count, 1500);
     window.addEventListener('online', count);
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && !parseInt(LS.get('esypos_uc') || '0', 10)) count(); });
-    setInterval(() => { if (document.visibilityState === 'visible' && navigator.onLine) count(); }, 60000);   // keeps the shown number fresh
+    setInterval(() => { if (document.visibilityState === 'visible' && navigator.onLine) count(); }, 30 * 60000);   // every 30 min (was every minute): saves battery and data
   }
+  hookGo();                                          // immediately — before the app opens its first screen (see ?go= shortcuts)
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(start, 0)); else setTimeout(start, 0);
 })();

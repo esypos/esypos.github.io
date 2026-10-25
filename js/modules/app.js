@@ -210,13 +210,16 @@
       const go = () => {
         const cartId = opt.cartKey || p.id;
         const ex = DB.cart.find(c => c.id === cartId);
+        let step = 1;                                                   // a product with 0.5 Kg left adds 0.5, never more than the shelf holds
         if (p.track !== false) {
           if (p.stock <= 0) { toast('⚠️ Out of stock!'); return; }
-          if (this.inCart(p.id) >= p.stock) { toast('⚠️ Insufficient stock!'); return; }
+          const left = r2(p.stock - this.inCart(p.id));
+          if (left <= 0) { toast('⚠️ Insufficient stock!'); return; }
+          if (left < 1) { step = left; toast('Only ' + left + ' ' + (p.unit || '') + ' left in stock'); }
         }
         const lineName = opt.lineName || p.name;
         const linePrice = opt.linePrice != null ? opt.linePrice : p.price;
-        if (ex) ex.qty++; else DB.cart.push({ id: cartId, productId: p.id, name: lineName, price: linePrice, cost: p.cost || 0, qty: 1, unit: p.unit, note: opt.note || '' });
+        if (ex) ex.qty = r2(ex.qty + step); else DB.cart.push({ id: cartId, productId: p.id, name: lineName, price: linePrice, cost: p.cost || 0, qty: step, unit: p.unit, note: opt.note || '' });
         C.save('cart'); this.lastAdded = { id: cartId, isNew: !ex }; this.renderCart(); Fx.added(p.id, quiet);
         if (opt.picked) toast('✓ Product selected: ' + lineName);
         else if (quiet) { try { window.Sound && window.Sound.play && window.Sound.play('beep'); } catch (_) {} }
@@ -249,8 +252,12 @@
       const it = DB.cart.find(c => c.id === id); if (!it) return;
       const p = findProduct(it.productId || id); const n = it.qty + d;
       if (n <= 0) DB.cart = DB.cart.filter(c => c.id !== id);
-      else if (p && p.track !== false && (this.inCart(p.id) - it.qty + n) > p.stock) { toast('⚠️ Insufficient stock!'); return; }
-      else it.qty = n;
+      else if (p && p.track !== false && (this.inCart(p.id) - it.qty + n) > p.stock) {
+        const allowed = r2(p.stock - (this.inCart(p.id) - it.qty));       // fractional stock: use what is left instead of refusing
+        if (d > 0 && allowed > it.qty) { it.qty = allowed; toast('Only ' + allowed + ' ' + (p.unit || '') + ' in stock'); }
+        else { toast('⚠️ Insufficient stock!'); return; }
+      }
+      else it.qty = r2(n);
       C.save('cart'); this.renderCart();
     },
     remove(id) { DB.cart = DB.cart.filter(c => c.id !== id); C.save('cart'); this.renderCart(); },
@@ -356,7 +363,7 @@
           <button class="pay-opt" data-m="mobile" onclick="POS.setMethod('mobile')"><i class="fas fa-mobile-screen"></i>Mobile</button>
           <button class="pay-opt" data-m="due" onclick="POS.setMethod('due')"><i class="fas fa-clock"></i>Due</button>
         </div>
-        <div class="field"><label class="label" id="co-paid-label">Amount received</label><input id="co-paid" type="number" step="any" min="0" class="input" style="font-size:18px;font-weight:700" oninput="POS.coCalc()"></div>
+        <div class="field"><label class="label" id="co-paid-label">Amount received</label><input id="co-paid" type="number" inputmode="decimal" step="any" min="0" class="input" style="font-size:18px;font-weight:700" oninput="POS.coCalc()" onkeydown="if(event.key==='Enter'){event.preventDefault();POS.complete()}"></div>
         <div class="chips mb3" id="co-quick"></div>
         <div class="card pad-s mb3" id="co-info"></div>
         <button class="btn btn-ghost btn-block mb3" id="co-cust" onclick="POS.coPick()"></button>
@@ -400,7 +407,7 @@
       const proceed = () => {
         DB.cart.forEach(it => { const p = findProduct(it.productId || it.id); if (p && p.track !== false) p.stock = r2(p.stock - it.qty); });
         const sale = {
-          id: genId(), no: DB.settings.nextInvoice++, date: new Date().toISOString(), customerId: this.customerId || null,
+          id: genId(), no: DB.settings.nextInvoice++, pre: DB.settings.invPrefix || '', date: new Date().toISOString(), customerId: this.customerId || null,
           items: DB.cart.map(c => ({ id: c.productId || c.id, key: c.id, name: c.name, price: c.price, cost: (findProduct(c.productId || c.id) || {}).cost || c.cost || 0, qty: c.qty, unit: c.unit, note: c.note || '', ...(c.quick ? { quick: true, costPending: !!c.costPending } : {}) })),
           subtotal: t.subtotal, discount: t.discount, tax: t.tax, total: t.total, paid, due, change,
           paymentMethod: this.payMethod === 'due' ? (paid > 0 ? 'cash' : 'due') : this.payMethod,
@@ -474,7 +481,7 @@
       const cats = [...new Set(DB.products.map(x => x.category).filter(Boolean))];
       const biz = DB.settings.businessType || 'retail';
       const extra = this._extraFieldsHtml(biz, p);
-      const m = Modal.open({ title: p ? 'Edit Product' : 'New Product', size: 'xl', body: `
+      const m = Modal.open({ title: p ? 'Edit Product' : 'New Product', size: 'xl', static: true, body: `
         <div class="pf-layout"><div class="pf-main">
         <div class="flex gap3 mb3 items-c"><label style="cursor:pointer"><div class="avatar" id="pf-img" style="width:64px;height:64px;overflow:hidden">${this.img ? `<img alt="" src="${esc(this.img)}" style="width:100%;height:100%;object-fit:cover">` : '<i class="fas fa-camera"></i>'}</div><input type="file" accept="image/*" class="hidden" onchange="Products.pickImg(this)"></label>
           <div class="grow"><label class="label">Product name *</label><input id="pf-name" class="input" autofocus value="${esc(p ? p.name : '')}"></div></div>
@@ -495,15 +502,15 @@
         <div class="grid2"><div class="field"><label class="label">Current stock</label><input id="pf-stock" type="number" step="any" class="input" value="${p ? p.stock : 0}"></div>
           <div class="field"><label class="label">Low stock limit</label><input id="pf-min" type="number" step="any" min="0" class="input" value="${p ? (p.minStock === undefined ? 5 : p.minStock) : (DB.settings.lowStockDefault || 5)}"></div></div>
         <div class="field"><label class="label">Expiry date (optional)</label><input id="pf-exp" type="date" class="input" value="${esc(p ? p.expiry : '')}"></div>
-        <label class="switch"><span class="sm fw6">Track stock <span class="muted xs">(off for service/unlimited)</span></span><input type="checkbox" id="pf-track" ${!p || p.track !== false ? 'checked' : ''}></label>
+        <label class="switch"><span class="sm fw6">Track stock <span class="muted xs">(off for service/unlimited)</span></span><input type="checkbox" id="pf-track" ${p ? (p.track !== false ? 'checked' : '') : (biz === 'service' ? '' : 'checked')}></label>
         </div><div class="pf-side">
         ${extra}
-        <div id="pf-variants-box" class="${biz === 'restaurant' || biz === 'clothing' || this._variants.length ? '' : 'hidden'}">
+        <div id="pf-variants-box" class="${['restaurant', 'clothing', 'bakery', 'service', 'cosmetics'].indexOf(biz) >= 0 || this._variants.length ? '' : 'hidden'}">
           <div class="sec-title mt3"><i class="fas fa-sliders ptext"></i> Sizes / Variants <button type="button" class="btn btn-sm btn-soft" onclick="Products.addVariantRow()">+ Add</button></div>
           <div id="pf-variants" class="mb2"></div>
           <p class="xs muted">e.g. Pizza 6″ / 9″ / 12″ with different prices</p>
         </div>
-        <div id="pf-addons-box" class="${biz === 'restaurant' || this._addons.length ? '' : 'hidden'}">
+        <div id="pf-addons-box" class="${biz === 'restaurant' || biz === 'bakery' || this._addons.length ? '' : 'hidden'}">
           <div class="sec-title mt3"><i class="fas fa-plus ptext"></i> Add-ons / Modifiers <button type="button" class="btn btn-sm btn-soft" onclick="Products.addAddonGroup()">+ Group</button></div>
           <div id="pf-addons" class="mb2"></div>
           <p class="xs muted">e.g. Sauce, Extra cheese, Toppings — shown when selling</p>
@@ -540,6 +547,29 @@
         return `<div class="sec-title mt3"><i class="fas fa-tags ptext"></i> Extra details</div>
           <div class="grid2"><div class="field"><label class="label">Brand</label><input id="pf-brand" class="input" value="${esc(p.brand || '')}"></div>
             <div class="field"><label class="label">SKU / Item code</label><input id="pf-sku" class="input" value="${esc(p.sku || '')}"></div></div>`;
+      }
+      if (biz === 'service') {
+        return `<div class="sec-title mt3"><i class="fas fa-tags ptext"></i> Service details</div>
+          <div class="grid2"><div class="field"><label class="label">Duration (min)</label><input id="pf-duration" type="number" min="0" inputmode="numeric" class="input" value="${p.durationMin != null ? p.durationMin : ''}"></div>
+            <div class="field"><label class="label">Notes (staff, includes…)</label><input id="pf-svcnote" class="input" value="${esc(p.serviceNote || '')}"></div></div>
+          <p class="xs muted">Services do not use stock. Tracking is switched off by default; turn it on only for items you also keep in stock.</p>`;
+      }
+      if (biz === 'hardware') {
+        return `<div class="sec-title mt3"><i class="fas fa-tags ptext"></i> Hardware details</div>
+          <div class="grid2"><div class="field"><label class="label">Brand</label><input id="pf-brand" class="input" value="${esc(p.brand || '')}"></div>
+            <div class="field"><label class="label">Size / grade / spec</label><input id="pf-spec" class="input" value="${esc(p.spec || '')}" placeholder="e.g. 12mm, 60 grade"></div></div>
+          <div class="field"><label class="label">SKU / Item code</label><input id="pf-sku" class="input" value="${esc(p.sku || '')}"></div>`;
+      }
+      if (biz === 'bakery') {
+        return `<div class="sec-title mt3"><i class="fas fa-tags ptext"></i> Bakery / food details</div>
+          <div class="grid2"><div class="field"><label class="label">Allergens / notes</label><input id="pf-allergens" class="input" value="${esc(p.allergens || '')}" placeholder="Nuts, egg, dairy…"></div>
+            <div class="field"><label class="label">SKU / Item code</label><input id="pf-sku" class="input" value="${esc(p.sku || '')}"></div></div>`;
+      }
+      if (biz === 'cosmetics') {
+        return `<div class="sec-title mt3"><i class="fas fa-tags ptext"></i> Beauty details</div>
+          <div class="grid2"><div class="field"><label class="label">Brand</label><input id="pf-brand" class="input" value="${esc(p.brand || '')}"></div>
+            <div class="field"><label class="label">Shade / size</label><input id="pf-shade" class="input" value="${esc(p.shade || '')}"></div></div>
+          <div class="field"><label class="label">SKU / Batch</label><input id="pf-sku" class="input" value="${esc(p.sku || '')}"></div>`;
       }
       if (biz === 'restaurant') {
         return `<div class="sec-title mt3"><i class="fas fa-tags ptext"></i> Food details</div>
@@ -741,6 +771,10 @@
       if ($('pf-sku')) obj.sku = $('pf-sku').value.trim();
       if ($('pf-prep')) obj.prepMinutes = Math.max(0, num($('pf-prep').value));
       if ($('pf-allergens')) obj.allergens = $('pf-allergens').value.trim();
+      if ($('pf-duration')) obj.durationMin = Math.max(0, num($('pf-duration').value));
+      if ($('pf-svcnote')) obj.serviceNote = $('pf-svcnote').value.trim();
+      if ($('pf-spec')) obj.spec = $('pf-spec').value.trim();
+      if ($('pf-shade')) obj.shade = $('pf-shade').value.trim();
       // variants & addons
       obj.variants = (this._variants || []).filter(v => (v.name || '').trim()).map(v => ({ name: String(v.name).trim(), price: Math.max(0, num(v.price)) }));
       obj.addons = (this._addons || []).filter(g => (g.name || '').trim()).map(g => ({
@@ -776,16 +810,24 @@
         let rows = C.parseCSV(e.target.result); if (!rows.length) { toast('⚠️ File is empty'); return; }
         if (/^\s*(Name|name)\s*$/i.test(rows[0][0] || '')) rows = rows.slice(1);
         let add = 0, upd = 0, bad = 0, sci = 0;
+        const isoDate = v => { v = String(v || '').trim(); if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v; const m = v.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/); return m ? m[3] + '-' + C.z2(m[2]) + '-' + C.z2(m[1]) : ''; };   // 31/12/2026 -> 2026-12-31
+        let badDate = 0;
         rows.forEach(r => {
-          const name = (r[0] || '').trim(); const price = parseFloat(r[4]); if (!name || !isFinite(price) || price < 0) { bad++; return; }
+          const name = (r[0] || '').trim(); const price = parseFloat(C.cleanNum(r[4])); if (!name || !isFinite(price) || price < 0) { bad++; return; }
           let bc = (r[1] || '').trim();
           if (bc && window.Wedge && Wedge.isSciNotation(bc)) { sci++; bc = ''; }   // Excel turned the barcode into 8.9E+12 — unusable, never store it
-          let p = (bc && DB.products.find(x => x.barcode && (window.Wedge ? Wedge.key(x.barcode) === Wedge.key(bc) : x.barcode === bc))) || DB.products.find(x => x.name === name);
-          const data = { name, category: (r[2] || '').trim(), cost: Math.max(0, num(r[3])), price, stock: Math.max(0, num(r[5])), unit: (r[6] || '').trim() || 'Pcs', minStock: r[7] === undefined || r[7] === '' ? (DB.settings.lowStockDefault || 5) : Math.max(0, num(r[7])), expiry: (r[8] || '').trim() };
-          if (bc) data.barcode = bc;                                                  // an empty barcode cell must NEVER erase the barcode already saved
-          if (p) { Object.assign(p, data); upd++; } else { DB.products.push(Object.assign({ id: genId(), track: true, image: null, barcode: '' }, data)); add++; }
+          let p = (bc && DB.products.find(x => x.barcode && (window.Wedge ? Wedge.key(x.barcode) === Wedge.key(bc) : x.barcode === bc))) || DB.products.find(x => (x.name || '').trim().toLowerCase() === name.toLowerCase());
+          const minRaw = r[7] === undefined ? '' : String(r[7]).trim(), exp = isoDate(r[8]); if (String(r[8] || '').trim() && !exp) badDate++;
+          // an empty cell never erases what is already saved on an existing product
+          const data = { name, category: (r[2] || '').trim() || (p && p.category) || '', cost: Math.max(0, C.numLoose(r[3])), price, stock: Math.max(0, C.numLoose(r[5])), unit: (r[6] || '').trim() || (p && p.unit) || 'Pcs',
+            minStock: minRaw === '' ? (p && p.minStock !== undefined ? p.minStock : (DB.settings.lowStockDefault == null ? 5 : DB.settings.lowStockDefault)) : Math.max(0, C.numLoose(minRaw)), expiry: exp || (p && !String(r[8] || '').trim() ? p.expiry || '' : '') };
+          if (bc) data.barcode = bc;
+          if (p) {
+            if (p.track !== false && r2(num(p.stock)) !== r2(data.stock)) { DB.adjust.unshift({ id: genId(), date: new Date().toISOString(), productId: p.id, name: data.name, type: data.stock > num(p.stock) ? 'fix+' : 'fix-', qty: r2(data.stock - num(p.stock)), cost: num(data.cost), pl: false, note: 'CSV import' }); }
+            Object.assign(p, data); upd++;
+          } else { DB.products.push(Object.assign({ id: genId(), track: true, image: null, barcode: '' }, data)); add++; }
         });
-        C.save('products'); Modal.closeAll(); toast(`✓ ${add} new, ${upd} updated${bad ? ', ' + bad + ' excluded' : ''}${sci ? ' · ⚠️ ' + sci + ' barcode(s) were damaged by Excel (like 8.9E+12) and skipped — format the Barcode column as Text' : ''}`); App.refresh();
+        C.save('products'); C.save('adjust'); Modal.closeAll(); toast(`✓ ${add} new, ${upd} updated${bad ? ', ' + bad + ' excluded' : ''}${badDate ? ' · ' + badDate + ' expiry date(s) not understood (use YYYY-MM-DD)' : ''}${sci ? ' · ⚠️ ' + sci + ' barcode(s) were damaged by Excel (like 8.9E+12) and skipped — format the Barcode column as Text' : ''}`); App.refresh();
       };
       rd.readAsText(f);
     }
@@ -846,7 +888,7 @@
     C.load(); POS.taxInit(); buildNav();
     const start = () => {
       let first = 'pos'; try { const g = new URLSearchParams(location.search).get('go'); if (g && App.Views[g]) first = g; } catch (_) {}   // app-icon shortcuts: index.html?go=products
-      App.go(first); checkPendingBackup(); POS.renderCart(); if (window.Cloud) Cloud.init();
+      App.go('pos'); if (first !== 'pos') App.go(first); checkPendingBackup(); POS.renderCart(); if (window.Cloud) Cloud.init();
       if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});   // ask the browser not to evict shop data
     };
     if (window.Lock) Lock.init(start); else start();

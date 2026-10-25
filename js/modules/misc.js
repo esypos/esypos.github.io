@@ -51,6 +51,7 @@
         <div class="receipt" id="rc-paper">${this.inner(s)}</div>
         <div style="max-width:380px;margin:14px auto 0">
           <div class="grid2 mb2"><button class="btn btn-primary" onclick="Receipt.print()"><i class="fas fa-print"></i> Print</button><button class="btn btn-soft" onclick="Receipt.bt()"><i class="fab fa-bluetooth-b"></i> ${btOk ? 'Bluetooth print' : 'Bluetooth connect'}</button></div>
+          <button class="btn btn-ghost btn-block mb2" onclick="Receipt.printA4()"><i class="fas fa-file-invoice"></i> A4 invoice (for business customers)</button>
           <div class="grid2 mb2"><button class="btn btn-ghost" onclick="Receipt.share('wa')"><i class="fab fa-whatsapp ok"></i> WhatsApp</button><button class="btn btn-ghost" onclick="Receipt.share('sms')"><i class="fas fa-message"></i> SMS</button></div>
           ${s.items.some(i => i.quick) ? `<button class="btn btn-soft btn-block mb2" onclick="Receipt.costs('${s.id}')"><i class="fas fa-pen"></i> ${s.items.some(i => i.quick && i.costPending) ? 'Add cost (quick-sell items)' : 'Edit cost (quick-sell items)'}</button>` : ''}
           <div class="grid2">${s.due > 0 && s.customerId ? `<button class="btn btn-ok" onclick="People.collect('${s.customerId}')"><i class="fas fa-hand-holding-dollar"></i> Due Collected</button>` : '<span></span>'}
@@ -63,6 +64,22 @@
       printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Receipt</title><style>${RC_CSS}body{width:${w}}</style></head><body>${this.inner(this.cur)}</body></html>`);
     },
     bt() { Printer.print(this.cur); },
+    /* Full-page A4 invoice: shop header, bill-to, item table, totals and signature lines. Handy for wholesale, services and companies that need a proper invoice. */
+    printA4() {
+      const s = this.cur; if (!s) return; const sh = DB.settings; const cust = findCustomer(s.customerId); const ret = C.returnedAmount(s.id); const bal = cust ? C.customerBalance(cust.id) : 0;
+      const css = `body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0;padding:22px;font-size:13px}h1{margin:0 0 4px;font-size:24px}.top{display:flex;justify-content:space-between;gap:24px;border-bottom:2px solid #111;padding-bottom:12px;margin-bottom:14px}.m{color:#555}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{padding:7px 6px;border-bottom:1px solid #ddd;text-align:left;vertical-align:top}th{background:#f1f5f9;font-size:12px}.r{text-align:right}.tot{margin:14px 0 0 auto;width:290px}.tot div{display:flex;justify-content:space-between;padding:4px 0}.tot .g{font-size:16px;font-weight:700;border-top:2px solid #111;margin-top:4px;padding-top:8px}.sign{display:flex;justify-content:space-between;margin-top:80px}.sign div{border-top:1px solid #111;padding-top:6px;width:200px;text-align:center;font-size:12px}.ft{margin-top:26px;text-align:center;color:#555;font-size:12px}@page{size:A4;margin:12mm}`;
+      const rows = s.items.map((i, k) => `<tr><td>${k + 1}</td><td>${esc(i.name)}${i.note ? `<div class="m">+ ${esc(i.note)}</div>` : ''}</td><td class="r">${i.qty} ${esc(C.unitLabel(i.unit))}</td><td class="r">${money(i.price)}</td><td class="r">${money(r2(i.price * i.qty))}</td></tr>`).join('');
+      const line = (a, b, cls) => `<div${cls ? ` class="${cls}"` : ''}><span>${a}</span><span>${b}</span></div>`;
+      printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invoice ${esc(C.invLabel(s))}</title><style>${css}</style></head><body>
+        <div class="top"><div><h1>${esc(sh.shopName || 'EsyPOS')}</h1>${sh.shopAddress ? `<div class="m">${esc(sh.shopAddress)}</div>` : ''}${sh.shopPhone ? `<div class="m">Phone: ${esc(sh.shopPhone)}</div>` : ''}${sh.taxId ? `<div class="m">VAT/BIN: ${esc(sh.taxId)}</div>` : ''}</div>
+        <div style="text-align:right"><h1>INVOICE</h1><div>No: <b>#${esc(C.invLabel(s))}</b></div><div>Date: ${esc(C.fmtDate(s.date))}</div><div>Payment: ${esc(MN[s.paymentMethod] || '')}</div></div></div>
+        <div><b>Bill to:</b> ${cust ? esc(cust.name) + (cust.phone ? ' · ' + esc(cust.phone) : '') + (cust.address ? '<div class="m">' + esc(cust.address) + '</div>' : '') : 'Walk-in customer'}</div>
+        <table><thead><tr><th>#</th><th>Item</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Amount</th></tr></thead><tbody>${rows}</tbody></table>
+        <div class="tot">${line('Subtotal', money(s.subtotal))}${s.discount > 0 ? line('Discount', '-' + money(s.discount)) : ''}${s.tax > 0 ? line('Tax', money(s.tax)) : ''}${line('Total', money(s.total), 'g')}${line('Paid', money(s.paid))}${s.due > 0 ? line('Due on this invoice', money(s.due)) : ''}${ret > 0 ? line('Returned', '-' + money(ret)) : ''}${cust && bal > 0 ? line('Total outstanding', money(bal)) : ''}</div>
+        ${s.note ? `<p class="m">Note: ${esc(s.note)}</p>` : ''}
+        <div class="sign"><div>Customer signature</div><div>Authorised signature</div></div>
+        <div class="ft">${esc(sh.footer || '')}</div></body></html>`);
+    },
     share(kind) { const s = this.cur; const c = findCustomer(s.customerId); const ph = c ? c.phone : ''; if (kind === 'wa') shareWA(ph, this.text(s)); else shareSMS(ph, this.text(s)); },
     /* Fill in / correct the real cost of quick-sell items on a finished bill. Reports use item.cost, so profit updates by itself. */
     costs(id) {
@@ -239,6 +256,7 @@
   };
   App.Views.reports = Rep;
   App.Views.dashboard = {
+    hideGuide() { try { localStorage.setItem('esypos_guide_off', '1'); } catch (_) {} this.render(); },
     render() {
       const t = C.todayKey(); const td = C.buildReport(t, t); const mo = C.buildReport(C.monthStart(), t);
       const days = []; const dn = {};
@@ -251,7 +269,24 @@
       const soon = C.addDays(t, 30); const exp = DB.products.filter(p => p.expiry && p.expiry <= soon).sort((a, b) => a.expiry < b.expiry ? -1 : 1).slice(0, 6);
       const debtors = DB.customers.map(c => ({ c, b: C.customerBalance(c.id) })).filter(x => x.b > 0).sort((a, b) => b.b - a.b).slice(0, 5);
       const recent = DB.sales.slice(0, 5);
+      const qa = `<div class="qa-row" role="group" aria-label="Quick actions">
+        <button type="button" class="qa" onclick="App.go('pos')"><i class="fas fa-cash-register"></i><span>New sale</span></button>
+        <button type="button" class="qa" onclick="Home.addProduct()"><i class="fas fa-box-open"></i><span>Add product</span></button>
+        <button type="button" class="qa" onclick="App.go('expenses');setTimeout(function(){Exp.add()},60)"><i class="fas fa-money-bill-wave"></i><span>Add expense</span></button>
+        <button type="button" class="qa" onclick="App.go('purchases');setTimeout(function(){Buy.newPurchase()},60)"><i class="fas fa-truck"></i><span>Stock in</span></button>
+        <button type="button" class="qa" onclick="People.cf='due';App.go('customers')"><i class="fas fa-hand-holding-dollar"></i><span>Collect due</span></button></div>`;
+      let guideOff = false; try { guideOff = localStorage.getItem('esypos_guide_off') === '1'; } catch (_) {}
+      const steps = [
+        ['Add your shop name and details', !!DB.settings.shopName && DB.settings.shopName !== 'My Shop', "App.go('settings');setTimeout(function(){Settings.open('shop')},60)"],
+        ['Add your first product (or use Quick sell)', DB.products.length > 0 || DB.sales.some(s => (s.items || []).some(i => i.quick)), 'Home.addProduct()'],
+        ['Make your first sale', DB.sales.length > 0, "App.go('pos')"],
+        ['Lock the app with a PIN (optional)', !!(window.Lock && Lock.has()), "App.go('settings');setTimeout(function(){Settings.open('security')},60)"]
+      ];
+      const doneN = steps.filter(x => x[1]).length;
+      const guide = (!guideOff && doneN < steps.length) ? `<div class="card pad mb3 guide"><div class="flex between items-c mb2"><div class="sec-title" style="margin:0"><i class="fas fa-rocket ptext"></i> Get started <span class="badge b-p">${doneN}/${steps.length}</span></div><button type="button" class="link-btn" onclick="App.Views.dashboard.hideGuide()">Hide</button></div>
+        ${steps.map(x => `<button type="button" class="guide-step ${x[1] ? 'ok' : ''}" onclick="${x[2]}"><i class="fas ${x[1] ? 'fa-circle-check' : 'fa-circle'}"></i><span>${x[0]}</span><i class="fas fa-chevron-right go"></i></button>`).join('')}</div>` : '';
       $('view').innerHTML = `<div class="page-head"><div><h2>Dashboard</h2><p>${esc(DB.settings.shopName)} · ${C.fmtDate(new Date().toISOString())}</p></div></div>
+      ${qa}${guide}
       <div class="stats"><div class="stat hl"><div class="k">Today's sales</div><div class="v">${money(td.netSales)}</div></div>
         <div class="stat" data-profit="1"><div class="k">Today's profit</div><div class="v ok">${money(td.grossProfit)}</div></div><div class="stat"><div class="k">Today's bills</div><div class="v">${td.count}</div></div><div class="stat"><div class="k">Today's expenses</div><div class="v bad">${money(td.expenses)}</div></div>
         <div class="stat"><div class="k">This month's sales</div><div class="v">${money(mo.netSales)}</div></div><div class="stat" data-profit="1"><div class="k">This month's net profit</div><div class="v ${mo.netProfit >= 0 ? 'ok' : 'bad'}">${money(mo.netProfit)}</div></div>

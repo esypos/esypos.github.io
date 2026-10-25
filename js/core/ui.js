@@ -67,7 +67,8 @@
       const el = document.createElement('div'); el.className = 'modal-back';
       el.innerHTML = '<div class="modal-sheet ' + (o.size || '') + '" role="dialog" aria-modal="true"><div class="modal-head"><h3>' + esc(o.title || '') + '</h3><button type="button" class="icon-btn" data-x aria-label="Close"><i class="fas fa-xmark"></i></button></div><div class="modal-body">' + (o.body || '') + '</div>' + (o.foot ? '<div class="modal-foot">' + o.foot + '</div>' : '') + '</div>';
       el.querySelector('[data-x]').onclick = () => Modal.close(el);
-      if (!o.static) el.addEventListener('mousedown', e => { if (e.target === el) Modal.close(el); });
+      const keepOpen = o.static !== undefined ? !!o.static : /<(input|select|textarea)\b/i.test(o.body || '');   // a form never closes on an accidental tap outside it
+      if (!keepOpen) el.addEventListener('mousedown', e => { if (e.target === el) Modal.close(el); });
       el._onClose = o.onClose;
       document.body.appendChild(el); Modal.stack.push(el); syncLock();
       const f = el.querySelector('[autofocus]'); if (f) setTimeout(() => f.focus(), 60);
@@ -131,6 +132,12 @@
     try { localStorage.setItem('esypos_last_backup', String(Date.now())); } catch (_) {}
     toast('✓ Backup file saved');
   };
+  // Keep only well-formed records from a backup file, so one damaged entry can never break Reports or History.
+  function cleanColl(k, arr) {
+    if (!Array.isArray(arr)) return [];
+    const needItems = { sales: 1, returns: 1, purchases: 1, hold: 1 };
+    return arr.filter(x => x && typeof x === 'object' && !Array.isArray(x) && (!needItems[k] || Array.isArray(x.items))).map(x => { if (!x.id) x.id = Core.genId(); return x; });
+  }
   window.importData = function (input) {
     const file = input.files && input.files[0]; input.value = ''; if (!file) return;
     const rd = new FileReader();
@@ -140,9 +147,11 @@
         if (raw.length > 60 * 1024 * 1024) throw new Error('big');
         const d = JSON.parse(raw);
         if (!d || typeof d !== 'object' || !Array.isArray(d.products)) throw new Error('bad');
-        if (d.settings && typeof d.settings !== 'object') throw new Error('bad');
-        askConfirm(`Backup has ${d.products.length} products, ${(d.sales || []).length} sales, ${(d.customers || []).length} customers. Current data will be replaced.`, () => {
-          Object.keys(K).forEach(k => { if (k === 'settings') { const keep = { pinHash: DB.settings.pinHash || '', pinSalt: DB.settings.pinSalt || '', adminHash: DB.settings.adminHash || '', adminSalt: DB.settings.adminSalt || '' }; DB.settings = Object.assign({}, Core.DEFAULTS, d.settings || {}, keep);   /* a backup file can never set or remove the PINs */ } else if (k === 'cart') DB.cart = []; else DB[k] = Array.isArray(d[k]) ? d[k] : []; });
+        if (d.settings && (typeof d.settings !== 'object' || Array.isArray(d.settings))) throw new Error('bad');
+        const clean = {}; let dropped = 0;
+        Object.keys(K).forEach(k => { if (k === 'settings' || k === 'cart') return; clean[k] = cleanColl(k, d[k]); dropped += (Array.isArray(d[k]) ? d[k].length : 0) - clean[k].length; });
+        askConfirm(`Backup has ${clean.products.length} products, ${clean.sales.length} sales, ${clean.customers.length} customers. Current data will be replaced.` + (dropped > 0 ? ` (${dropped} damaged record${dropped > 1 ? 's' : ''} will be skipped.)` : '') + ' Tip: save a backup file of the current data first.', () => {
+          Object.keys(K).forEach(k => { if (k === 'settings') { const keep = { pinHash: DB.settings.pinHash || '', pinSalt: DB.settings.pinSalt || '', adminHash: DB.settings.adminHash || '', adminSalt: DB.settings.adminSalt || '' }; DB.settings = Object.assign({}, Core.DEFAULTS, d.settings || {}, keep);   /* a backup file can never set or remove the PINs */ } else if (k === 'cart') DB.cart = []; else DB[k] = clean[k]; });
           Core.migrate(); saveAll(); toast('Restore successful ✓'); setTimeout(() => location.reload(), 700);
         }, { title: 'Restore backup?', yes: 'Yes, restore', danger: true });
       } catch (err) { toast('⚠️ Not a valid EsyPOS backup file'); }
@@ -151,16 +160,17 @@
   };
   window.wipeAllData = function () {
     const cloudNote = window.Cloud && Cloud.isOn() ? ' Your Google Drive backup is NOT deleted — signing in again will restore it.' : '';
-    askConfirm('All data on this device (products, sales, customers, expenses...) will be deleted.' + cloudNote, () => {
+    askConfirm('All data on this device (products, sales, customers, expenses...) will be deleted. A backup file is saved to your Downloads first.' + cloudNote, () => {
       askConfirm('Really delete all data? This cannot be undone!', () => {
-        exportData(true, true);
-        setTimeout(() => { Object.values(K).forEach(k => localStorage.removeItem(k)); ['esypos_last_backup', 'esypos_dirty'].forEach(k => localStorage.removeItem(k)); location.reload(); }, 900);
+        try { window.exportBackupFile(); } catch (_) {}          // the safety copy is downloaded BEFORE anything is removed
+        setTimeout(() => { Object.values(K).forEach(k => localStorage.removeItem(k)); ['esypos_last_backup', 'esypos_dirty'].forEach(k => localStorage.removeItem(k)); location.reload(); }, 1500);
       }, { title: 'Final confirmation', yes: 'Yes, delete all', danger: true });
     }, { title: 'Delete all data?', yes: 'Continue', danger: true });
   };
   window.checkPendingBackup = function () {};
   window.phoneIntl = function (p) {
-    let d = String(p || '').replace(/\D/g, ''); if (!d) return '';
+    const raw = String(p || '').trim(); let d = raw.replace(/\D/g, ''); if (!d) return '';
+    if (raw.charAt(0) === '+' || d.startsWith('00')) return d.replace(/^00/, '');   // already international (+1…, 0044…): keep the country code
     if (d.startsWith('880')) return d; if (d.startsWith('0')) return '88' + d; return '880' + d;
   };
   window.shareWA = function (phone, text) { const n = phoneIntl(phone); window.open('https://wa.me/' + (n || '') + '?text=' + encodeURIComponent(text), '_blank', 'noopener'); };
@@ -171,4 +181,8 @@
     const d = f.contentWindow.document; d.open(); d.write(html); d.close();
     setTimeout(() => { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { toast('Could not print'); } setTimeout(() => f.remove(), 2000); }, 400);
   };
+  document.addEventListener('focusin', e => {
+    const t = e.target;
+    if (t && t.tagName === 'INPUT' && t.type === 'number') { if (!t.getAttribute('inputmode')) t.setAttribute('inputmode', 'decimal'); setTimeout(() => { try { t.select(); } catch (_) {} }, 0); }
+  }, true);
 })();

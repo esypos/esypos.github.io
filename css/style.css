@@ -1403,3 +1403,20 @@ img,svg,video,canvas{max-width:100%}
 .sys-dot.ok{background:#16a34a;box-shadow:0 0 0 4px rgba(22,163,74,.15)}
 .sys-dot.warn{background:#f59e0b;box-shadow:0 0 0 4px rgba(245,158,11,.15)}
 @media print{#splash,.pwa-install-btn,.pwa-update-bar,#net-badge,.bottom-nav,.cart-bar,.topbar,.sidebar{display:none!important}}
+
+/* ===== v11.3: dashboard quick actions + getting-started guide ===== */
+.qa-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:10px;margin-bottom:14px}
+.qa{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:78px;padding:10px 6px;border:1px solid var(--border);border-radius:var(--r-lg);background:var(--card);color:var(--text);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);transition:transform .15s var(--ease),border-color .15s,background .15s}
+.qa i{font-size:20px;color:var(--primary)}
+.qa:hover{border-color:var(--primary);background:var(--psoft)}
+.qa:active{transform:scale(.97)}
+.qa span{text-align:center;line-height:1.2}
+.guide-step{display:flex;align-items:center;gap:12px;width:100%;padding:11px 8px;margin:0;border:0;border-top:1px solid var(--border);background:none;color:var(--text);font:inherit;font-size:13.5px;font-weight:600;text-align:left;cursor:pointer;border-radius:0}
+.guide-step:first-of-type{border-top:0}
+.guide-step i:first-child{font-size:18px;color:var(--muted);flex:none}
+.guide-step.ok i:first-child{color:var(--ok)}
+.guide-step.ok span{color:var(--muted);text-decoration:line-through}
+.guide-step span{flex:1;min-width:0}
+.guide-step .go{font-size:11px;color:var(--muted)}
+.guide-step:hover{background:var(--hover)}
+@media print{.qa-row,.guide{display:none!important}}

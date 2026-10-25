@@ -8,7 +8,7 @@
   const People = window.People = {
     cq: '', cf: 'all', tab: 'purchases', pr: [],
     pick(cb, allowNone) {
-      const m = Modal.open({ title: 'Select customer', body: `
+      const m = Modal.open({ title: 'Select customer', static: false, body: `
         <div class="relative mb3"><i class="fas fa-magnifying-glass search-ico"></i><input id="pk-q" class="input has-ico" placeholder="Name or phone..." oninput="People._pk()" autofocus></div>
         ${allowNone ? '<button class="btn btn-ghost btn-block mb3" id="pk-none">Walk-in customer (none)</button>' : ''}
         <button class="btn btn-soft btn-block mb3" id="pk-new"><i class="fas fa-user-plus"></i> Add new customer</button><div class="card" id="pk-list"></div>` });
@@ -76,6 +76,7 @@
           <div class="xs muted mt1">${esc(c.phone || 'No phone')}${c.address ? ' · ' + esc(c.address) : ''}${c.creditLimit ? ' · limit ' + money(c.creditLimit) : ''}</div></div>
         <div class="grid2 mb3"><button class="btn btn-primary" onclick="People.collect('${id}')"><i class="fas fa-hand-holding-dollar"></i> Due Collected</button>
           <button class="btn btn-soft" onclick="People.remind('${id}')"><i class="fas fa-bell"></i> Reminder</button></div>
+        <button class="btn btn-ghost btn-block mb3" onclick="People.statement('${id}')"><i class="fas fa-print"></i> Print account statement</button>
         <div class="sec-title">Ledger</div>
         <div class="card tbl-wrap"><table class="tbl"><thead><tr><th>Date</th><th>Description</th><th class="r">Due +</th><th class="r">Paid −</th><th class="r">Balance</th></tr></thead><tbody>${led.length ? led.map(r => `<tr ${r.type === 'sale' ? `onclick="Receipt.showId('${r.ref}')" style="cursor:pointer"` : ''}><td class="xs">${C.fmtDate(r.date)}</td><td class="sm">${esc(r.desc)}</td><td class="r bad">${r.debit ? money(r.debit) : ''}</td><td class="r ok">${r.credit ? money(r.credit) : ''}</td><td class="r fw6">${money(r.balance)}</td></tr>`).join('') : '<tr><td colspan="5" class="empty">No transactions</td></tr>'}</tbody></table></div>`,
         foot: `<button class="btn btn-danger-soft" onclick="People.del('${id}')"><i class="fas fa-trash"></i></button><button class="btn" onclick="People.edit('${id}',()=>{Modal.closeAll();People.detail('${id}');App.refresh()})"><i class="fas fa-pen"></i> Edit</button>` });
@@ -107,6 +108,16 @@
         <button class="btn btn-soft" id="rm-sms"><i class="fas fa-message"></i> SMS</button></div>${c.phone ? '' : '<p class="xs muted mt2">No phone number — pick a contact in WhatsApp.</p>'}` });
       m.querySelector('#rm-wa').onclick = () => shareWA(c.phone || '', txt);
       m.querySelector('#rm-sms').onclick = () => shareSMS(c.phone || '', txt);
+    },
+    /* A4 account statement: every bill, payment and return with a running balance, to hand or send to the customer. */
+    statement(id) {
+      const c = findCustomer(id); if (!c) return; const led = C.customerLedger(id), b = C.customerBalance(id), sh = DB.settings;
+      const rows = led.map(r => `<tr><td>${esc(C.fmtDate(r.date))}</td><td>${esc(r.desc)}</td><td class="r">${r.debit ? money(r.debit) : ''}</td><td class="r">${r.credit ? money(r.credit) : ''}</td><td class="r"><b>${money(r.balance)}</b></td></tr>`).join('') || '<tr><td colspan="5">No transactions</td></tr>';
+      printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Statement - ${esc(c.name)}</title><style>body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0;padding:22px;font-size:13px}h1{margin:0 0 4px;font-size:22px}.m{color:#555}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:7px 6px;border-bottom:1px solid #ddd;text-align:left;vertical-align:top}th{background:#f1f5f9;font-size:12px}.r{text-align:right}.box{margin-top:16px;padding:12px;border:2px solid #111;font-size:16px;display:flex;justify-content:space-between}@page{size:A4;margin:12mm}</style></head><body>
+        <h1>${esc(sh.shopName || 'EsyPOS')}</h1>${sh.shopPhone ? `<div class="m">Phone: ${esc(sh.shopPhone)}</div>` : ''}
+        <h2 style="margin:16px 0 4px">Account statement</h2><div><b>${esc(c.name)}</b>${c.phone ? ' · ' + esc(c.phone) : ''}</div><div class="m">Printed ${esc(C.fmtDate(new Date().toISOString()))}</div>
+        <table><thead><tr><th>Date</th><th>Description</th><th class="r">Due +</th><th class="r">Paid −</th><th class="r">Balance</th></tr></thead><tbody>${rows}</tbody></table>
+        <div class="box"><span>${b >= 0 ? 'Amount due' : 'Advance balance'}</span><b>${money(Math.abs(b))}</b></div></body></html>`);
     },
     del(id) {
       const c = findCustomer(id); const used = DB.sales.some(s => s.customerId === id) || DB.payments.some(p => p.customerId === id);
@@ -216,7 +227,8 @@
     quickSup() { Buy.editSup(null, id => { const sel = $('pu-sup'); if (sel) { sel.innerHTML += `<option value="${id}">${esc(findSupplier(id).name)}</option>`; sel.value = id; } }); },
     rows() {
       const el = $('pu-rows'); if (!el) return;
-      el.innerHTML = People.pr.map((r, i) => `<div class="card pad-s mb2"><div class="flex gap2 mb2"><select class="input grow" onchange="Buy.selP(${i},this.value)"><option value="">Select product...</option>${DB.products.slice().sort((a, b) => a.name.localeCompare(b.name, 'bn')).map(p => `<option value="${p.id}" ${r.pid === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select><button class="icon-btn" aria-label="Remove" title="Remove" onclick="Buy.delRow(${i})"><i class="fas fa-xmark bad"></i></button></div>
+      if (this._or !== C.rev()) { this._oh = DB.products.slice().sort((a, b) => C.collator.compare(a.name, b.name)).map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join(''); this._or = C.rev(); }   // built once per change, not once per row (big catalogs stay fast)
+      el.innerHTML = People.pr.map((r, i) => `<div class="card pad-s mb2"><div class="flex gap2 mb2"><select class="input grow" onchange="Buy.selP(${i},this.value)"><option value="">Select product...</option>${r.pid ? this._oh.replace('value="' + r.pid + '"', 'value="' + r.pid + '" selected') : this._oh}</select><button class="icon-btn" aria-label="Remove" title="Remove" onclick="Buy.delRow(${i})"><i class="fas fa-xmark bad"></i></button></div>
         <div class="grid2"><div><label class="label">Qty</label><input type="number" step="any" min="0" class="input" value="${r.qty}" oninput="Buy.setR(${i},'qty',this.value)"></div><div><label class="label">Unit purchase price</label><input type="number" step="any" min="0" class="input" value="${r.cost}" oninput="Buy.setR(${i},'cost',this.value)"></div></div></div>`).join('');
       this.puCalc();
     },

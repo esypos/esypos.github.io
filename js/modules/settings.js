@@ -169,7 +169,7 @@
     init(start) { if (this.has()) this.show(start); else start(); },
     lockNow() { if (!this.has()) { toast('Set PIN in Settings first'); return; } this.show(() => {}); },
     onHide() { this.hiddenAt = Date.now(); },
-    onResume() { if (this.has() && !this.el && this.hiddenAt && Date.now() - this.hiddenAt > (parseInt(DB.settings.autoLockMin, 10) || 1) * 60000) this.show(() => {}); },
+    onResume() { if (this.has() && !this.el && this.hiddenAt && Date.now() - this.hiddenAt > Math.max(3, parseInt(DB.settings.autoLockMin, 10) || 3) * 60000) this.show(() => {}); },
     penalty() {                                   // 30s, 1m, 5m, 15m, 30m for repeated lock-outs
       let lv = 0; try { lv = parseInt(localStorage.getItem('esypos_lk_l') || '0', 10) || 0; localStorage.setItem('esypos_lk_l', String(lv + 1)); } catch (_) {}
       const secs = [30, 60, 300, 900, 1800][Math.min(4, lv)]; this.until = Date.now() + secs * 1000; this.fails = 0; return secs;
@@ -270,7 +270,9 @@
       if (s.discount > 0) L.push({ t: 'Discount', t2: '-' + fmt(s.discount), s: 21 }); if (s.tax > 0) L.push({ t: 'Tax', t2: fmt(s.tax), s: 21 });
       L.push({ t: 'Total', t2: C.cur() + fmt(s.total), s: 28, b: 1 }, { t: 'Paid', t2: fmt(s.paid), s: 21 });
       if (s.change > 0) L.push({ t: 'Change given', t2: fmt(s.change), s: 21 }); if (s.due > 0) L.push({ t: 'Due on this bill', t2: fmt(s.due), s: 23, b: 1 });
+      const retAmt = C.returnedAmount(s.id); if (retAmt > 0) L.push({ t: 'Returned', t2: '-' + fmt(retAmt), s: 21 });
       if (cust && bal > 0) L.push({ t: 'Total due', t2: fmt(bal), s: 23, b: 1 });
+      if (s.note) L.push({ t: 'Note: ' + s.note, s: 19 });
       L.push({ hr: 1 }, { t: sh.footer || '', a: 'c', s: 20 }, { gap: 40 });
       return L;
     },
@@ -366,6 +368,11 @@
           <option value="electronics" ${s.businessType==='electronics'?'selected':''}>Electronics / Mobile</option>
           <option value="clothing" ${s.businessType==='clothing'?'selected':''}>Clothing / Fashion</option>
           <option value="wholesale" ${s.businessType==='wholesale'?'selected':''}>Wholesale / Distributor</option>
+          <option value="hardware" ${s.businessType==='hardware'?'selected':''}>Hardware / Building materials</option>
+          <option value="bakery" ${s.businessType==='bakery'?'selected':''}>Bakery / Sweets / Food shop</option>
+          <option value="cosmetics" ${s.businessType==='cosmetics'?'selected':''}>Cosmetics / Beauty</option>
+          <option value="service" ${s.businessType==='service'?'selected':''}>Service / Salon / Repair (no stock)</option>
+          <option value="other" ${s.businessType==='other'?'selected':''}>Other business</option>
         </select>
         <p class="xs muted mt1">Adds matching fields to the product form. Example amount: <b>${esc(s.currency)}1,250.50</b></p></div>
         ${SAVE}</div>`)}
@@ -406,7 +413,7 @@
         <div class="sys-row"><span class="sys-dot" id="sy-d1"></span><div class="sys-k">Works offline<small id="sy-s1">Checking…</small></div></div>
         <div class="sys-row"><span class="sys-dot" id="sy-d2"></span><div class="sys-k">Installed as an app<small id="sy-s2">Checking…</small></div><button type="button" class="btn btn-primary hidden" id="sy-inst" onclick="PWA.install()">Install</button></div>
         <div class="sys-row"><span class="sys-dot" id="sy-d3"></span><div class="sys-k">Data protected from cleanup<small id="sy-s3">Checking…</small></div></div>
-        <div class="sys-row"><span class="sys-dot ok"></span><div class="sys-k">Version<small>EsyPOS v11.2.0</small></div><button type="button" class="btn btn-ghost" onclick="Settings.checkUpdate(this)">Check update</button></div>
+        <div class="sys-row"><span class="sys-dot ok"></span><div class="sys-k">Version<small>EsyPOS v11.4.0</small></div><button type="button" class="btn btn-ghost" onclick="Settings.checkUpdate(this)">Check update</button></div>
         <div class="sys-row"><div class="sys-k">Storage used<small id="sy-s4">—</small></div></div>
         <div class="sys-row"><div class="sys-k">Repair offline files<small>Re-downloads the app files if something looks broken. Your shop data is not touched.</small></div><button type="button" class="btn btn-ghost" onclick="PWA.reset()">Repair</button></div></div>`)}
       ${sec('about', `<div class="card pad mb3">
@@ -423,7 +430,7 @@
       s.barcodePrefix = (($('st-bcpre') && $('st-bcpre').value) || 'ESY').replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 6) || 'ESY';
       s.barcodeFormat = ($('st-bcfmt') && $('st-bcfmt').value) || 'code128';
       const bn = parseInt($('st-bcnext') && $('st-bcnext').value, 10); if (isFinite(bn) && bn >= 1) s.nextBarcode = bn;
-      C.save('settings'); POS.taxInit(); POS.renderCart(); toast('Settings saved ✓');
+      C.save('settings'); if (!DB.cart.length) POS.taxInit(); POS.renderCart(); toast('Settings saved ✓');   // a bill in progress keeps the tax the cashier chose
     }
   };
   window.Settings = App.Views.settings;
