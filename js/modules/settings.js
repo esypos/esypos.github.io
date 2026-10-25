@@ -346,7 +346,7 @@
         ['security', 'fa-lock', 'Security', 'PIN lock'],
         ['printers', 'fa-print', 'Printers', 'Label and Bluetooth receipt printer'],
         ['backup', 'fa-cloud-arrow-up', 'Backup & data', 'Google Drive, backup file, reset'],
-        ['system', 'fa-microchip', 'App & device', 'Install, updates, offline, storage'],
+        ['system', 'fa-mobile-screen-button', 'App & device', 'Install, updates, offline, storage'],
         ['about', 'fa-scale-balanced', 'About & legal', 'Privacy, terms, license']
       ];
       const sec = (id, body) => { const m = SEC.find(x => x[0] === id); return `<section class="st-sec" data-s="${id}"><div class="st-sec-head"><button type="button" class="icon-btn st-back" onclick="Settings.back()" aria-label="Back to settings"><i class="fas fa-chevron-right fa-rotate-180"></i></button><div class="st-ico"><i class="fas ${m[1]}"></i></div><div><h3>${m[2]}</h3><p>${m[3]}</p></div></div>${body}</section>`; };
@@ -413,7 +413,7 @@
         <div class="sys-row"><span class="sys-dot" id="sy-d1"></span><div class="sys-k">Works offline<small id="sy-s1">Checking…</small></div></div>
         <div class="sys-row"><span class="sys-dot" id="sy-d2"></span><div class="sys-k">Installed as an app<small id="sy-s2">Checking…</small></div><button type="button" class="btn btn-primary hidden" id="sy-inst" onclick="PWA.install()">Install</button></div>
         <div class="sys-row"><span class="sys-dot" id="sy-d3"></span><div class="sys-k">Data protected from cleanup<small id="sy-s3">Checking…</small></div></div>
-        <div class="sys-row"><span class="sys-dot ok"></span><div class="sys-k">Version<small>EsyPOS v11.4.1</small></div><button type="button" class="btn btn-ghost" onclick="Settings.checkUpdate(this)">Check update</button></div>
+        <div class="sys-row"><span class="sys-dot ok"></span><div class="sys-k">Version<small>EsyPOS v11.5.0</small></div><button type="button" class="btn btn-ghost" onclick="Settings.checkUpdate(this)">Check update</button></div>
         <div class="sys-row"><div class="sys-k">Storage used<small id="sy-s4">—</small></div></div>
         <div class="sys-row"><div class="sys-k">Repair offline files<small>Re-downloads the app files if something looks broken. Your shop data is not touched.</small></div><button type="button" class="btn btn-ghost" onclick="PWA.reset()">Repair</button></div></div>`)}
       ${sec('about', `<div class="card pad mb3">

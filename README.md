@@ -20,6 +20,12 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
 ---
 
+## v11.5.0 — Dashboard first
+- The app now **opens on a redesigned Dashboard**: greeting + shop name, big *Today's sales* with a comparison to yesterday, Profit / Bills / Expenses, quick actions, monthly overview and a 7-day chart. Profit stays hidden behind the Admin PIN lock if you enabled it.
+- **Sales Counter removed from the menu.** Start a sale from **New sale** (Dashboard, desktop title bar, or the centre button of the phone bottom bar). Alt+2 and F2 still open it.
+- **One way to do everything**: Cloud Backup is opened from the account card only, Sign out lives inside the Cloud panel, the desktop title bar no longer repeats the theme / lock / user-count / sync buttons that the sidebar already has, and unused code was removed.
+- The camera **Scan** button is now visible on phones inside the Sales Counter (the old centre scan button became *New sale*).
+
 ## v11.4.1 — Sign-in page redesign, menu order
 - **Sign-in page** redesigned for phone and laptop: removed the large empty gaps, compact feature chips, tidy About section, consistent spacing.
 - **Telegram** invite now appears only in the menu and on the sign-in page (dashboard banner and pop-up removed) with the official round Telegram logo.

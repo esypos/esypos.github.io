@@ -8,7 +8,7 @@
   const $ = id => document.getElementById(id);
   const ITEMS = [
     ['reports', 'Reports (sales & profit analysis)', 'fa-chart-column'],
-    ['profit', 'Dashboard profit (today & monthly, tap lock to view)', 'fa-eye-slash'],
+    ['profit', 'Dashboard profit (today & monthly, tap lock to view)', 'fa-lock'],
     ['dashboard', 'Dashboard (whole page)', 'fa-gauge-high'],
     ['purchases', 'Purchases & Suppliers (cost prices)', 'fa-truck'],
     ['expenses', 'Expenses', 'fa-money-bill-wave'],
@@ -129,7 +129,7 @@
   const profitLocked = () => !!(Admin.has() && lockedList().indexOf('profit') >= 0 && Date.now() > profitOpen);
   function maskProfit() {
     const view = $('view'); if (!view || !profitLocked()) return;
-    view.querySelectorAll('.stat[data-profit]').forEach(el => {
+    view.querySelectorAll('.stat[data-profit],.hm[data-profit]').forEach(el => {
       const v = el.querySelector('.v'); if (!v || el.classList.contains('stat-locked')) return;
       el.classList.add('stat-locked'); el.setAttribute('role', 'button'); el.tabIndex = 0;
       el.setAttribute('aria-label', 'Profit hidden. Tap to enter PIN');
@@ -155,7 +155,7 @@
     const opt = (v, cur, txt) => '<option value="' + v + '"' + (v === cur ? ' selected' : '') + '>' + txt + '</option>';
     const html = '<div class="card pad mb3" id="guard-card"><div class="sec-title"><i class="fas fa-user-shield ptext"></i> 2. Admin lock (hide info from staff)</div>' +
       (has ? '<p class="muted sm mb3">ON — ticked sections and profit need the <b>Admin PIN</b>. Staff can still sell.</p><div class="flex gap2 mb3"><button class="btn btn-ghost grow" onclick="AdminLock.setup()">Change Admin PIN</button><button class="btn btn-danger-soft grow" onclick="AdminLock.remove()">Remove</button></div>' :
-        '<p class="muted sm mb3">OFF — set a separate Admin PIN to choose what staff cannot see.</p><button class="btn btn-primary btn-block mb3" onclick="AdminLock.setup()"><i class="fas fa-key"></i> Set Admin PIN</button>') +
+        '<p class="muted sm mb3">OFF — set a separate Admin PIN to choose what staff cannot see.</p><button class="btn btn-primary btn-block mb3" onclick="AdminLock.setup()"><i class="fas fa-lock"></i> Set Admin PIN</button>') +
       '<div class="muted xs mb2">Choose what to lock:</div>' +
       ITEMS.map(i => '<label class="switch"><span class="sm fw6"><i class="fas ' + i[2] + ' ptext"></i> ' + esc(i[1]) + '</span><input type="checkbox" ' + (L.indexOf(i[0]) >= 0 ? 'checked' : '') + ' onchange="Guard.toggle(\'' + i[0] + '\',this.checked)"></label>').join('') +
       '<div class="grid2 mt3"><div class="field"><label class="label">Re-lock sections after</label><select class="input" onchange="Guard.set(\'sectionLockMin\',this.value)">' +

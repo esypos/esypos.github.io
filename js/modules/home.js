@@ -1,5 +1,4 @@
-/* EsyPOS (v10.11): mobile bottom navigation + quick actions.
-   The app opens straight on the Sales Counter. */
+/* EsyPOS: mobile bottom navigation (Dashboard · Products · New sale · Customers · Menu). The app opens on the Dashboard. */
 (function () {
   'use strict';
   const { toast } = Core;
@@ -11,24 +10,23 @@
     scan: '<path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 7v10M12 7v10M16 7v10"/>',
     history: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
     dash: '<rect width="7" height="9" x="3" y="3" rx="1.5"/><rect width="7" height="5" x="14" y="3" rx="1.5"/><rect width="7" height="9" x="14" y="12" rx="1.5"/><rect width="7" height="5" x="3" y="16" rx="1.5"/>',
+    users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
     menu: '<path d="M4 6h16M4 12h16M4 18h16"/>'
   };
   const ico = (n, sz) => `<svg class="ic" viewBox="0 0 24 24" width="${sz || 24}" height="${sz || 24}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n]}</svg>`;
   window.EsyIcon = ico;
 
   const Home = window.Home = {
-    addProduct() { App.go('products'); setTimeout(() => { try { Products.edit(); } catch (e) { console.error(e); } }, 60); },
-    scan() { App.go('pos'); setTimeout(() => { try { POS.scan(); } catch (e) { console.error(e); } }, 80); },
-    sell(id) { App.go('pos'); setTimeout(() => { try { POS.add(id); } catch (e) { console.error(e); } }, 60); }
+    addProduct() { App.go('products'); setTimeout(() => { try { Products.edit(); } catch (e) { console.error(e); } }, 60); }
   };
 
   /* ---- Mobile bottom navigation ---- */
   const nav = document.createElement('nav');
   nav.id = 'bottom-nav'; nav.className = 'bottom-nav'; nav.setAttribute('aria-label', 'Main');
-  nav.innerHTML = `<button type="button" data-v="pos" onclick="App.go('pos')">${ico('cart', 24)}<span>Sales</span></button>
-    <button type="button" data-v="dashboard" onclick="App.go('dashboard')">${ico('dash', 24)}<span>Dashboard</span></button>
-    <button type="button" class="bn-scan" onclick="Home.scan()" aria-label="Scan barcode">${ico('scan', 28)}</button>
+  nav.innerHTML = `<button type="button" data-v="dashboard" onclick="App.go('dashboard')">${ico('dash', 24)}<span>Dashboard</span></button>
     <button type="button" data-v="products" onclick="App.go('products')">${ico('box', 24)}<span>Products</span></button>
+    <button type="button" class="bn-scan" data-v="pos" onclick="App.go('pos')" aria-label="New sale">${ico('cart', 28)}</button>
+    <button type="button" data-v="customers" onclick="App.go('customers')">${ico('users', 24)}<span>Customers</span></button>
     <button type="button" onclick="App.toggleNav()">${ico('menu', 24)}<span>Menu</span></button>`;
   document.body.appendChild(nav);
   const syncNav = () => nav.querySelectorAll('button[data-v]').forEach(b => b.classList.toggle('active', b.dataset.v === App.view));

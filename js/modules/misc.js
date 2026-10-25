@@ -270,7 +270,6 @@
       const debtors = DB.customers.map(c => ({ c, b: C.customerBalance(c.id) })).filter(x => x.b > 0).sort((a, b) => b.b - a.b).slice(0, 5);
       const recent = DB.sales.slice(0, 5);
       const qa = `<div class="qa-row" role="group" aria-label="Quick actions">
-        <button type="button" class="qa" onclick="App.go('pos')"><i class="fas fa-cash-register"></i><span>New sale</span></button>
         <button type="button" class="qa" onclick="Home.addProduct()"><i class="fas fa-box-open"></i><span>Add product</span></button>
         <button type="button" class="qa" onclick="App.go('expenses');setTimeout(function(){Exp.add()},60)"><i class="fas fa-money-bill-wave"></i><span>Add expense</span></button>
         <button type="button" class="qa" onclick="App.go('purchases');setTimeout(function(){Buy.newPurchase()},60)"><i class="fas fa-truck"></i><span>Stock in</span></button>
@@ -283,15 +282,25 @@
         ['Lock the app with a PIN (optional)', !!(window.Lock && Lock.has()), "App.go('settings');setTimeout(function(){Settings.open('security')},60)"]
       ];
       const doneN = steps.filter(x => x[1]).length;
-      const guide = (!guideOff && doneN < steps.length) ? `<div class="card pad mb3 guide"><div class="flex between items-c mb2"><div class="sec-title" style="margin:0"><i class="fas fa-rocket ptext"></i> Get started <span class="badge b-p">${doneN}/${steps.length}</span></div><button type="button" class="link-btn" onclick="App.Views.dashboard.hideGuide()">Hide</button></div>
-        ${steps.map(x => `<button type="button" class="guide-step ${x[1] ? 'ok' : ''}" onclick="${x[2]}"><i class="fas ${x[1] ? 'fa-circle-check' : 'fa-circle'}"></i><span>${x[0]}</span><i class="fas fa-chevron-right go"></i></button>`).join('')}</div>` : '';
-      $('view').innerHTML = `<div class="page-head"><div><h2>Dashboard</h2><p>${esc(DB.settings.shopName)} · ${C.fmtDate(new Date().toISOString())}</p></div></div>
+      const guide = (!guideOff && doneN < steps.length) ? `<div class="card pad mb3 guide"><div class="flex between items-c mb2"><div class="sec-title" style="margin:0">Get started <span class="badge b-p">${doneN}/${steps.length}</span></div><button type="button" class="link-btn" onclick="App.Views.dashboard.hideGuide()">Hide</button></div>
+        ${steps.map(x => `<button type="button" class="guide-step ${x[1] ? 'ok' : ''}" onclick="${x[2]}">${x[1] ? '<i class="fas fa-circle-check"></i>' : '<i class="gs-dot"></i>'}<span>${x[0]}</span><i class="fas fa-chevron-right go"></i></button>`).join('')}</div>` : '';
+      const hr = new Date().getHours(), greet = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
+      const yk = C.addDays(t, -1), yv = C.buildReport(yk, yk).netSales;
+      const dl = yv > 0 ? Math.round((td.netSales - yv) / yv * 100) : null;
+      const chip = dl === null ? '' : `<span class="dh-chip ${dl >= 0 ? 'up' : 'dn'}">${dl >= 0 ? '▲' : '▼'} ${Math.abs(dl)}% vs yesterday</span>`;
+      const wk = r2(days.reduce((a, d) => a + d.v, 0));
+      $('view').innerHTML = `<section class="dash-hero">
+        <div class="dh-top"><div><div class="dh-greet">${greet}</div><h2>${esc(DB.settings.shopName)}</h2><p>${C.fmtDate(new Date().toISOString())}</p></div>
+          <button type="button" class="dh-sell" onclick="App.go('pos')"><i class="fas fa-cash-register"></i> New sale</button></div>
+        <div class="dh-main"><div class="dh-k">Today's sales</div><div class="dh-v">${money(td.netSales)}</div>${chip}</div>
+        <div class="dh-metrics"><div class="hm" data-profit="1"><span class="k">Profit</span><b class="v">${money(td.grossProfit)}</b></div><div class="hm"><span class="k">Bills</span><b class="v">${td.count}</b></div><div class="hm"><span class="k">Expenses</span><b class="v">${money(td.expenses)}</b></div></div>
+      </section>
       ${qa}${guide}
-      <div class="stats"><div class="stat hl"><div class="k">Today's sales</div><div class="v">${money(td.netSales)}</div></div>
-        <div class="stat" data-profit="1"><div class="k">Today's profit</div><div class="v ok">${money(td.grossProfit)}</div></div><div class="stat"><div class="k">Today's bills</div><div class="v">${td.count}</div></div><div class="stat"><div class="k">Today's expenses</div><div class="v bad">${money(td.expenses)}</div></div>
-        <div class="stat"><div class="k">This month's sales</div><div class="v">${money(mo.netSales)}</div></div><div class="stat" data-profit="1"><div class="k">This month's net profit</div><div class="v ${mo.netProfit >= 0 ? 'ok' : 'bad'}">${money(mo.netProfit)}</div></div>
-        <div class="stat" onclick="App.go('customers')" style="cursor:pointer"><div class="k">Total customer due</div><div class="v bad">${money(C.totalCustomerDue())}</div></div><div class="stat"><div class="k">Stock value</div><div class="v">${money(C.stockValue())}</div></div></div>
-      <div class="card pad mb3"><div class="sec-title"><i class="fas fa-chart-column ptext"></i> Last 7 days sales</div><div class="bars">${days.map(d => `<div class="bar"><b>${d.v ? fmt(Math.round(d.v)) : ''}</b><i style="height:${Math.max(3, d.v / mx * 90)}%"></i><small>${new Date(d.k + 'T00:00').toLocaleDateString('en-GB', { weekday: 'short' })}</small></div>`).join('')}</div></div>
+      <div class="sec-title dash-sec"><i class="fas fa-chart-column ptext"></i> This month</div>
+      <div class="stats"><div class="stat"><div class="k">Sales</div><div class="v">${money(mo.netSales)}</div></div>
+        <div class="stat" data-profit="1"><div class="k">Net profit</div><div class="v ${mo.netProfit >= 0 ? 'ok' : 'bad'}">${money(mo.netProfit)}</div></div>
+        <div class="stat" onclick="App.go('customers')" style="cursor:pointer"><div class="k">Customer due</div><div class="v bad">${money(C.totalCustomerDue())}</div></div><div class="stat"><div class="k">Stock value</div><div class="v">${money(C.stockValue())}</div></div></div>
+      <div class="card pad mb3"><div class="flex between items-c mb2"><div class="sec-title" style="margin:0"><i class="fas fa-chart-column ptext"></i> Last 7 days</div><span class="badge b-p">${money(wk)}</span></div><div class="bars">${days.map((d, i) => `<div class="bar${i === days.length - 1 ? ' today' : ''}"><b>${d.v ? fmt(Math.round(d.v)) : ''}</b><i style="height:${Math.max(3, d.v / mx * 90)}%"></i><small>${new Date(d.k + 'T00:00').toLocaleDateString('en-GB', { weekday: 'short' })}</small></div>`).join('')}</div></div>
       <div class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));align-items:start">
         <div class="card pad"><div class="sec-title"><i class="fas fa-user-clock bad"></i> Highest dues</div>${debtors.length ? debtors.map(x => `<div class="kv" onclick="People.detail('${x.c.id}')" style="cursor:pointer"><span>${esc(x.c.name)}</span><b class="bad">${money(x.b)}</b></div>`).join('') : '<div class="empty" style="padding:14px">No dues ✓</div>'}</div>
         <div class="card pad"><div class="sec-title"><i class="fas fa-triangle-exclamation warn"></i> Low Stock</div>${low.length ? low.map(p => `<div class="kv"><span>${esc(p.name)}</span><b class="bad">${p.stock} ${esc(p.unit || '')}</b></div>`).join('') : '<div class="empty" style="padding:14px">All stock levels OK ✓</div>'}</div>

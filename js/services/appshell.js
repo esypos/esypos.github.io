@@ -1,6 +1,6 @@
 /* EsyPOS App Shell (v11.4.0): makes the software feel like a native app.
    Phone  → installed-app feel: no pull-to-refresh bounce, no text-selection on buttons, press feedback, safe areas.
-   Desktop → window feel: a title bar with page name, cloud status, theme and lock, plus keyboard shortcuts. */
+   Desktop → window feel: a title bar with the page name and a New sale button, plus keyboard shortcuts. */
 (function () {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -11,13 +11,8 @@
   function bar() {
     const main = document.querySelector('.main'); if (!main || $('desk-bar')) return;
     const b = document.createElement('div'); b.id = 'desk-bar'; b.className = 'desk-bar';
-    b.innerHTML = `<div class="db-title"><b id="db-page">Sales</b><span id="db-shop"></span></div>
-      <div class="db-actions">
-        <span class="db-users" title="Total EsyPOS users"><i class="fas fa-users"></i> <b class="js-ucount">—</b></span>
-        <button type="button" class="sync-chip js-chip" onclick="Cloud.chip()" title="Google Drive Backup"></button>
-        <button type="button" class="db-btn" onclick="Theme.toggle()" title="Switch theme" aria-label="Switch theme"><i class="theme-ico fas fa-moon"></i></button>
-        <button type="button" class="db-btn" onclick="Lock.lockNow()" title="Lock (Ctrl+L)" aria-label="Lock"><i class="fas fa-lock"></i></button>
-      </div>`;
+    b.innerHTML = `<div class="db-title"><b id="db-page">Dashboard</b><span id="db-shop"></span></div>
+      <button type="button" id="db-sell" class="btn btn-primary btn-sm" onclick="App.go('pos')"><i class="fas fa-cash-register"></i> New sale</button>`;
     main.insertBefore(b, main.firstChild);
     title();
   }
@@ -25,7 +20,7 @@
   function title() {
     const p = $('db-page'); if (!p) return;
     const a = document.querySelector('#nav-desk .nav-link.active');
-    const t = a ? a.textContent.trim() : ''; if (t) p.textContent = t;
+    const t = App.view === 'pos' ? 'Sales Counter' : (a ? a.textContent.trim() : ''); if (t) p.textContent = t;
     const s = $('db-shop'); try { if (s && window.Core) s.textContent = Core.DB.settings.shopName || ''; } catch (_) {}
   }
 
@@ -34,8 +29,8 @@
     const g = App.go; App.go = function () { const r = g.apply(this, arguments); setTimeout(title, 30); return r; };
   }
 
-  /* Keyboard shortcuts for desktop: Ctrl/⌘+L lock · Alt+1..5 jump to Sales / Dashboard / Products / Customers / Reports */
-  const MAP = { '1': 'pos', '2': 'dashboard', '3': 'products', '4': 'customers', '5': 'reports' };
+  /* Keyboard shortcuts for desktop: Ctrl/⌘+L lock · Alt+1..5 jump to Dashboard / Sales / Products / Customers / Reports */
+  const MAP = { '1': 'dashboard', '2': 'pos', '3': 'products', '4': 'customers', '5': 'reports' };
   document.addEventListener('keydown', e => {
     const tag = (e.target && e.target.tagName) || '';
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'l' && !/INPUT|TEXTAREA|SELECT/.test(tag)) {

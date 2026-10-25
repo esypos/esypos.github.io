@@ -5,7 +5,6 @@
   const $ = id => document.getElementById(id);
   const NAV = [
     { id: 'dashboard', label: 'Dashboard', icon: 'fa-gauge-high' },
-    { id: 'pos', label: 'Sales Counter', icon: 'fa-cash-register' },
     { id: 'history', label: 'Sales History', icon: 'fa-file-invoice' },
     { id: 'products', label: 'Products & Stock', icon: 'fa-box-open' },
     { id: 'customers', label: 'Customers & Due', icon: 'fa-user-group' },
@@ -17,9 +16,9 @@
   ];
   const Views = {};
   const App = window.App = {
-    view: 'pos', Views,
+    view: 'dashboard', Views,
     go(v) {
-      if (!Views[v]) v = 'pos';
+      if (!Views[v]) v = 'dashboard';
       if (v === 'settings' && App.view !== 'settings' && window.Settings) Settings.sec = undefined;
       Modal.closeAll(); App.closeDrawers(); App.view = v; document.body.dataset.view = v;
       document.querySelectorAll('.nav-link[data-v]').forEach(b => b.classList.toggle('active', b.dataset.v === v));
@@ -49,7 +48,7 @@
     if (Modal.stack.length) { Modal.close(); return true; }
     if (App.drawerOpen()) { App.closeDrawers(); return true; }
     if (App.view === 'settings' && window.Settings && Settings.sec && !window.matchMedia('(min-width:1024px)').matches) { Settings.back(); return true; }
-    if (App.view !== 'pos') { App.go('pos'); return true; }
+    if (App.view !== 'dashboard') { App.go('dashboard'); return true; }
     return false;
   }
   try { history.replaceState({ root: 1 }, ''); pushGuard(); } catch (_) {}
@@ -121,7 +120,7 @@
               <input id="pos-search" class="input has-ico" type="search" enterkeyhint="search" placeholder="${window.innerWidth < 700 ? 'Search products…' : 'Search product or barcode  (F3)'}" value="${esc(this.q)}" oninput="POS.search(this.value)" onkeydown="if(event.key==='Enter')POS.enter();else if(event.key==='Escape')POS.clearSearch()" autocomplete="off" autocapitalize="off" spellcheck="false">
               <button type="button" class="pos-clear" aria-label="Clear search" title="Clear" onclick="POS.clearSearch()" ${this.q ? '' : 'hidden'}><i class="fas fa-xmark"></i></button></div>
             <div class="pos-actions" role="toolbar" aria-label="Sales tools">
-              <button type="button" class="tool-btn only-desk" onclick="POS.scan()" title="Camera scan" aria-label="Camera scan"><i class="fas fa-barcode"></i><span class="tl">Scan</span></button>
+              <button type="button" class="tool-btn" onclick="POS.scan()" title="Camera scan" aria-label="Camera scan"><i class="fas fa-barcode"></i><span class="tl">Scan</span></button>
               <button type="button" class="tool-btn" onclick="POS.showHold()" title="Held bills" aria-label="Held bills"><i class="fas fa-pause"></i><span class="tl">Held bills</span><span id="hold-count" class="tool-count"></span></button>
               <button type="button" class="tool-btn tool-accent" onclick="POS.quick()" title="Quick sell — item not in Products (F2)" aria-label="Quick sell"><i class="fas fa-cash-register"></i><span class="tl">Quick sell</span></button>
               <span class="scan-ready only-desk" title="USB/Bluetooth barcode scanner ready"><i class="fas fa-plug"></i><span class="tl">Scanner ready</span></span>
@@ -887,8 +886,8 @@
   document.addEventListener('DOMContentLoaded', () => {
     C.load(); POS.taxInit(); buildNav();
     const start = () => {
-      let first = 'pos'; try { const g = new URLSearchParams(location.search).get('go'); if (g && App.Views[g]) first = g; } catch (_) {}   // app-icon shortcuts: index.html?go=products
-      App.go('pos'); if (first !== 'pos') App.go(first); checkPendingBackup(); POS.renderCart(); if (window.Cloud) Cloud.init();
+      let first = 'dashboard'; try { const g = new URLSearchParams(location.search).get('go'); if (g && App.Views[g]) first = g; } catch (_) {}   // app-icon shortcuts: index.html?go=products
+      App.go('pos'); App.go(first); checkPendingBackup(); POS.renderCart(); if (window.Cloud) Cloud.init();
       if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});   // ask the browser not to evict shop data
     };
     if (window.Lock) Lock.init(start); else start();
