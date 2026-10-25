@@ -20,6 +20,11 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
 ---
 
+## v11.4.1 — Sign-in page redesign, menu order
+- **Sign-in page** redesigned for phone and laptop: removed the large empty gaps, compact feature chips, tidy About section, consistent spacing.
+- **Telegram** invite now appears only in the menu and on the sign-in page (dashboard banner and pop-up removed) with the official round Telegram logo.
+- **Menu**: Dashboard is now listed above Sales Counter.
+
 ## v11.4.0 — App-like design + Telegram community
 - **Phone**: installed-app feel — no pull-to-refresh bounce, press feedback on every button, no accidental text selection on buttons, 16px inputs (no iOS zoom), 44px touch targets, safe-area aware spacing above the bottom bar.
 - **Desktop**: desktop-app feel — a window-style title bar (page name, shop, total users, cloud status, theme, lock), thin scrollbars, tidier sidebar, and shortcuts: **Alt+1…5** (Sales / Dashboard / Products / Customers / Reports) and **Ctrl+L** (lock).

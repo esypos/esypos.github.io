@@ -4,8 +4,8 @@
   const C = Core, { DB, esc, num, r2, fmt, money, genId, toast, findProduct, findCustomer } = C;
   const $ = id => document.getElementById(id);
   const NAV = [
-    { id: 'pos', label: 'Sales Counter', icon: 'fa-cash-register' },
     { id: 'dashboard', label: 'Dashboard', icon: 'fa-gauge-high' },
+    { id: 'pos', label: 'Sales Counter', icon: 'fa-cash-register' },
     { id: 'history', label: 'Sales History', icon: 'fa-file-invoice' },
     { id: 'products', label: 'Products & Stock', icon: 'fa-box-open' },
     { id: 'customers', label: 'Customers & Due', icon: 'fa-user-group' },

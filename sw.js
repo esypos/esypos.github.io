@@ -1,11 +1,11 @@
-/* EsyPOS Service Worker (v11.4.0)
+/* EsyPOS Service Worker (v11.4.1)
    - Cache-first app shell, versioned per release, so the app opens instantly with or without a network.
    - Atomic install: if any CRITICAL file cannot be cached, the install fails and the previous working version keeps running.
    - Self-repair: the page can ask the worker to re-download any missing shell file (message 'REPAIR').
    - Security headers: every page served by this worker carries frame-ancestors 'none', nosniff, a strict referrer policy
      and a Permissions-Policy that only allows the camera (barcode scan) and Bluetooth (printer) for this app.
    App data lives in localStorage + the user's Google Drive; this cache only holds the app files. */
-const CACHE_VERSION = 'v11.4.0';
+const CACHE_VERSION = 'v11.4.1';
 const APP_CACHE = `esypos-app-${CACHE_VERSION}`;
 
 const CRITICAL = [

@@ -9,34 +9,48 @@ button,a,.btn{touch-action:manipulation}
 .btn,.qa,.nav-link,.guide-step{transition:transform .12s ease,background .15s,box-shadow .2s,color .15s}
 :focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:8px}
 
-/* ===== Telegram invite ===== */
-.tg-card{--tg1:#229ed9;--tg2:#1b7fc0;display:flex;align-items:center;gap:12px;text-decoration:none;color:#fff;border-radius:16px;padding:12px 14px;position:relative;overflow:hidden;
-  background:linear-gradient(135deg,var(--tg1),var(--tg2));box-shadow:0 10px 24px -12px rgba(34,158,217,.9);transition:transform .15s ease,box-shadow .2s}
-.tg-card::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.22) 50%,transparent 65%);transform:translateX(-120%);animation:tgShine 5s ease-in-out 1.5s infinite}
-.tg-card:hover{transform:translateY(-1px);box-shadow:0 14px 28px -12px rgba(34,158,217,1)}.tg-card:active{transform:scale(.98)}
-.tg-ico{flex:0 0 40px;height:40px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center}
-.tg-txt{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}.tg-txt b{font-size:14px;font-weight:800}.tg-txt small{font-size:11.5px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tg-go{flex:0 0 auto;background:#fff;color:#1b7fc0;font-weight:800;font-size:12.5px;border-radius:99px;padding:7px 13px;display:inline-flex;gap:6px;align-items:center;position:relative;z-index:1}
-.tg-side{margin:0 0 10px;padding:10px 12px}.tg-side .tg-go{display:none}.tg-side .tg-ico{flex-basis:34px;height:34px}.tg-side .tg-txt b{font-size:13px}.tg-side .tg-txt small{font-size:11px}
-.tg-wide{margin:0 0 14px;padding:14px 16px;border-radius:18px}.tg-wide .tg-ico{flex-basis:46px;height:46px;border-radius:14px}.tg-wide .tg-txt b{font-size:15.5px}
-@media(max-width:420px){.tg-wide .tg-txt small{white-space:normal}.tg-go{padding:7px 11px}}
-.tg-gate{margin:14px 0 4px}.tg-gate a{display:flex;align-items:center;justify-content:center;gap:10px;padding:11px 14px;border-radius:14px;text-decoration:none;font-size:13px;color:#1b7fc0;background:rgba(34,158,217,.1);border:1px solid rgba(34,158,217,.28)}
-.tg-gate a svg{flex:0 0 22px;color:#229ed9}.tg-gate a:hover{background:rgba(34,158,217,.16)}
-@keyframes tgShine{0%,60%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
+/* ===== Telegram invite (menu + sign-in page only) ===== */
+.tg-card{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--text);border-radius:16px;padding:10px 12px;margin:0 0 10px;
+  background:linear-gradient(135deg,rgba(42,171,238,.13),rgba(42,171,238,.05));border:1px solid rgba(42,171,238,.32);transition:transform .15s ease,box-shadow .2s,border-color .2s}
+.tg-card:hover{transform:translateY(-1px);border-color:rgba(42,171,238,.6);box-shadow:0 10px 22px -14px rgba(42,171,238,.9)}.tg-card:active{transform:scale(.98)}
+.tg-ico{flex:0 0 38px;width:38px;height:38px;display:block;filter:drop-shadow(0 4px 8px rgba(42,171,238,.45))}.tg-ico svg{width:100%;height:100%;display:block}
+.tg-txt{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.28}.tg-txt b{font-size:13.5px;font-weight:800;letter-spacing:-.01em}
+.tg-txt small{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tg-go{flex:0 0 auto;background:#2AABEE;color:#fff;font-weight:800;font-size:12.5px;border-radius:99px;padding:7px 15px;box-shadow:0 6px 14px -8px rgba(42,171,238,1)}
 
-.tg-pop{position:fixed;inset:0;z-index:450;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(2,6,23,.55);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);animation:fadeIn .22s ease;transition:opacity .22s}
-.tg-pop.out{opacity:0}
-.tg-sheet{position:relative;width:100%;max-width:380px;background:var(--card);color:var(--text);border-radius:26px;padding:0 22px 20px;text-align:center;box-shadow:0 30px 70px -20px rgba(2,6,23,.6);overflow:hidden;animation:tgUp .38s cubic-bezier(.2,1.1,.3,1)}
-.tg-hero{margin:0 -22px 14px;padding:30px 0 22px;background:radial-gradient(120% 120% at 50% 0%,#37b6f0,#229ed9 45%,#1b7fc0)}
-.tg-ring{display:inline-flex;align-items:center;justify-content:center;width:84px;height:84px;border-radius:50%;color:#fff;background:rgba(255,255,255,.2);box-shadow:0 0 0 10px rgba(255,255,255,.12),0 0 0 22px rgba(255,255,255,.07)}
-.tg-sheet h3{margin:6px 0 6px;font-size:20px;font-weight:800;letter-spacing:-.02em}.tg-sheet p{margin:0 0 12px;font-size:13.5px;color:var(--muted);line-height:1.55}
-.tg-sheet ul{list-style:none;margin:0 0 16px;padding:0;text-align:left;display:grid;gap:8px}
-.tg-sheet li{display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:600;background:var(--hover);border-radius:12px;padding:9px 12px}.tg-sheet li i{color:#229ed9;width:18px;text-align:center}
-.tg-join{background:linear-gradient(135deg,#229ed9,#1b7fc0)!important;color:#fff!important;border:0;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-shadow:0 12px 26px -12px rgba(34,158,217,1)}
-.tg-later{margin-top:8px;background:none;border:0;color:var(--muted);font:inherit;font-size:13px;font-weight:600;padding:10px;cursor:pointer}
-.tg-x{position:absolute;top:10px;right:10px;z-index:2;width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.22);color:#fff;font-size:15px;cursor:pointer}
-@keyframes tgUp{from{opacity:0;transform:translateY(28px) scale(.95)}to{opacity:1;transform:none}}
-@media(max-width:560px){.tg-pop{align-items:flex-end;padding:0}.tg-sheet{max-width:none;border-radius:26px 26px 0 0;padding-bottom:calc(20px + env(safe-area-inset-bottom))}}
+/* ===== Sign-in page: professional layout (phone + laptop) ===== */
+.gate-card{justify-content:flex-start;gap:0}
+.gate-card h2{font-size:25px;letter-spacing:-.03em;margin:0 0 8px}
+.gate-card>p{margin:0 0 20px;font-size:14px;line-height:1.6}
+.gate-card .btn-google{min-height:52px;border-radius:14px;font-weight:700}
+.gate-msg,.gate-msg:empty{min-height:0}.gate-msg:empty{margin:0}.gate-msg:not(:empty){margin:12px 0 0}
+.gate-card .tg-card{margin:18px 0 0}
+.gate-card .consent-note{margin-top:16px;font-size:11.5px}.gate-card .consent-note+.consent-note{margin-top:6px}
+.gate-chips{display:none;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:18px}
+.gate-chips span{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#fff;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);border-radius:99px;padding:6px 12px}
+.gate-chips i{font-size:11px;opacity:.9}
+.welcome .gate-about{margin:22px auto auto;padding:0 4px 28px;text-align:center}
+.gate-about>h2{font-size:clamp(16px,2.4vw,19px);margin:0 0 8px;letter-spacing:-.01em}
+.gate-about>p{font-size:13px;line-height:1.65;margin:0 auto 16px;max-width:640px}
+.gate-about h3.who,.gate-about h3.who+p{display:none}
+.about-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px;text-align:left}
+.about-grid article{padding:13px 14px;border-radius:16px;box-shadow:none}.about-grid h3{font-size:13.5px;margin:0 0 4px}.about-grid p{font-size:12.2px;line-height:1.55}
+.gate-about nav{margin-top:6px;font-size:12.5px}
+@media(max-width:780px){
+  .welcome{background:var(--card)}
+  .welcome .gate{min-height:0!important;flex:none;margin:0}
+  .gate-brand{padding:calc(30px + env(safe-area-inset-top)) 22px 46px}
+  .gate-brand h1{font-size:27px}.gate-tag{font-size:14px}
+  .gate-chips{display:flex}
+  .gate-card{flex:none;margin-top:-26px;padding:26px 20px 18px;box-shadow:0 -14px 30px -18px rgba(2,6,23,.35)}
+  .welcome .gate-about{margin:0;padding:6px 16px calc(26px + env(safe-area-inset-bottom))}
+  .about-grid{grid-template-columns:1fr 1fr;gap:8px}.about-grid article{padding:11px 12px}.about-grid p{display:none}
+}
+@media(min-width:781px){
+  .welcome{padding:28px}.gate{max-width:940px;border-radius:30px}
+  .gate-brand,.gate-card{padding:46px 40px}.gate-card{justify-content:center}
+}
+@media(max-width:860px) and (min-width:781px){.about-grid{grid-template-columns:1fr 1fr}}
 
 /* ===== Phone / tablet: installed-app feel ===== */
 .desk-bar{display:none}
@@ -77,5 +91,8 @@ button,a,.btn{touch-action:manipulation}
   ::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:10px;border:2px solid transparent;background-clip:content-box}::-webkit-scrollbar-thumb:hover{background:var(--muted);background-clip:content-box}
 }
 @keyframes deskIn{from{opacity:0}to{opacity:1}}
-@media print{.desk-bar,.tg-card,.tg-pop,.tg-gate{display:none!important}}
-@media(prefers-reduced-motion:reduce){.tg-card::after{animation:none}.tg-sheet,.view{animation:none!important}}
+@media print{.desk-bar,.tg-card{display:none!important}}
+@media(prefers-reduced-motion:reduce){.view{animation:none!important}}
+
+/* sign-in feature icons: fixed square badges (older rule collapsed them to thin pills) */
+.gate-feats li i{width:38px;height:38px;flex:0 0 38px;border-radius:12px;background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
