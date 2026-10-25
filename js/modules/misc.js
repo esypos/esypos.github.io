@@ -290,9 +290,9 @@
       const chip = dl === null ? '' : `<span class="dh-chip ${dl >= 0 ? 'up' : 'dn'}">${dl >= 0 ? '▲' : '▼'} ${Math.abs(dl)}% vs yesterday</span>`;
       const wk = r2(days.reduce((a, d) => a + d.v, 0));
       $('view').innerHTML = `<section class="dash-hero">
-        <div class="dh-top"><div><div class="dh-greet">${greet}</div><h2>${esc(DB.settings.shopName)}</h2><p>${C.fmtDate(new Date().toISOString())}</p></div>
+        <div class="dh-top"><div><div class="dh-greet">${greet}<span class="dh-date"> · ${C.fmtDate(new Date().toISOString())}</span></div><h2>${esc(DB.settings.shopName)}</h2></div>
           <button type="button" class="dh-sell" onclick="App.go('pos')"><i class="fas fa-cash-register"></i> New sale</button></div>
-        <div class="dh-main"><div class="dh-k">Today's sales</div><div class="dh-v">${money(td.netSales)}</div>${chip}</div>
+        <div class="dh-main"><div class="dh-sales"><div class="dh-k">Today's sales</div><div class="dh-v">${money(td.netSales)}</div></div>${chip}</div>
         <div class="dh-metrics"><div class="hm" data-profit="1"><span class="k">Profit</span><b class="v">${money(td.grossProfit)}</b></div><div class="hm"><span class="k">Bills</span><b class="v">${td.count}</b></div><div class="hm"><span class="k">Expenses</span><b class="v">${money(td.expenses)}</b></div></div>
       </section>
       ${qa}${guide}
