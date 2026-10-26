@@ -20,7 +20,7 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
 ---
 
-## v11.9.0 — Dashboard first
+## v11.9.1 — Dashboard first
 - The app now **opens on a redesigned Dashboard**: greeting + shop name, big *Today's sales* with a comparison to yesterday, Profit / Bills / Expenses, quick actions, monthly overview and a 7-day chart. Profit stays hidden behind the Admin PIN lock if you enabled it.
 - **Sales Counter removed from the menu.** Start a sale from **New sale** (Dashboard, desktop title bar, or the centre button of the phone bottom bar). Alt+2 and F2 still open it.
 - **One way to do everything**: Cloud Backup is opened from the account card only, Sign out lives inside the Cloud panel, the desktop title bar no longer repeats the theme / lock / user-count / sync buttons that the sidebar already has, and unused code was removed.

@@ -132,7 +132,7 @@ body[data-view="dashboard"] #db-sell,body[data-view="pos"] #db-sell{display:none
 .side-foot .tg-go,.drawer .tg-go{display:none}
 .foot-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.foot-actions .btn{width:100%}
 
-/* ===== v11.9.0: slim dashboard hero card ===== */
+/* ===== v11.9.1: slim dashboard hero card ===== */
 .dash-hero{padding:13px 15px 12px;border-radius:18px;margin-bottom:12px;box-shadow:0 14px 28px -18px rgba(30,64,175,.8)}
 .dash-hero::before{right:-46px;top:-52px;width:150px;height:150px;border-width:20px;background:none}
 .dash-hero::after{right:30px;bottom:-62px;width:104px;height:104px;border-width:14px}
@@ -254,3 +254,6 @@ select.input{padding-right:30px}
 .chip{min-height:32px;display:inline-flex;align-items:center}
 #pf-bcfmt{min-width:128px!important;padding-right:30px}
 @media(max-width:480px){#pf-bcfmt+.muted{flex-basis:100%}.flex:has(>#pf-bcfmt){flex-wrap:wrap}}
+
+/* SEO: About heading is the page h1 but keeps the sign-in page look */
+.gate-about>h1,#seo-content>h1{font-size:clamp(16px,2.4vw,19px);font-weight:700;margin:0 0 8px;letter-spacing:-.01em;line-height:1.3}
