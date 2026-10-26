@@ -346,7 +346,7 @@
   }
   function renderUI() {
     const l = lbl(), on = isOn();
-    document.querySelectorAll('.js-chip').forEach(b => { b.className = 'sync-chip js-chip ' + (on ? l.c : ''); b.innerHTML = `<i class="fas ${on ? l.i : 'fa-cloud'}"></i><span class="lbl">${on ? l.t : 'Sign in'}</span>`; });
+    document.querySelectorAll('.js-chip').forEach(b => { b.className = 'sync-chip js-chip ' + (on ? l.c : ''); b.title = on ? l.long : 'Back up to Google Drive'; b.innerHTML = `<i class="fas ${on ? l.i : 'fa-cloud-arrow-up'}"></i><span class="lbl">Backup</span>`; });
     document.querySelectorAll('.js-acct').forEach(el => {
       el.innerHTML = on
         ? `<button class="acct" onclick="Cloud.panel()">${avatar()}<span class="grow"><b class="trunc">${esc(get(KEY.name) || get(KEY.email))}</b><small class="${l.c}"><i class="fas ${l.i}"></i> ${l.long}</small></span><i class="fas fa-chevron-right xs muted"></i></button>`

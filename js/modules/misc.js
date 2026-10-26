@@ -287,13 +287,17 @@
       const hr = new Date().getHours(), greet = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
       const yk = C.addDays(t, -1), yv = C.buildReport(yk, yk).netSales;
       const dl = yv > 0 ? Math.round((td.netSales - yv) / yv * 100) : null;
-      const chip = dl === null ? '' : `<span class="dh-chip ${dl >= 0 ? 'up' : 'dn'}">${dl >= 0 ? '▲' : '▼'} ${Math.abs(dl)}% vs yesterday</span>`;
+      const delta = dl === null ? '' : `<span class="hm-d ${dl >= 0 ? 'up' : 'dn'}" title="vs yesterday">${dl >= 0 ? '▲' : '▼'} ${Math.abs(dl)}%</span>`;
       const wk = r2(days.reduce((a, d) => a + d.v, 0));
       $('view').innerHTML = `<section class="dash-hero">
-        <div class="dh-top"><div><div class="dh-greet">${greet}<span class="dh-date"> · ${C.fmtDate(new Date().toISOString())}</span></div><h2>${esc(DB.settings.shopName)}</h2></div>
+        <div class="dh-top"><div class="dh-id"><div class="dh-greet">${greet}<span class="dh-date"> · Today, ${C.fmtDate(new Date().toISOString())}</span></div><h2>${esc(DB.settings.shopName)}</h2></div>
           <button type="button" class="dh-sell" onclick="App.go('pos')"><i class="fas fa-cash-register"></i> New sale</button></div>
-        <div class="dh-main"><div class="dh-sales"><div class="dh-k">Today's sales</div><div class="dh-v">${money(td.netSales)}</div></div>${chip}</div>
-        <div class="dh-metrics"><div class="hm" data-profit="1"><span class="k">Profit</span><b class="v">${money(td.grossProfit)}</b></div><div class="hm"><span class="k">Bills</span><b class="v">${td.count}</b></div><div class="hm"><span class="k">Expenses</span><b class="v">${money(td.expenses)}</b></div></div>
+        <div class="dh-metrics">
+          <button type="button" class="hm" onclick="App.go('history')" aria-label="Today's bills — open Sales History"><span class="k"><span><em>Today's </em>Bills</span></span><b class="v">${td.count}</b></button>
+          <button type="button" class="hm" onclick="App.go('history')" aria-label="Today's sales"><span class="k"><span><em>Today's </em>Sales</span></span><b class="v">${money(td.netSales)}</b>${delta}</button>
+          <button type="button" class="hm" onclick="App.go('expenses')" aria-label="Today's expenses"><span class="k"><span><em>Today's </em>Expense</span></span><b class="v">${money(td.expenses)}</b></button>
+          <button type="button" class="hm" data-profit="1" onclick="App.go('reports')" aria-label="Today's profit"><span class="k"><span><em>Today's </em>Profit</span></span><b class="v">${money(td.grossProfit)}</b></button>
+        </div>
       </section>
       ${qa}${guide}
       <div class="sec-title dash-sec"><i class="fas fa-chart-column ptext"></i> This month</div>

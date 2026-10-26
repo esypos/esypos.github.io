@@ -132,7 +132,7 @@ body[data-view="dashboard"] #db-sell,body[data-view="pos"] #db-sell{display:none
 .side-foot .tg-go,.drawer .tg-go{display:none}
 .foot-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.foot-actions .btn{width:100%}
 
-/* ===== v11.6.0: slim dashboard hero card ===== */
+/* ===== v11.7.0: slim dashboard hero card ===== */
 .dash-hero{padding:13px 15px 12px;border-radius:18px;margin-bottom:12px;box-shadow:0 14px 28px -18px rgba(30,64,175,.8)}
 .dash-hero::before{right:-46px;top:-52px;width:150px;height:150px;border-width:20px;background:none}
 .dash-hero::after{right:30px;bottom:-62px;width:104px;height:104px;border-width:14px}
@@ -189,3 +189,54 @@ table.tbl{font-size:12.5px}.tbl th{font-size:10.5px;font-weight:600;padding:8px 
 .card.pad{padding:14px}
 h1,h2,h3{font-weight:700}
 @media(max-width:480px){.page-head h2{font-size:17px}.stat .v{font-size:16px}.card.pad{padding:12px}}
+
+/* ===== v11.7: dashboard hero (slim, 4 KPI tiles), header Backup + Telegram, slim menu link ===== */
+.dh-main,.dh-chip{display:none}
+.dash-hero{padding:12px 13px 12px;border-radius:18px;margin-bottom:12px}
+.dh-top{align-items:center;gap:10px}.dh-id{min-width:0}
+.dh-greet{font-size:10.5px;font-weight:600;letter-spacing:.02em;text-transform:none;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dh-top h2{font-size:16px;font-weight:700;margin:1px 0 0;letter-spacing:-.02em}
+.dh-metrics{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:11px}
+.hm{appearance:none;-webkit-appearance:none;position:relative;display:block;width:100%;font:inherit;color:#fff;text-align:left;cursor:pointer;padding:8px 9px 8px;border-radius:12px;transition:transform .12s,background .15s}
+.hm:hover{background:rgba(255,255,255,.2)}.hm:active{transform:scale(.97)}
+.hm .k{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:500;margin:0 0 2px;opacity:.85;white-space:nowrap}
+.hm .k i{font-size:9px;opacity:.9;flex:0 0 auto}.hm .k span{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.hm .k em{display:none;font-style:normal}
+.hm .v{font-size:13.5px;font-weight:700;letter-spacing:-.01em;line-height:1.25}
+.hm-d{position:absolute;top:7px;right:8px;font-size:9px;font-weight:700;line-height:1;padding:2px 5px;border-radius:99px;background:rgba(255,255,255,.16)}
+.hm-d.up{background:rgba(34,197,94,.28);color:#dcfce7}.hm-d.dn{background:rgba(248,113,113,.3);color:#fee2e2}
+.hm.stat-locked .lock-mask em{display:none}
+@media(max-width:359px){.dh-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.hm .k{font-size:10.5px}.hm .v{font-size:14.5px}}
+@media(min-width:600px){
+  .dash-hero{padding:15px 18px 15px}.dh-top h2{font-size:18px}.dh-greet{font-size:11.5px}
+  .dh-metrics{gap:10px;margin-top:13px;max-width:none}.hm{padding:10px 13px}
+  .hm .k{font-size:11.5px}.hm .k i{font-size:11px}.hm .k em{display:inline}.hm .v{font-size:17px}.hm-d{top:10px;right:11px;font-size:10px}
+}
+@media(min-width:1024px){.dash-hero{padding:16px 22px}.dh-top h2{font-size:19px}.hm .v{font-size:19px}}
+
+/* header: Backup button + Telegram icon */
+.sync-chip .lbl{display:inline!important}
+.sync-chip{padding:6px 11px;font-size:11.5px;font-weight:600;gap:6px}
+.topbar-actions{gap:8px}
+.tg-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;flex:0 0 32px;border-radius:50%;transition:transform .15s,box-shadow .2s;box-shadow:0 4px 10px -5px rgba(42,171,238,.9)}
+.tg-btn svg{width:100%;height:100%;display:block}.tg-btn:hover{transform:translateY(-1px)}.tg-btn:active{transform:scale(.94)}
+.db-actions{display:flex;align-items:center;gap:10px;margin-left:auto}.db-tg{display:inline-flex}
+.desk-bar #db-sell{margin-left:0}
+
+/* menu: slim Telegram row */
+.tg-link{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--muted);border:1px solid var(--border);border-radius:11px;padding:6px 10px;margin:0 0 8px;font-size:12px;font-weight:600;transition:background .15s,border-color .15s,color .15s}
+.tg-link:hover{background:rgba(42,171,238,.08);border-color:rgba(42,171,238,.45);color:var(--text)}.tg-link:active{transform:scale(.98)}
+.tg-link .tg-ico{flex:0 0 20px;width:20px;height:20px;display:block;filter:none}.tg-link .tg-ico svg{width:100%;height:100%;display:block}
+.tg-link .tg-t{flex:1;min-width:0;display:flex;align-items:baseline;gap:6px;white-space:nowrap;color:var(--text)}.tg-link small{font-size:11px;font-weight:500;color:var(--muted)}
+.tg-link .tg-x{font-size:10px;opacity:.55}
+@media print{.tg-btn,.tg-link{display:none!important}}
+
+/* quick actions: slim 4-across tiles on phones too; Get-started + stat cards tighter */
+@media(max-width:699px){
+  .qa-row{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:12px}
+  .qa{flex-direction:column;justify-content:center;gap:4px;min-height:58px;padding:8px 2px;border-radius:13px;font-size:10.5px;font-weight:600}
+  .qa i{font-size:16px}.qa span{font-size:10.5px}
+  .guide-step{padding:9px 2px;font-size:12.5px}
+  .dash-sec{margin:14px 0 8px}
+}
+@media(max-width:340px){.qa span{font-size:9.5px}}

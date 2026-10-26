@@ -12,9 +12,10 @@
     const main = document.querySelector('.main'); if (!main || $('desk-bar')) return;
     const b = document.createElement('div'); b.id = 'desk-bar'; b.className = 'desk-bar';
     b.innerHTML = `<div class="db-title"><b id="db-page">Dashboard</b><span id="db-shop"></span></div>
-      <button type="button" id="db-sell" class="btn btn-primary btn-sm" onclick="App.go('pos')"><i class="fas fa-cash-register"></i> New sale</button>`;
+      <div class="db-actions"><button type="button" class="sync-chip js-chip" onclick="Cloud.chip()" title="Back up to Google Drive"><i class="fas fa-cloud-arrow-up"></i><span class="lbl">Backup</span></button><span class="db-tg"></span>
+      <button type="button" id="db-sell" class="btn btn-primary btn-sm" onclick="App.go('pos')"><i class="fas fa-cash-register"></i> New sale</button></div>`;
     main.insertBefore(b, main.firstChild);
-    title();
+    title(); if (window.Community && Community.fill) Community.fill();
   }
 
   function title() {
