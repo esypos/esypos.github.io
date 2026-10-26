@@ -1,6 +1,6 @@
 {
-  "name": "EsyPOS – Free Offline POS Software",
-  "short_name": "EsyPOS",
+  "name": "Old POS – Free Offline POS Software",
+  "short_name": "Old POS",
   "description": "Free offline POS app for small shops: billing, barcode scan, stock, customer due, expenses, reports and Google Drive backup.",
   "id": "./",
   "start_url": "./index.html",

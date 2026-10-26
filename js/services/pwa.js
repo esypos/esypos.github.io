@@ -2,7 +2,7 @@
    offline/online badge, self-repair of the offline cache, persistent storage, and a small window.PWA API. */
 (function () {
   'use strict';
-  const CACHE_VERSION = 'v11.7.0';   // MUST equal sw.js — if they differ, clearOldCaches() deletes the live offline cache
+  const CACHE_VERSION = 'v11.9.0';   // MUST equal sw.js — if they differ, clearOldCaches() deletes the live offline cache
   const LS = {
     get(k) { try { return localStorage.getItem(k); } catch (_) { return null; } },
     set(k, v) { try { localStorage.setItem(k, String(v)); } catch (_) {} }
@@ -23,7 +23,7 @@
     if (!('caches' in window)) return;
     try {
       const keys = await caches.keys();
-      await Promise.all(keys.filter(k => (k.startsWith('esypos-') || k.startsWith('propos-')) && !k.endsWith('-' + CACHE_VERSION)).map(k => caches.delete(k)));
+      await Promise.all(keys.filter(k => (k.startsWith('esypos-') || k.startsWith('oldpos-') || k.startsWith('propos-')) && !k.endsWith('-' + CACHE_VERSION)).map(k => caches.delete(k)));
     } catch (_) {}
   }
 
@@ -71,7 +71,7 @@
     if (b) return b;
     b = document.createElement('button');
     b.id = 'pwa-install-btn'; b.type = 'button'; b.className = 'pwa-install-btn';
-    b.setAttribute('aria-label', 'Install EsyPOS app');
+    b.setAttribute('aria-label', 'Install Old POS app');
     b.innerHTML = '<i class="fa-solid fa-download"></i> Install app';
     b.style.display = 'none';
     document.body.appendChild(b);
@@ -91,7 +91,7 @@
   window.addEventListener('appinstalled', () => {
     const btn = document.getElementById('pwa-install-btn'); if (btn) btn.remove();
     deferredPrompt = null; LS.set('esypos_pwa_installed', '1');
-    try { if (window.Core && Core.toast) Core.toast('EsyPOS installed ✓'); } catch (_) {}
+    try { if (window.Core && Core.toast) Core.toast('Old POS installed ✓'); } catch (_) {}
   });
 
   /* ---- iPhone / iPad: Safari has no install event, so show a one-time guide ---- */
@@ -100,7 +100,7 @@
     if (!force && (LS.get('esypos_ios_guide') === '1' || isStandalone() || dismissedRecently())) return;
     const g = document.createElement('div');
     g.id = 'pwa-ios-guide'; g.className = 'pwa-update-bar'; g.setAttribute('role', 'dialog');
-    g.innerHTML = '<div class="msg">Install EsyPOS<small>Tap <b>Share</b> <span aria-hidden="true">⬆️</span> then <b>Add to Home Screen</b></small></div><button type="button">OK</button>';
+    g.innerHTML = '<div class="msg">Install Old POS<small>Tap <b>Share</b> <span aria-hidden="true">⬆️</span> then <b>Add to Home Screen</b></small></div><button type="button">OK</button>';
     g.querySelector('button').onclick = () => { LS.set('esypos_ios_guide', '1'); g.remove(); };
     document.body.appendChild(g);
   }

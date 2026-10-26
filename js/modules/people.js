@@ -1,4 +1,4 @@
-/* EsyPOS: Customer, Due Collected, Suppliers, Purchases */
+/* Old POS: Customer, Due Collected, Suppliers, Purchases */
 (function () {
   'use strict';
   const C = Core, { DB, esc, num, r2, money, genId, toast, findCustomer, findSupplier, findProduct } = C;
@@ -49,7 +49,7 @@
         <div class="tr">${x.b > 0 ? `<div class="fw7 bad">${money(x.b)}</div><div class="xs muted">Due</div>` : (x.b < 0 ? `<div class="fw7 ok">${money(-x.b)}</div><div class="xs muted">Advance</div>` : '<span class="badge b-ok">Clear</span>')}</div></div>`).join('')
         : '<div class="empty"><i class="fas fa-users"></i>No customers</div>';
     },
-    csvOut() { C.download('esypos-customers.csv', C.toCSV([['Name', 'Phone', 'Address', 'Current due'], ...DB.customers.map(c => [c.name, c.phone, c.address, C.customerBalance(c.id)])]), 'text/csv'); },
+    csvOut() { C.download('oldpos-customers.csv', C.toCSV([['Name', 'Phone', 'Address', 'Current due'], ...DB.customers.map(c => [c.name, c.phone, c.address, C.customerBalance(c.id)])]), 'text/csv'); },
     edit(id, after) {
       const c = id ? findCustomer(id) : null;
       const m = Modal.open({ title: c ? 'Edit customer' : 'New customer', body: `
@@ -114,7 +114,7 @@
       const c = findCustomer(id); if (!c) return; const led = C.customerLedger(id), b = C.customerBalance(id), sh = DB.settings;
       const rows = led.map(r => `<tr><td>${esc(C.fmtDate(r.date))}</td><td>${esc(r.desc)}</td><td class="r">${r.debit ? money(r.debit) : ''}</td><td class="r">${r.credit ? money(r.credit) : ''}</td><td class="r"><b>${money(r.balance)}</b></td></tr>`).join('') || '<tr><td colspan="5">No transactions</td></tr>';
       printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Statement - ${esc(c.name)}</title><style>body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0;padding:22px;font-size:13px}h1{margin:0 0 4px;font-size:22px}.m{color:#555}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:7px 6px;border-bottom:1px solid #ddd;text-align:left;vertical-align:top}th{background:#f1f5f9;font-size:12px}.r{text-align:right}.box{margin-top:16px;padding:12px;border:2px solid #111;font-size:16px;display:flex;justify-content:space-between}@page{size:A4;margin:12mm}</style></head><body>
-        <h1>${esc(sh.shopName || 'EsyPOS')}</h1>${sh.shopPhone ? `<div class="m">Phone: ${esc(sh.shopPhone)}</div>` : ''}
+        <h1>${esc(sh.shopName || 'Old POS')}</h1>${sh.shopPhone ? `<div class="m">Phone: ${esc(sh.shopPhone)}</div>` : ''}
         <h2 style="margin:16px 0 4px">Account statement</h2><div><b>${esc(c.name)}</b>${c.phone ? ' · ' + esc(c.phone) : ''}</div><div class="m">Printed ${esc(C.fmtDate(new Date().toISOString()))}</div>
         <table><thead><tr><th>Date</th><th>Description</th><th class="r">Due +</th><th class="r">Paid −</th><th class="r">Balance</th></tr></thead><tbody>${rows}</tbody></table>
         <div class="box"><span>${b >= 0 ? 'Amount due' : 'Advance balance'}</span><b>${money(Math.abs(b))}</b></div></body></html>`);

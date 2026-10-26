@@ -1,4 +1,4 @@
-/* EsyPOS UI: sound, dialogs, modals, theme, share/print helpers */
+/* Old POS UI: sound, dialogs, modals, theme, share/print helpers */
 (function () {
   'use strict';
   const { DB, esc, toast, saveAll, load, K } = Core;
@@ -126,9 +126,9 @@
   };
   // Manual, optional backup file (never automatic). The PIN hash is left out so the file cannot be used to guess the PIN.
   window.exportBackupFile = function () {
-    const out = { app: 'EsyPOS', version: 4, exportDate: new Date().toISOString() };
+    const out = { app: 'Old POS', version: 4, exportDate: new Date().toISOString() };
     Object.keys(K).forEach(k => { if (k === 'cart') return; out[k] = k === 'settings' ? Object.assign({}, DB.settings, { pinHash: '', pinSalt: '', adminHash: '', adminSalt: '' }) : DB[k]; });
-    Core.download('esypos-backup-' + Core.todayKey() + '.json', JSON.stringify(out), 'application/json');
+    Core.download('oldpos-backup-' + Core.todayKey() + '.json', JSON.stringify(out), 'application/json');
     try { localStorage.setItem('esypos_last_backup', String(Date.now())); } catch (_) {}
     toast('✓ Backup file saved');
   };
@@ -154,7 +154,7 @@
           Object.keys(K).forEach(k => { if (k === 'settings') { const keep = { pinHash: DB.settings.pinHash || '', pinSalt: DB.settings.pinSalt || '', adminHash: DB.settings.adminHash || '', adminSalt: DB.settings.adminSalt || '' }; DB.settings = Object.assign({}, Core.DEFAULTS, d.settings || {}, keep);   /* a backup file can never set or remove the PINs */ } else if (k === 'cart') DB.cart = []; else DB[k] = clean[k]; });
           Core.migrate(); saveAll(); toast('Restore successful ✓'); setTimeout(() => location.reload(), 700);
         }, { title: 'Restore backup?', yes: 'Yes, restore', danger: true });
-      } catch (err) { toast('⚠️ Not a valid EsyPOS backup file'); }
+      } catch (err) { toast('⚠️ Not a valid Old POS backup file'); }
     };
     rd.onerror = () => toast('Could not read file'); rd.readAsText(file);
   };

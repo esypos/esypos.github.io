@@ -1,4 +1,4 @@
-/* EsyPOS v11.4.0 — native-app feel (phone) + desktop-app feel (computer) + Telegram invite. Loaded after style.css. */
+/* Old POS v11.4.0 — native-app feel (phone) + desktop-app feel (computer) + Telegram invite. Loaded after style.css. */
 
 /* ===== Shared: app-like behaviour ===== */
 html{-webkit-tap-highlight-color:transparent;text-size-adjust:100%;-webkit-text-size-adjust:100%}
@@ -132,7 +132,7 @@ body[data-view="dashboard"] #db-sell,body[data-view="pos"] #db-sell{display:none
 .side-foot .tg-go,.drawer .tg-go{display:none}
 .foot-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.foot-actions .btn{width:100%}
 
-/* ===== v11.7.0: slim dashboard hero card ===== */
+/* ===== v11.9.0: slim dashboard hero card ===== */
 .dash-hero{padding:13px 15px 12px;border-radius:18px;margin-bottom:12px;box-shadow:0 14px 28px -18px rgba(30,64,175,.8)}
 .dash-hero::before{right:-46px;top:-52px;width:150px;height:150px;border-width:20px;background:none}
 .dash-hero::after{right:30px;bottom:-62px;width:104px;height:104px;border-width:14px}
@@ -240,3 +240,17 @@ h1,h2,h3{font-weight:700}
   .dash-sec{margin:14px 0 8px}
 }
 @media(max-width:340px){.qa span{font-size:9.5px}}
+
+/* ===== v11.8: mobile polish — fixes + simpler tap targets ===== */
+.input.has-ico{padding-left:36px}
+.search-ico{left:12px;font-size:13px}
+.pos-search .input{padding-left:42px;padding-right:44px}
+.disc-box .disc-input{padding-left:36px;padding-right:112px}
+textarea.input{padding:9px 11px;line-height:1.45}
+select.input{padding-right:30px}
+/* filter chips: one tidy swipeable row instead of wrapping into 2–3 lines */
+.chips{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px;margin-left:-2px;margin-right:-2px;padding-left:2px;padding-right:2px}
+.chips::-webkit-scrollbar{display:none}.chips>*{flex:0 0 auto}
+.chip{min-height:32px;display:inline-flex;align-items:center}
+#pf-bcfmt{min-width:128px!important;padding-right:30px}
+@media(max-width:480px){#pf-bcfmt+.muted{flex-basis:100%}.flex:has(>#pf-bcfmt){flex-wrap:wrap}}

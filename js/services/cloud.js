@@ -1,4 +1,4 @@
-/* EsyPOS Cloud: Google sign-in + automatic backup & restore in Google Drive (private appDataFolder)
+/* Old POS Cloud: Google sign-in + automatic backup & restore in Google Drive (private appDataFolder)
    - Scopes: drive.file (the visible backup file 'EsyPOS-Backup.json' in My Drive, created by this app) + drive.appdata (hidden dated copies).
      The app cannot see any other file in your Drive.
    - If browser data is ever cleared, signing in again brings all shop data back. */
@@ -118,7 +118,7 @@
     } catch (e) { console.warn('[Cloud] snapshot', e); }
   }
   function payload() {
-    const out = { app: 'EsyPOS', version: 4, exportDate: new Date().toISOString(), device: (navigator.platform || '') };
+    const out = { app: 'Old POS', version: 4, exportDate: new Date().toISOString(), device: (navigator.platform || '') };
     Object.keys(K).forEach(k => { if (k !== 'cart') out[k] = k === 'settings' ? DB.settings : DB[k]; });
     out.integrity = integrity(out);
     return out;
@@ -236,7 +236,7 @@
   function signOut() {
     const dirty = get(KEY.dirty) === '1';
     askConfirm(dirty
-      ? 'Some changes are not synced yet. EsyPOS will sync them first, then sign you out and clear this device. Your data stays in your Google Drive.'
+      ? 'Some changes are not synced yet. Old POS will sync them first, then sign you out and clear this device. Your data stays in your Google Drive.'
       : 'You will be signed out and this device will be cleared. Your data stays safe in your Google Drive — sign in again anytime to restore it.',
     async () => {
       if (dirty) {
@@ -255,7 +255,7 @@
   // Forgot PIN: sign out + clear this device; on the next Google sign-in the data is restored with the PIN removed.
   function resetPin() {
     const dirty = get(KEY.dirty) === '1';
-    askConfirm('To reset your PIN, EsyPOS will sign you out and clear this device. Sign in with Google again (internet needed) and your shop data returns from Google Drive without the PIN.' + (dirty ? ' Changes not yet synced may be lost.' : ''),
+    askConfirm('To reset your PIN, Old POS will sign you out and clear this device. Sign in with Google again (internet needed) and your shop data returns from Google Drive without the PIN.' + (dirty ? ' Changes not yet synced may be lost.' : ''),
       async () => {
         if (dirty && validTok()) { try { await push(); } catch (_) {} }
         if (get(KEY.dirty) === '1') {
@@ -297,7 +297,7 @@
     else if (c === 'noclient') { setup(); st = 'off'; }
     else if (c === 'shrink') { msg = '⚠️ Backup paused: this device has far less data than your last backup. Tap Back up to confirm, or restore from cloud'; }
     else if (c === 'verify') msg = '⚠️ Backup could not be verified, retrying';
-    else if (c === 'badfile') msg = '⚠️ Cloud file is not valid EsyPOS data';
+    else if (c === 'badfile') msg = '⚠️ Cloud file is not valid Old POS data';
     else if (e.status === 403 && e.why === 'scope') { st = 'auth'; S.needConsent = true; S.tok = null; S.exp = 0; clearTok(); msg = '⚠️ Drive permission was not given. Tap Reconnect and allow the Drive access checkbox'; }
     else if (e.status === 403 && e.why === 'full') msg = '⚠️ Your Google Drive storage is full. Free some space, then tap Back up';
     else if (e.status === 403 && e.why === 'rate') msg = '⚠️ Google is busy, will retry automatically';
@@ -365,8 +365,8 @@
     const el = document.createElement('div'); el.id = 'welcome'; el.className = 'welcome authgate'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
     el.innerHTML = `<div class="gate">
       <section class="gate-brand">
-        <div class="gate-logo"><img class="logo-img" src="assets/icons/icon-192.png" alt="EsyPOS" draggable="false"></div>
-        <h1>EsyPOS</h1>
+        <div class="gate-logo"><img class="logo-img" src="assets/icons/icon-192.png" alt="Old POS" draggable="false"></div>
+        <h1>Old POS</h1>
         <p class="gate-tag">Simple POS for Every Business</p>
         <ul class="gate-feats">
           <li><i class="fas fa-cloud-arrow-up"></i><span><b>Cloud saved</b>Every sale is backed up to your Google Drive</span></li>
@@ -376,7 +376,7 @@
       </section>
       <section class="gate-card">
         <h2>${restore ? 'Welcome back' : 'Sign in to continue'}</h2>
-        <p>${restore ? 'Signed in as <b>' + esc(get(KEY.email)) + '</b>. Restore your shop data from the cloud to continue.' : 'EsyPOS needs a Google account. Sign in to open your shop — your data is stored safely in your own Google Drive.'}</p>
+        <p>${restore ? 'Signed in as <b>' + esc(get(KEY.email)) + '</b>. Restore your shop data from the cloud to continue.' : 'Old POS needs a Google account. Sign in to open your shop — your data is stored safely in your own Google Drive.'}</p>
         <button class="btn btn-google btn-block btn-lg" id="w-go">${gIcon} <span>${restore ? 'Restore from cloud' : 'Continue with Google'}</span></button>
         <div class="gate-msg" id="w-msg" role="alert"></div>
         ${restore ? '<button class="gate-link" id="w-other" type="button">Use a different account</button>' : ''}

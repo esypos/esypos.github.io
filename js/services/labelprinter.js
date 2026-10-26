@@ -1,5 +1,5 @@
-/* EsyPOS Printer profile + direct label printing (v10.8.0)
-   A web page cannot ask the operating system "which paper is loaded?", so EsyPOS keeps a PRINTER PROFILE:
+/* Old POS Printer profile + direct label printing (v10.8.0)
+   A web page cannot ask the operating system "which paper is loaded?", so Old POS keeps a PRINTER PROFILE:
      1. connect the printer once (USB or Bluetooth) → the model is recognised and sensible defaults are filled in
         (type, resolution, paper size; Zebra printers also report their configured label length);
      2. the person confirms the paper that is loaded (a 5-second step, remembered per printer);
@@ -31,7 +31,7 @@
   const mm = v => (Math.round(v * 10) / 10);
 
   /* ---------- transports ---------- */
-  const busyMsg = 'The printer is held by its Windows/OS driver, so the browser cannot send data to it directly. EsyPOS will use the browser print dialog with this printer\'s paper size instead. (For direct printing: connect over Bluetooth, or install the WinUSB driver for this printer with Zadig.)';
+  const busyMsg = 'The printer is held by its Windows/OS driver, so the browser cannot send data to it directly. Old POS will use the browser print dialog with this printer\'s paper size instead. (For direct printing: connect over Bluetooth, or install the WinUSB driver for this printer with Zadig.)';
   const USB = {
     dev: null, out: null, inn: null,
     ok() { return !!(navigator.usb && window.isSecureContext); },
@@ -224,7 +224,7 @@
       const usb = USB.ok(), bt = BT.ok();
       const m = Modal.open({
         title: 'Connect printer',
-        body: `<p class="sm mb3">EsyPOS will recognise the printer and fill in its paper size. You only do this once.</p>
+        body: `<p class="sm mb3">Old POS will recognise the printer and fill in its paper size. You only do this once.</p>
           <div class="flex flex-col gap2">
             ${usb ? '<button class="btn btn-primary" id="lp-usb"><i class="fas fa-plug"></i> USB printer</button>' : ''}
             ${bt ? '<button class="btn btn-primary" id="lp-bt"><i class="fab fa-bluetooth-b"></i> Bluetooth printer</button>' : ''}

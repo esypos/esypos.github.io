@@ -1,18 +1,18 @@
 <div align="center">
 
-<img src="assets/logo/logo-256.png" alt="EsyPOS" width="96">
+<img src="assets/logo/logo-256.png" alt="Old POS" width="96">
 
-# EsyPOS
+# Old POS
 
 **Simple POS for Every Business**
 
 Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
-[**Website**](https://esypos.github.io/) · [Privacy Policy](https://esypos.github.io/privacy.html) · [Terms](https://esypos.github.io/terms.html)
+[**Website**](https://oldpos.github.io/) · [Privacy Policy](https://oldpos.github.io/privacy.html) · [Terms](https://oldpos.github.io/terms.html)
 
 <br>
 
-<img src="screenshots/slideshow.gif" alt="EsyPOS screenshots" width="360">
+<img src="screenshots/slideshow.gif" alt="Old POS screenshots" width="360">
 
 <sub>Sign in · Dashboard · Products · Customers · Purchases · Expenses · Sales · Reports · Backup · Menu</sub>
 
@@ -20,7 +20,7 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
 ---
 
-## v11.7.0 — Dashboard first
+## v11.9.0 — Dashboard first
 - The app now **opens on a redesigned Dashboard**: greeting + shop name, big *Today's sales* with a comparison to yesterday, Profit / Bills / Expenses, quick actions, monthly overview and a 7-day chart. Profit stays hidden behind the Admin PIN lock if you enabled it.
 - **Sales Counter removed from the menu.** Start a sale from **New sale** (Dashboard, desktop title bar, or the centre button of the phone bottom bar). Alt+2 and F2 still open it.
 - **One way to do everything**: Cloud Backup is opened from the account card only, Sign out lives inside the Cloud panel, the desktop title bar no longer repeats the theme / lock / user-count / sync buttons that the sidebar already has, and unused code was removed.
@@ -129,7 +129,7 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
 ## v10.15.0 — Drive-first backup, cleaner wording
 - Backup never downloads a file; everything goes straight to Google Drive about a second after each change. "Replace with latest backup" first sends any unsent changes, then loads the newest backup.
-- Branding: EsyPOS everywhere. Shorter, cleaner on-screen text.
+- Branding: Old POS everywhere. Shorter, cleaner on-screen text.
 
 ## v10.14.5 — Section lock, security, calmer UI
 - **Section lock** (Settings → *Section lock*): pick which sections (Reports, Dashboard, Purchases, Expenses, Settings…) need the owner PIN. Salesmen can sell but cannot open locked sections. Locks re-engage after 1–15 minutes or when the app goes to the background.
@@ -167,12 +167,12 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
 ## About
 
-EsyPOS is a free, open-source point-of-sale (POS) web app for small shops and growing businesses. It works in any browser, installs like a native app, runs offline, and backs up your data to **your own Google Drive**. No server, no subscription.
+Old POS is a free, open-source point-of-sale (POS) web app for small shops and growing businesses. It works in any browser, installs like a native app, runs offline, and backs up your data to **your own Google Drive**. No server, no subscription.
 
 
 ## Open Source
 
-EsyPOS is an open-source project released under the **[MIT License](LICENSE)**. Anyone can run their own business with their own Google account. No third-party company or middleman is involved. You are free to use, modify and distribute it, including commercially.
+Old POS is an open-source project released under the **[MIT License](LICENSE)**. Anyone can run their own business with their own Google account. No third-party company or middleman is involved. You are free to use, modify and distribute it, including commercially.
 
 
 ## Features
@@ -197,7 +197,7 @@ EsyPOS is an open-source project released under the **[MIT License](LICENSE)**. 
 
 ## Quick Start
 
-1. Open **[esypos.github.io](https://esypos.github.io/)**
+1. Open **[oldpos.github.io](https://oldpos.github.io/)**
 2. Sign in with Google once and add products (the app then opens instantly, and reconnects to Drive in the background)
 3. On phone: **Add to Home screen**
 
@@ -207,7 +207,7 @@ EsyPOS is an open-source project released under the **[MIT License](LICENSE)**. 
 - Google sign-in is optional and saves one backup file (EsyPOS-Backup.json) in **your** Drive and cannot see other files.
 - Camera (barcode) and Bluetooth (printer) are used only when needed.
 
-[Full Privacy Policy](https://esypos.github.io/privacy.html)
+[Full Privacy Policy](https://oldpos.github.io/privacy.html)
 
 ## Terms
 
@@ -215,7 +215,7 @@ EsyPOS is an open-source project released under the **[MIT License](LICENSE)**. 
 - You are responsible for backups and the accuracy of your records.
 - Tax / VAT figures are a guide only.
 
-[Full Terms of Service](https://esypos.github.io/terms.html)
+[Full Terms of Service](https://oldpos.github.io/terms.html)
 
 ## Owner
 

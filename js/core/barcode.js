@@ -1,4 +1,4 @@
-/* EsyPOS Barcode engine — Code 128 (auto subset B/C), EAN-13/UPC-A, QR. Pure JS, offline, no dependencies.
+/* Old POS Barcode engine — Code 128 (auto subset B/C), EAN-13/UPC-A, QR. Pure JS, offline, no dependencies.
    v10.7.4 — scan-reliability rewrite:
    • Code 128 now switches to the compact "subset C" for digit runs (about 15-45% fewer bars → thicker bars on small stickers).
    • Bars are drawn on an integer module grid and sized in real millimetres, as a whole number of PRINTER DOTS per module

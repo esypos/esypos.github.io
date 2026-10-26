@@ -1,4 +1,4 @@
-/* EsyPOS Guard (v10.14): section lock for staff + anonymous user counter.
+/* Old POS Guard (v10.14): section lock for staff + anonymous user counter.
    - Section lock: owner picks which sections need the PIN (Settings -> Section lock). Salesmen stay on the Sales Counter.
    - User counter: each install registers one random anonymous ID (no name, phone, shop data) in YOUR Firebase Realtime
      Database; the app shows how many installs exist. Set userCounterUrl in js/core/config.js (see README). */
@@ -196,7 +196,7 @@
     document.querySelectorAll('.js-ucount').forEach(e => { e.textContent = n ? n.toLocaleString('en-US') : '—'; });
   }
   // Default counter: free public CounterAPI (no account). One "up" per install; clearing browser data counts again.
-  const ABACUS = 'https://abacus.jasoncameron.dev', NS = 'esypos.github.io/total-users';
+  const ABACUS = 'https://abacus.jasoncameron.dev', NS = 'oldpos.github.io/total-users';
   const CAPI = 'https://api.counterapi.dev/v1/esypos-github-io/total-users';
   const pick = j => { const v = j && (j.count !== undefined ? j.count : j.value !== undefined ? j.value : j.data && (j.data.up_count !== undefined ? j.data.up_count : j.data.count)); const n = parseInt(v, 10); return isNaN(n) ? 0 : n; };
   async function count() {

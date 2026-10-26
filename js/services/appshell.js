@@ -1,4 +1,4 @@
-/* EsyPOS App Shell (v11.4.0): makes the software feel like a native app.
+/* Old POS App Shell (v11.4.0): makes the software feel like a native app.
    Phone  → installed-app feel: no pull-to-refresh bounce, no text-selection on buttons, press feedback, safe areas.
    Desktop → window feel: a title bar with the page name and a New sale button, plus keyboard shortcuts. */
 (function () {

@@ -1,4 +1,4 @@
-/* EsyPOS: Receipt, Returns, History, Expenses, Reports, Dashboard */
+/* Old POS: Receipt, Returns, History, Expenses, Reports, Dashboard */
 (function () {
   'use strict';
   const C = Core, { DB, esc, num, r2, fmt, money, genId, toast, findProduct, findCustomer } = C;
@@ -12,7 +12,7 @@
     inner(s) {
       const sh = DB.settings; const cust = findCustomer(s.customerId); const ret = C.returnedAmount(s.id);
       const bal = cust ? C.customerBalance(cust.id) : 0;
-      return `<div class="rc-c rc-b" style="font-size:15px">${esc(sh.shopName || 'EsyPOS')}</div>
+      return `<div class="rc-c rc-b" style="font-size:15px">${esc(sh.shopName || 'Old POS')}</div>
         ${sh.shopAddress ? `<div class="rc-c rc-s">${esc(sh.shopAddress)}</div>` : ''}${sh.shopPhone ? `<div class="rc-c rc-s">Phone: ${esc(sh.shopPhone)}</div>` : ''}${sh.taxId ? `<div class="rc-c rc-s">VAT/BIN: ${esc(sh.taxId)}</div>` : ''}
         <div class="rc-hr"></div>
         <div class="rc-row rc-s"><span>Receipt no.</span><b>#${C.invLabel(s)}</b></div>
@@ -71,7 +71,7 @@
       const rows = s.items.map((i, k) => `<tr><td>${k + 1}</td><td>${esc(i.name)}${i.note ? `<div class="m">+ ${esc(i.note)}</div>` : ''}</td><td class="r">${i.qty} ${esc(C.unitLabel(i.unit))}</td><td class="r">${money(i.price)}</td><td class="r">${money(r2(i.price * i.qty))}</td></tr>`).join('');
       const line = (a, b, cls) => `<div${cls ? ` class="${cls}"` : ''}><span>${a}</span><span>${b}</span></div>`;
       printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invoice ${esc(C.invLabel(s))}</title><style>${css}</style></head><body>
-        <div class="top"><div><h1>${esc(sh.shopName || 'EsyPOS')}</h1>${sh.shopAddress ? `<div class="m">${esc(sh.shopAddress)}</div>` : ''}${sh.shopPhone ? `<div class="m">Phone: ${esc(sh.shopPhone)}</div>` : ''}${sh.taxId ? `<div class="m">VAT/BIN: ${esc(sh.taxId)}</div>` : ''}</div>
+        <div class="top"><div><h1>${esc(sh.shopName || 'Old POS')}</h1>${sh.shopAddress ? `<div class="m">${esc(sh.shopAddress)}</div>` : ''}${sh.shopPhone ? `<div class="m">Phone: ${esc(sh.shopPhone)}</div>` : ''}${sh.taxId ? `<div class="m">VAT/BIN: ${esc(sh.taxId)}</div>` : ''}</div>
         <div style="text-align:right"><h1>INVOICE</h1><div>No: <b>#${esc(C.invLabel(s))}</b></div><div>Date: ${esc(C.fmtDate(s.date))}</div><div>Payment: ${esc(MN[s.paymentMethod] || '')}</div></div></div>
         <div><b>Bill to:</b> ${cust ? esc(cust.name) + (cust.phone ? ' · ' + esc(cust.phone) : '') + (cust.address ? '<div class="m">' + esc(cust.address) + '</div>' : '') : 'Walk-in customer'}</div>
         <table><thead><tr><th>#</th><th>Item</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Amount</th></tr></thead><tbody>${rows}</tbody></table>
@@ -178,7 +178,7 @@
         <div class="grow"><div class="t">#${C.invLabel(s)} · ${esc(c ? c.name : 'Walk-in')}</div><div class="s">${C.fmtDT(s.date)} · ${esc(s.items.map(i => i.name + '×' + i.qty).join(', '))}</div></div>
         <div class="tr"><div class="fw7 ptext">${money(s.total)}</div><div class="flex gap1" style="justify-content:flex-end">${s.due > 0 ? `<span class="badge b-bad">Due ${money(s.due)}</span>` : `<span class="badge b-ok">${MN[s.paymentMethod] || 'Cash'}</span>`}${ret ? '<span class="badge b-warn">Returns</span>' : ''}${s.items.some(i => i.quick && i.costPending) ? '<span class="badge b-warn">Cost pending</span>' : ''}</div></div></div>`; }).join('') + (arr.length > lim ? `<div class="tc mt3"><button class="btn btn-ghost" onclick="Hist.more()">Show more (${arr.length - lim} left)</button></div>` : '') : '<div class="empty"><i class="fas fa-receipt"></i>No sales</div>';
     },
-    csv() { const arr = this.rows(); C.download('esypos-sales.csv', C.toCSV([['Receipt', 'Date', 'Customer', 'Subtotal', 'Discount', 'Tax', 'Total', 'Paid', 'Due', 'Payment', 'Product'], ...arr.map(s => { const c = findCustomer(s.customerId); return [C.invLabel(s), C.dkey(s.date), c ? c.name : '', s.subtotal, s.discount, s.tax, s.total, s.paid, s.due, MN[s.paymentMethod], s.items.map(i => i.name + '×' + i.qty).join('; ')]; })]), 'text/csv'); }
+    csv() { const arr = this.rows(); C.download('oldpos-sales.csv', C.toCSV([['Receipt', 'Date', 'Customer', 'Subtotal', 'Discount', 'Tax', 'Total', 'Paid', 'Due', 'Payment', 'Product'], ...arr.map(s => { const c = findCustomer(s.customerId); return [C.invLabel(s), C.dkey(s.date), c ? c.name : '', s.subtotal, s.discount, s.tax, s.total, s.paid, s.due, MN[s.paymentMethod], s.items.map(i => i.name + '×' + i.qty).join('; ')]; })]), 'text/csv'); }
   };
   App.Views.history = Hist;
   const CATS = ['Rent', 'Utilities', 'Salary', 'Transport', 'Mobile/Internet', 'Repair', 'Snacks/tea', 'Other'];
@@ -247,7 +247,7 @@
     label() { const [f, t] = this.range(); return f || t ? `${f || '…'} → ${t || '…'}` : 'All time'; },
     csv() {
       const r = this.data();
-      C.download('esypos-report.csv', C.toCSV([['EsyPOS Report', this.label()], [], ['Invoices', r.count], ['Gross Sales', r.grossSales], ['Returns', r.returnsTotal], ['Net Sales', r.netSales], ['COGS', r.cogs], ['Gross Profit', r.grossProfit], ['Expenses', r.expenses], ['Stock write-offs', r.writeOff], ['Net Profit', r.netProfit], ['Net cash movement (estimate)', r.cashNet], ['New Due', r.newDue], ['Due Collected', r.dueCollected], [], ['Product', 'Qty', 'Sales', 'Profit'], ...r.topProducts.map(p => [p.name, p.qty, p.amount, p.profit])]), 'text/csv');
+      C.download('oldpos-report.csv', C.toCSV([['Old POS Report', this.label()], [], ['Invoices', r.count], ['Gross Sales', r.grossSales], ['Returns', r.returnsTotal], ['Net Sales', r.netSales], ['COGS', r.cogs], ['Gross Profit', r.grossProfit], ['Expenses', r.expenses], ['Stock write-offs', r.writeOff], ['Net Profit', r.netProfit], ['Net cash movement (estimate)', r.cashNet], ['New Due', r.newDue], ['Due Collected', r.dueCollected], [], ['Product', 'Qty', 'Sales', 'Profit'], ...r.topProducts.map(p => [p.name, p.qty, p.amount, p.profit])]), 'text/csv');
     },
     print() {
       const r = this.data(); const row = (a, b) => `<tr><td>${a}</td><td style="text-align:right"><b>${b}</b></td></tr>`;

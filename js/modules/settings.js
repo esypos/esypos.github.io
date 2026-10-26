@@ -1,4 +1,4 @@
-/* EsyPOS: Settings, barcode scanner, PIN lock, Bluetooth printer */
+/* Old POS: Settings, barcode scanner, PIN lock, Bluetooth printer */
 (function () {
   'use strict';
   const C = Core, { DB, esc, num, money, fmt, toast } = C;
@@ -27,16 +27,16 @@
     // Friendly dialog that explains how to re-enable the camera (a browser "Block" cannot be overridden by the app).
     help(kind, retry) {
       const msgs = {
-        denied: ['Camera access is blocked', 'EsyPOS needs the camera only to scan barcodes. Allow it once and scanning will work from then on.'],
+        denied: ['Camera access is blocked', 'Old POS needs the camera only to scan barcodes. Allow it once and scanning will work from then on.'],
         busy: ['Camera is in use', 'Another app or browser tab is using the camera. Close it and try again.'],
         none: ['No camera found', 'This device has no usable camera. You can type the barcode, or use a USB or Bluetooth scanner.'],
-        insecure: ['Camera needs a secure page', 'Open EsyPOS over HTTPS to use the camera.'],
+        insecure: ['Camera needs a secure page', 'Open Old POS over HTTPS to use the camera.'],
         error: ['Camera could not start', 'Something went wrong while starting the camera. Please try again.']
       };
       const m = msgs[kind] || msgs.error;
       const steps = kind === 'denied' ? `<ol class="perm-steps">
           <li><b>Chrome / browser:</b> tap the <i class="fas fa-sliders"></i> or <i class="fas fa-lock"></i> icon next to the address bar, then <b>Permissions → Camera → Allow</b>.</li>
-          <li><b>Installed app:</b> press and hold the EsyPOS icon → <b>App info → Permissions → Camera → Allow</b>.</li>
+          <li><b>Installed app:</b> press and hold the Old POS icon → <b>App info → Permissions → Camera → Allow</b>.</li>
           <li><b>iPhone:</b> Settings → Safari → Camera → <b>Ask</b> or <b>Allow</b>.</li>
           <li>Come back here and tap <b>Try again</b>.</li></ol>` : '';
       const el = Modal.open({
@@ -183,7 +183,7 @@
     show(done) {
       if (this.el) return; let pin = '';
       const el = document.createElement('div'); el.className = 'lock';
-      el.innerHTML = `<div class="logo" style="width:72px;height:72px"><img class="logo-img" src="assets/icons/icon-192.png" alt="EsyPOS" draggable="false"></div><h2>${esc(DB.settings.shopName)}</h2><p>Unlock with PIN</p><div class="dots" id="lk-dots"><i></i><i></i><i></i><i></i></div>
+      el.innerHTML = `<div class="logo" style="width:72px;height:72px"><img class="logo-img" src="assets/icons/icon-192.png" alt="Old POS" draggable="false"></div><h2>${esc(DB.settings.shopName)}</h2><p>Unlock with PIN</p><div class="dots" id="lk-dots"><i></i><i></i><i></i><i></i></div>
         <div class="keypad">${[1, 2, 3, 4, 5, 6, 7, 8, 9, '', 0, '⌫'].map(k => k === '' ? '<span></span>' : `<button type="button" data-k="${k}">${k}</button>`).join('')}</div>
         <button type="button" id="lk-forgot" style="margin-top:26px;background:none;border:0;color:#fff;opacity:.7;font-size:13px;cursor:pointer;text-decoration:underline">Forgot PIN?</button>`;
       document.body.appendChild(el); this.el = el; syncLock();
@@ -261,7 +261,7 @@
     lines(s) {
       const sh = DB.settings; const cust = C.findCustomer(s.customerId); const bal = cust ? C.customerBalance(cust.id) : 0; const L = [];
       const MN = { cash: 'Cash', card: 'Card', mobile: 'Mobile', due: 'Due' };
-      L.push({ t: sh.shopName || 'EsyPOS', a: 'c', b: 1, s: 28 });
+      L.push({ t: sh.shopName || 'Old POS', a: 'c', b: 1, s: 28 });
       if (sh.shopAddress) L.push({ t: sh.shopAddress, a: 'c', s: 20 }); if (sh.shopPhone) L.push({ t: 'Phone: ' + sh.shopPhone, a: 'c', s: 20 }); if (sh.taxId) L.push({ t: 'VAT/BIN: ' + sh.taxId, a: 'c', s: 20 });
       L.push({ hr: 1 }, { t: 'Receipt no.', t2: '#' + C.invLabel(s), s: 21 }, { t: 'Date', t2: C.fmtDT(s.date), s: 21 });
       if (cust) L.push({ t: 'Customer', t2: cust.name, s: 21 }); L.push({ t: 'Payment', t2: MN[s.paymentMethod] || '', s: 21 }, { hr: 1 });
@@ -302,7 +302,7 @@
       const sh = DB.settings; const w = sh.paper === '80' ? 48 : 32; const asc = t => String(t || '').replace(/[^\x20-\x7E]/g, '?');
       const lr = (a, b) => { a = asc(a); b = asc(b); return a.slice(0, Math.max(1, w - b.length - 1)).padEnd(w - b.length) + b + '\n'; };
       const e = new TextEncoder(); const o = []; const t = x => e.encode(x).forEach(c => o.push(c));
-      o.push(0x1B, 0x40, 0x1B, 0x61, 0x01, 0x1B, 0x21, 0x30); t(asc(sh.shopName || 'EsyPOS') + '\n'); o.push(0x1B, 0x21, 0x00); if (sh.shopPhone) t('Tel: ' + asc(sh.shopPhone) + '\n'); if (sh.taxId) t('VAT/BIN: ' + asc(sh.taxId) + '\n'); t('-'.repeat(w) + '\n'); o.push(0x1B, 0x61, 0x00);
+      o.push(0x1B, 0x40, 0x1B, 0x61, 0x01, 0x1B, 0x21, 0x30); t(asc(sh.shopName || 'Old POS') + '\n'); o.push(0x1B, 0x21, 0x00); if (sh.shopPhone) t('Tel: ' + asc(sh.shopPhone) + '\n'); if (sh.taxId) t('VAT/BIN: ' + asc(sh.taxId) + '\n'); t('-'.repeat(w) + '\n'); o.push(0x1B, 0x61, 0x00);
       t(lr('No', '#' + C.invLabel(s))); t(lr('Date', C.dkey(s.date))); t('-'.repeat(w) + '\n');
       s.items.forEach(i => { t(asc(i.name) + '\n'); if (i.note) t('  + ' + asc(i.note) + '\n'); t(lr('  ' + i.qty + ' x ' + i.price.toFixed(2), (i.price * i.qty).toFixed(2))); });
       t('-'.repeat(w) + '\n'); t(lr('Subtotal', s.subtotal.toFixed(2))); if (s.discount > 0) t(lr('Discount', '-' + s.discount.toFixed(2))); if (s.tax > 0) t(lr('Tax', s.tax.toFixed(2)));
@@ -413,12 +413,12 @@
         <div class="sys-row"><span class="sys-dot" id="sy-d1"></span><div class="sys-k">Works offline<small id="sy-s1">Checking…</small></div></div>
         <div class="sys-row"><span class="sys-dot" id="sy-d2"></span><div class="sys-k">Installed as an app<small id="sy-s2">Checking…</small></div><button type="button" class="btn btn-primary hidden" id="sy-inst" onclick="PWA.install()">Install</button></div>
         <div class="sys-row"><span class="sys-dot" id="sy-d3"></span><div class="sys-k">Data protected from cleanup<small id="sy-s3">Checking…</small></div></div>
-        <div class="sys-row"><span class="sys-dot ok"></span><div class="sys-k">Version<small>EsyPOS v11.7.0</small></div><button type="button" class="btn btn-ghost" onclick="Settings.checkUpdate(this)">Check update</button></div>
+        <div class="sys-row"><span class="sys-dot ok"></span><div class="sys-k">Version<small>Old POS v11.9.0</small></div><button type="button" class="btn btn-ghost" onclick="Settings.checkUpdate(this)">Check update</button></div>
         <div class="sys-row"><div class="sys-k">Storage used<small id="sy-s4">—</small></div></div>
         <div class="sys-row"><div class="sys-k">Repair offline files<small>Re-downloads the app files if something looks broken. Your shop data is not touched.</small></div><button type="button" class="btn btn-ghost" onclick="PWA.reset()">Repair</button></div></div>`)}
       ${sec('about', `<div class="card pad mb3">
         <div class="grid2"><a class="btn btn-ghost" href="privacy.html" target="_blank" rel="noopener"><i class="fas fa-user-shield"></i> Privacy Policy</a><a class="btn btn-ghost" href="terms.html" target="_blank" rel="noopener"><i class="fas fa-file-contract"></i> Terms of Service</a></div></div>
-      <div class="tc muted xs">EsyPOS · Simple POS for Every Business<br>© EsyPOS · <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> · <a href="license.html" target="_blank" rel="noopener">MIT License</a> · <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a></div>`)}
+      <div class="tc muted xs">Old POS · Simple POS for Every Business<br>© Old POS · <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> · <a href="license.html" target="_blank" rel="noopener">MIT License</a> · <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a></div>`)}
       </div></div></div>`;
       this.open(this.sec === undefined ? (window.matchMedia('(min-width:1024px)').matches ? 'shop' : '') : this.sec, true);
       Theme.apply(); if (window.Design) Design.apply(); Printer.ui(); if (window.Cloud) Cloud.renderUI(); this.sysStatus();

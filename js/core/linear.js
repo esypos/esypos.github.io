@@ -1,4 +1,4 @@
-/* EsyPOS Linear — tiny offline 1-D barcode reader (EAN-13 / UPC-A and Code 128) for browsers WITHOUT the BarcodeDetector API
+/* Old POS Linear — tiny offline 1-D barcode reader (EAN-13 / UPC-A and Code 128) for browsers WITHOUT the BarcodeDetector API
    (iPhone Safari, Firefox, desktop). Pure JS, no downloads. It reads many horizontal scan-lines of the camera picture, in both
    directions, and only accepts a result that passes the symbology's own check digit — so a wrong read is practically impossible.
    QR codes are NOT read here (use Chrome on Android, or type the code). v10.8.0 */

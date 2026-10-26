@@ -1,4 +1,4 @@
-/* EsyPOS core: data, calculations, helpers (no DOM dependency except toast) */
+/* Old POS core: data, calculations, helpers (no DOM dependency except toast) */
 (function (root) {
   'use strict';
   const K = {
@@ -97,8 +97,8 @@
           sessionStorage.removeItem('propos_g_tok');
         }
       } catch (_) {}
-      if (moved) console.info('EsyPOS: migrated data from ProPOS keys');
-    } catch (e) { console.warn('EsyPOS migrate keys', e); }
+      if (moved) console.info('Old POS: migrated data from ProPOS keys');
+    } catch (e) { console.warn('Old POS migrate keys', e); }
   }
   function load() {
     migrateBrandKeys();

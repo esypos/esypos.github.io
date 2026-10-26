@@ -1,4 +1,4 @@
-/* EsyPOS: mobile bottom navigation (Dashboard · Products · New sale · Customers · Menu). The app opens on the Dashboard. */
+/* Old POS: mobile bottom navigation (Dashboard · Products · New sale · Customers · Menu). The app opens on the Dashboard. */
 (function () {
   'use strict';
   const { toast } = Core;

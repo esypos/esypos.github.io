@@ -1,4 +1,4 @@
-/* EsyPOS Wedge — USB / Bluetooth barcode scanner support (v10.8.0)
+/* Old POS Wedge — USB / Bluetooth barcode scanner support (v10.8.0)
    A hardware scanner "types" the code like a very fast keyboard. This engine:
    • reads the PHYSICAL key (event.code), so Bangla / any other keyboard layout still gives the right characters;
    • tells a scan from human typing by speed (a person never averages < 70 ms per key);
@@ -95,7 +95,7 @@
     let res = false, used = typed;
     for (const c of cands) {
       if (clean(c).length < MIN_LEN) continue;
-      let r; try { r = h.handle(clean(c), { el, before, viaKey, typed }); } catch (err) { console.error('EsyPOS wedge', err); r = false; }
+      let r; try { r = h.handle(clean(c), { el, before, viaKey, typed }); } catch (err) { console.error('Old POS wedge', err); r = false; }
       if (r) { res = r; used = c; break; }
     }
     if (res && res !== 'keep') restoreField(el, before);

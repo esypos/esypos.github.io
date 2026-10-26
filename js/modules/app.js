@@ -1,4 +1,4 @@
-/* EsyPOS App: router, back-button handling, Sales Counter (POS), Products */
+/* Old POS App: router, back-button handling, Sales Counter (POS), Products */
 (function () {
   'use strict';
   const C = Core, { DB, esc, num, r2, fmt, money, genId, toast, findProduct, findCustomer } = C;
@@ -26,7 +26,7 @@
         const viewEl = document.getElementById('view');
         if (viewEl) { viewEl.classList.remove('view-in'); void viewEl.offsetWidth; viewEl.classList.add('view-in'); }
         if (viewEl && Views[v] && typeof Views[v].render === 'function') Views[v].render();
-      } catch (err) { console.error('EsyPOS view render', v, err); }
+      } catch (err) { console.error('Old POS view render', v, err); }
       window.scrollTo(0, 0);
     },
     refresh() { Views[App.view] && Views[App.view].render(); },
@@ -801,8 +801,8 @@
         <label class="btn btn-primary btn-block" style="cursor:pointer"><i class="fas fa-file-import"></i> CSV Import<input type="file" accept=".csv,text/csv" class="hidden" onchange="Products.csvIn(this)"></label>` });
     },
     head: ['Name', 'Barcode', 'Category', 'Cost', 'Sell price', 'Stock', 'Unit', 'Low stock limit', 'Expiry'],
-    csvOut() { C.download('esypos-products.csv', C.toCSV([this.head, ...DB.products.map(p => [p.name, p.barcode, p.category, p.cost, p.price, p.stock, p.unit, p.minStock, p.expiry])]), 'text/csv'); },
-    csvTemplate() { C.download('esypos-products-template.csv', C.toCSV([this.head, ['Tea', '8901001', 'Beverages', 5, 10, 100, 'Cup', 20, '']]), 'text/csv'); },
+    csvOut() { C.download('oldpos-products.csv', C.toCSV([this.head, ...DB.products.map(p => [p.name, p.barcode, p.category, p.cost, p.price, p.stock, p.unit, p.minStock, p.expiry])]), 'text/csv'); },
+    csvTemplate() { C.download('oldpos-products-template.csv', C.toCSV([this.head, ['Tea', '8901001', 'Beverages', 5, 10, 100, 'Cup', 20, '']]), 'text/csv'); },
     csvIn(input) {
       const f = input.files && input.files[0]; input.value = ''; if (!f) return; const rd = new FileReader();
       rd.onload = e => {
@@ -880,8 +880,8 @@
   (function safety() {
     let last = 0;
     const warn = () => { const n = Date.now(); if (n - last > 8000) { last = n; try { toast('⚠️ Something went wrong. Your data is safe — please try again.'); } catch (_) {} } };
-    window.addEventListener('error', e => { console.error('EsyPOS error', e.message); if (e && e.message && !/ResizeObserver|Script error/.test(e.message)) warn(); });
-    window.addEventListener('unhandledrejection', e => { console.error('EsyPOS promise', e && e.reason); });
+    window.addEventListener('error', e => { console.error('Old POS error', e.message); if (e && e.message && !/ResizeObserver|Script error/.test(e.message)) warn(); });
+    window.addEventListener('unhandledrejection', e => { console.error('Old POS promise', e && e.reason); });
   })();
   document.addEventListener('DOMContentLoaded', () => {
     C.load(); POS.taxInit(); buildNav();

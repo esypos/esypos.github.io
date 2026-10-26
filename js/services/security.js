@@ -1,4 +1,4 @@
-/* EsyPOS Security (v11.1): extra hardening layered on top of Lock + AdminLock.
+/* Old POS Security (v11.1): extra hardening layered on top of Lock + AdminLock.
    - Idle auto-lock: the home-screen PIN screen returns after a period with no touch/key/mouse activity.
    - Admin PIN lock-outs now escalate (30s, 1m, 5m, 15m, 30m) exactly like the home-screen PIN.
    - Clickjacking guard: the app refuses to run inside someone else's frame.
