@@ -35,6 +35,15 @@
       return 'bad';
     },
     wait() { return Math.max(1, Math.ceil((lsn(AK.u) - Date.now()) / 1000)); },
+    lockNow() {                                      // instant re-lock (the floating "Lock admin now" pill)
+      if (!this.has()) return false;
+      const was = unlockedNow();
+      openUntil = 0; profitOpen = 0; wasOn = false; apHide();
+      if (window.Modal) Modal.closeAll();            // close any open details sheet
+      if (window.App) showLockScreen();
+      if (was) { log('Admin locked by owner'); toast('Admin locked \ud83d\udd12'); }
+      return was;
+    },
     setup() {
       const has = this.has();
       const m = Modal.open({ title: has ? 'Change Admin PIN' : 'Set Admin PIN', body:
@@ -68,7 +77,7 @@
     }
   };
 
-  let openUntil = 0;
+  let openUntil = 0, profitOpen = 0;
   const LOGK = 'esypos_audit';
   function log(msg) { try { const a = JSON.parse(localStorage.getItem(LOGK) || '[]'); a.unshift({ t: Date.now(), m: msg }); localStorage.setItem(LOGK, JSON.stringify(a.slice(0, 40))); } catch (_) {} }
   const logs = () => { try { return JSON.parse(localStorage.getItem(LOGK) || '[]'); } catch (_) { return []; } };
@@ -76,6 +85,47 @@
   const lockedList = () => Array.isArray(DB.settings.lockedViews) ? DB.settings.lockedViews : DEFAULT_LOCKED;
   const needs = v => !!(Admin.has() && lockedList().indexOf(v) >= 0 && Date.now() > openUntil);
   const extend = () => { if (Date.now() <= openUntil) openUntil = Date.now() + minutes() * 60000; };
+
+  /* ---- Instant lock: after the Admin PIN has opened a section (or revealed profit) a "Lock admin now" pill stays on screen.
+     One tap closes any open detail sheet, hides the profit numbers and sends the screen back to the Sales Counter.
+     The same lock also comes back by itself after the "Re-lock sections after" time with no touch, key or scroll. ---- */
+  const unlockedNow = () => Admin.has() && (Date.now() < openUntil || Date.now() < profitOpen);
+  const onLockedScreen = () => App.view !== 'pos' && lockedList().indexOf(App.view) >= 0;
+  function showLockScreen() {                          // put the locked state back on whatever is showing
+    if (!window.App) return;
+    if (onLockedScreen()) App.go('pos'); else if (App.view === 'dashboard') App.refresh();
+  }
+  let apBtn = null, apTime = null, wasOn = false;
+  function apHide() { if (apBtn) { apBtn.remove(); apBtn = null; apTime = null; } }
+  function apShow() {
+    if (!apBtn) {
+      apBtn = document.createElement('button'); apBtn.type = 'button'; apBtn.id = 'admin-pill'; apBtn.className = 'admin-pill';
+      apBtn.setAttribute('aria-label', 'Lock the admin area now');
+      apBtn.innerHTML = '<i class="fas fa-lock" aria-hidden="true"></i><span class="ap-t"><b>Lock admin now</b><small></small></span>';
+      apTime = apBtn.querySelector('small');
+      apBtn.onclick = () => Admin.lockNow();
+      document.body.appendChild(apBtn);
+    }
+    const sec = Math.max(0, Math.ceil((Math.max(openUntil, profitOpen) - Date.now()) / 1000));
+    const t = 'Unlocked \u00b7 ' + Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+    if (apTime && apTime.textContent !== t) apTime.textContent = t;
+  }
+  function tick() {
+    if (!window.App || !window.Core) return;
+    if (unlockedNow()) { wasOn = true; apShow(); return; }
+    apHide();
+    if (!wasOn) return;                                 // timer ran out, or the app was hidden: show the lock again
+    if (window.Modal && Modal.stack.length) return;     // never yank a form somebody is filling in; try again next second
+    wasOn = false; showLockScreen();
+  }
+  let lastBump = 0;
+  const activity = () => {                               // the re-lock timer counts quiet time, not total time
+    const n = Date.now(); if (n - lastBump < 4000) return; lastBump = n;
+    if (n < openUntil) openUntil = n + minutes() * 60000;
+    if (n < profitOpen) profitOpen = n + minutes() * 60000;
+  };
+  ['pointerdown', 'keydown', 'touchstart', 'wheel', 'scroll'].forEach(ev => window.addEventListener(ev, activity, { passive: true, capture: true }));
+  setInterval(tick, 1000);
 
   function ask(done, name, noOpen) {
     const m = Modal.open({
@@ -89,7 +139,7 @@
     const go = async () => {
       if (busy || inp.value.length < 4) return; busy = true;
       const r = await Admin.check(inp.value);
-      if (r === 'ok') { log('Unlocked: ' + (name || 'section')); if (!noOpen) openUntil = Date.now() + minutes() * 60000; Modal.close(m); done(); }
+      if (r === 'ok') { log('Unlocked: ' + (name || 'section')); if (!noOpen) openUntil = Date.now() + minutes() * 60000; Modal.close(m); done(); tick(); }
       else {
         log(r === 'wait' ? 'PIN lock-out (too many wrong attempts)' : 'Wrong PIN for ' + (name || 'section'));
         msg.textContent = r === 'wait' ? '⚠️ Too many wrong attempts. Wait ' + Admin.wait() + ' seconds.' : '⚠️ Wrong PIN';
@@ -116,16 +166,15 @@
     }
     if (window.Lock) {
       const l0 = Lock.lockNow.bind(Lock);
-      Lock.lockNow = function () { openUntil = 0; profitOpen = 0; if (Admin.has() && App.view !== 'pos' && lockedList().indexOf(App.view) >= 0) App.go('pos'); l0(); };
+      Lock.lockNow = function () { openUntil = 0; profitOpen = 0; wasOn = false; apHide(); if (Admin.has() && App.view !== 'pos' && lockedList().indexOf(App.view) >= 0) App.go('pos'); l0(); };
     }
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { openUntil = 0; profitOpen = 0; } });
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { openUntil = 0; profitOpen = 0; } else tick(); });
     const s = App.Views.settings, r0 = s.render.bind(s);
     s.render = function () { r0(); try { card(); } catch (e) { console.warn('[Guard]', e); } };
   }
 
 
   /* ---- dashboard profit mask: lock icon, tap + PIN to reveal ---- */
-  let profitOpen = 0;
   const profitLocked = () => !!(Admin.has() && lockedList().indexOf('profit') >= 0 && Date.now() > profitOpen);
   function maskProfit() {
     const view = $('view'); if (!view || !profitLocked()) return;

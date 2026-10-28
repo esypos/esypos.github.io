@@ -270,7 +270,7 @@
       const debtors = DB.customers.map(c => ({ c, b: C.customerBalance(c.id) })).filter(x => x.b > 0).sort((a, b) => b.b - a.b).slice(0, 5);
       const recent = DB.sales.slice(0, 5);
       const qa = `<div class="qa-row" role="group" aria-label="Quick actions">
-        <button type="button" class="qa" onclick="Home.addProduct()"><i class="fas fa-box-open"></i><span>Add product</span></button>
+        <button type="button" class="qa" onclick="Home.newBill()"><i class="fas fa-receipt"></i><span>New bill</span></button>
         <button type="button" class="qa" onclick="App.go('expenses');setTimeout(function(){Exp.add()},60)"><i class="fas fa-money-bill-wave"></i><span>Add expense</span></button>
         <button type="button" class="qa" onclick="App.go('purchases');setTimeout(function(){Buy.newPurchase()},60)"><i class="fas fa-truck"></i><span>Stock in</span></button>
         <button type="button" class="qa" onclick="People.cf='due';App.go('customers')"><i class="fas fa-hand-holding-dollar"></i><span>Collect due</span></button></div>`;

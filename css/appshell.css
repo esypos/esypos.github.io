@@ -132,7 +132,7 @@ body[data-view="dashboard"] #db-sell,body[data-view="pos"] #db-sell{display:none
 .side-foot .tg-go,.drawer .tg-go{display:none}
 .foot-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.foot-actions .btn{width:100%}
 
-/* ===== v11.9.1: slim dashboard hero card ===== */
+/* ===== v12.0.0: slim dashboard hero card ===== */
 .dash-hero{padding:13px 15px 12px;border-radius:18px;margin-bottom:12px;box-shadow:0 14px 28px -18px rgba(30,64,175,.8)}
 .dash-hero::before{right:-46px;top:-52px;width:150px;height:150px;border-width:20px;background:none}
 .dash-hero::after{right:30px;bottom:-62px;width:104px;height:104px;border-width:14px}
@@ -257,3 +257,14 @@ select.input{padding-right:30px}
 
 /* SEO: About heading is the page h1 but keeps the sign-in page look */
 .gate-about>h1,#seo-content>h1{font-size:clamp(16px,2.4vw,19px);font-weight:700;margin:0 0 8px;letter-spacing:-.01em;line-height:1.3}
+
+/* ===== Instant Admin lock pill (v12): shown while the Admin PIN has opened a section or revealed profit ===== */
+.admin-pill{position:fixed;z-index:70;display:inline-flex;align-items:center;gap:10px;border:0;cursor:pointer;font:inherit;text-align:left;
+  background:var(--text);color:var(--card);padding:9px 16px 9px 10px;border-radius:99px;box-shadow:0 14px 28px -12px rgba(2,6,23,.65);
+  left:12px;bottom:calc(84px + env(safe-area-inset-bottom));animation:fadeIn .2s ease;-webkit-tap-highlight-color:transparent}
+.admin-pill i{width:30px;height:30px;border-radius:50%;background:var(--bad);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;flex:0 0 30px}
+.admin-pill .ap-t{display:flex;flex-direction:column;line-height:1.2}.admin-pill b{font-size:13px;font-weight:800}.admin-pill small{font-size:11px;opacity:.75;font-variant-numeric:tabular-nums}
+.admin-pill:active{transform:scale(.96)}
+@media(min-width:1024px){.admin-pill{left:auto;right:24px;bottom:24px}}
+@media print{.admin-pill{display:none!important}}
+html.needs-login .admin-pill,body.gated .admin-pill{display:none!important}

@@ -357,36 +357,63 @@
   function panel() {
     const m = Modal.open({ title: 'Google Drive Cloud Backup', body: '<div class="js-cloud-body"></div>' }); renderUI(); return m;
   }
-  function closeWelcome() { const w = $('welcome'); if (w) { w.classList.add('out'); setTimeout(() => w.remove(), 250); } document.body.classList.remove('gated'); document.documentElement.classList.remove('needs-login'); if (window.syncLock) syncLock(); }
+  function closeWelcome() { const w = $('welcome'); const sc = $('seo-content'); if (sc && w && w.contains(sc)) { sc.classList.add('seo-only'); document.body.appendChild(sc); } if (w) { w.classList.add('out'); setTimeout(() => w.remove(), 250); } document.body.classList.remove('gated'); document.documentElement.classList.remove('needs-login'); if (window.syncLock) syncLock(); }
   function showGate(mode) {
     if ($('welcome')) return;
     const restore = mode === 'restore';
+    const TG = (window.Community && Community.url) || 'https://t.me/old_pos';
     document.body.classList.add('gated');
-    const el = document.createElement('div'); el.id = 'welcome'; el.className = 'welcome authgate'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
-    el.innerHTML = `<div class="gate">
-      <section class="gate-brand">
-        <div class="gate-logo"><img class="logo-img" src="assets/icons/icon-192.png" alt="Old POS" draggable="false"></div>
-        <h1>Old POS</h1>
-        <p class="gate-tag">Simple POS for Every Business</p>
-        <ul class="gate-feats">
-          <li><i class="fas fa-cloud-arrow-up"></i><span><b>Cloud saved</b>Every sale is backed up to your Google Drive</span></li>
-          <li><i class="fas fa-mobile-screen-button"></i><span><b>Any device</b>Sign in anywhere and continue where you left off</span></li>
-          <li><i class="fas fa-shield-halved"></i><span><b>Private &amp; secure</b>Only you can access your shop data</span></li>
-        </ul>
-      </section>
-      <section class="gate-card">
-        <h2>${restore ? 'Welcome back' : 'Sign in to continue'}</h2>
-        <p>${restore ? 'Signed in as <b>' + esc(get(KEY.email)) + '</b>. Restore your shop data from the cloud to continue.' : 'Old POS needs a Google account. Sign in to open your shop — your data is stored safely in your own Google Drive.'}</p>
-        <button class="btn btn-google btn-block btn-lg" id="w-go">${gIcon} <span>${restore ? 'Restore from cloud' : 'Continue with Google'}</span></button>
-        <div class="gate-msg" id="w-msg" role="alert"></div>
-        ${restore ? '<button class="gate-link" id="w-other" type="button">Use a different account</button>' : ''}
-        <div class="consent-note">By continuing you accept our <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> &amp; <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</div>
-        <div class="consent-note"><a href="features.html">Features &amp; FAQ</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></div>
-        ${clientId() ? '' : '<div class="note-warn mt3"><i class="fas fa-triangle-exclamation"></i> Google Client ID is not set. <a href="#" onclick="Cloud.setup();return false">View setup guide</a></div>'}
-      </section>
-    </div>`;
+    const el = document.createElement('div'); el.id = 'welcome'; el.className = 'welcome authgate landing'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Old POS sign in');
+    el.innerHTML = `<header class="ld-head">
+        <div class="ld-bar">
+          <a class="ld-brand" href="./" aria-label="Old POS home"><img src="assets/icons/icon-192.png" width="36" height="36" alt="" draggable="false"><span>Old <b>POS</b></span></a>
+          <nav class="ld-nav" id="ld-nav" aria-label="Main menu">
+            <a href="#ld-features" data-t="ld-features">Features</a>
+            <a href="#ld-shots" data-t="ld-shots">Screenshots</a>
+            <a href="#ld-how" data-t="ld-how">How it works</a>
+            <a href="#ld-faq" data-t="ld-faq">FAQ</a>
+            <a href="features.html">Details</a>
+            <a class="ld-nav-tg" href="${TG}" target="_blank" rel="noopener noreferrer"><img src="assets/icons/telegram.svg" width="22" height="22" alt=""> Join our Telegram</a>
+          </nav>
+          <a class="ld-tg-head" href="${TG}" target="_blank" rel="noopener noreferrer" aria-label="Join the Old POS Telegram channel"><img src="assets/icons/telegram.svg" width="24" height="24" alt=""><span>Join Telegram</span></a>
+          <button class="ld-burger" id="ld-burger" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="ld-nav"><i class="fas fa-bars"></i></button>
+        </div>
+      </header>
+      <section class="ld-hero">
+        <div class="ld-hero-in">
+          <div class="ld-copy">
+            <span class="ld-badge"><i class="fas fa-trophy"></i> 100% free &middot; No monthly fee</span>
+            <h1>Free <em>offline POS</em> &amp; billing software for your shop</h1>
+            <p class="ld-sub">Make bills in seconds, scan barcodes, track stock and customer dues, and see your daily profit. Works without internet and backs up to your own Google Drive.</p>
+            <ul class="ld-chips"><li><i class="fas fa-wifi"></i> Works offline</li><li><i class="fas fa-barcode"></i> Barcode scan</li><li><i class="fas fa-cloud-arrow-up"></i> Drive backup</li><li><i class="fas fa-shield-halved"></i> PIN &amp; Admin lock</li></ul>
+            <a class="ld-tgcard" href="${TG}" target="_blank" rel="noopener noreferrer" aria-label="Join the Old POS Telegram channel">
+              <img src="assets/icons/telegram.svg" width="48" height="48" alt="">
+              <div><b>Join the Old POS Telegram channel</b><small>New features first &middot; setup tips &middot; direct help</small></div>
+              <span class="go">Join</span>
+            </a>
+          </div>
+          <div class="ld-card">
+            <h2>${restore ? 'Welcome back' : 'Sign in to continue'}</h2>
+            <p>${restore ? 'Signed in as <b>' + esc(get(KEY.email)) + '</b>. Restore your shop data from the cloud to continue.' : 'Old POS needs a Google account. Sign in to open your shop. Your data is stored safely in your own Google Drive.'}</p>
+            <button class="btn btn-google btn-block btn-lg" id="w-go">${gIcon} <span>${restore ? 'Restore from cloud' : 'Continue with Google'}</span></button>
+            <div class="gate-msg" id="w-msg" role="alert"></div>
+            ${restore ? '<button class="gate-link" id="w-other" type="button">Use a different account</button>' : ''}
+            <ul class="ld-trust"><li><i class="fas fa-circle-check"></i>Free forever</li><li><i class="fas fa-circle-check"></i>No ads</li><li><i class="fas fa-circle-check"></i>Private</li></ul>
+            <div class="consent-note">By continuing you accept our <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> &amp; <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</div>
+            ${clientId() ? '' : '<div class="note-warn mt3"><i class="fas fa-triangle-exclamation"></i> Google Client ID is not set. <a href="#" onclick="Cloud.setup();return false">View setup guide</a></div>'}
+          </div>
+        </div>
+      </section>`;
     document.body.appendChild(el);
-    const about = $('seo-content'); if (about) { about.classList.remove('seo-only'); about.classList.add('gate-about'); el.appendChild(about); }
+    const about = $('seo-content'); if (about) { about.classList.remove('seo-only'); el.appendChild(about); }
+    let dismissed = false; try { dismissed = sessionStorage.getItem('oldpos_tgfloat') === '1'; } catch (_) {}
+    if (!dismissed) {
+      const fl = document.createElement('a'); fl.className = 'ld-float'; fl.href = TG; fl.target = '_blank'; fl.rel = 'noopener noreferrer';
+      fl.setAttribute('aria-label', 'Join the Old POS Telegram channel');
+      fl.innerHTML = '<img src="assets/icons/telegram.svg" width="28" height="28" alt=""><span>Join our Telegram channel</span><button type="button" aria-label="Hide">&times;</button>';
+      fl.querySelector('button').onclick = e => { e.preventDefault(); e.stopPropagation(); fl.remove(); try { sessionStorage.setItem('oldpos_tgfloat', '1'); } catch (_) {} };
+      el.appendChild(fl);
+    }
     const go = el.querySelector('#w-go'), msg = el.querySelector('#w-msg');
     const note = () => { msg.textContent = navigator.onLine ? '' : 'No internet connection. Connect to the internet to sign in.'; };
     if (clientId() && navigator.onLine) loadGIS().catch(() => {});
@@ -398,6 +425,18 @@
       const g = $('w-go'); if (g && !el.classList.contains('out')) { g.disabled = false; g.classList.remove('busy'); msg.textContent = navigator.onLine ? 'Sign-in was not completed. Please try again.' : 'No internet connection. Connect to the internet to sign in.'; }
     };
     const other = el.querySelector('#w-other'); if (other) other.onclick = () => finishSignOut();
+    /* menu: phone burger + smooth scrolling to sections (the page scrolls inside this overlay) */
+    const nav = el.querySelector('#ld-nav'), bur = el.querySelector('#ld-burger');
+    const toggle = open => { nav.classList.toggle('open', open); bur.setAttribute('aria-expanded', open ? 'true' : 'false'); bur.firstElementChild.className = open ? 'fas fa-xmark' : 'fas fa-bars'; };
+    bur.onclick = () => toggle(!nav.classList.contains('open'));
+    nav.addEventListener('click', e => {
+      const a = e.target.closest && e.target.closest('a[data-t]'); toggle(false); if (!a) return;
+      e.preventDefault(); const t = $(a.getAttribute('data-t')); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    el.addEventListener('click', e => {
+      const c = e.target.closest && e.target.closest('[data-go]');
+      if (c) { e.preventDefault(); el.scrollTo({ top: 0, behavior: 'smooth' }); setTimeout(() => { const g = $('w-go'); if (g && !g.disabled) g.click(); }, 350); }
+    });
     if (window.syncLock) syncLock();
   }
   function setup() {

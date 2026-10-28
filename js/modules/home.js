@@ -17,6 +17,7 @@
   window.EsyIcon = ico;
 
   const Home = window.Home = {
+    newBill() { App.go('pos'); },                                                   // dashboard quick action: open the sales counter (bill section)
     addProduct() { App.go('products'); setTimeout(() => { try { Products.edit(); } catch (e) { console.error(e); } }, 60); }
   };
 

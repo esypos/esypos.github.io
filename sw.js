@@ -1,25 +1,26 @@
-/* Old POS Service Worker (v11.9.1)
+/* Old POS Service Worker (v12.0.0)
    - Cache-first app shell, versioned per release, so the app opens instantly with or without a network.
    - Atomic install: if any CRITICAL file cannot be cached, the install fails and the previous working version keeps running.
    - Self-repair: the page can ask the worker to re-download any missing shell file (message 'REPAIR').
    - Security headers: every page served by this worker carries frame-ancestors 'none', nosniff, a strict referrer policy
      and a Permissions-Policy that only allows the camera (barcode scan) and Bluetooth (printer) for this app.
    App data lives in localStorage + the user's Google Drive; this cache only holds the app files. */
-const CACHE_VERSION = 'v11.9.1';
+const CACHE_VERSION = 'v12.0.0';
 const APP_CACHE = `oldpos-app-${CACHE_VERSION}`;
 
 const CRITICAL = [
   './', './index.html', './offline.html', './manifest.webmanifest',
-  './css/style.css', './css/appshell.css', './css/icons.css',
+  './css/style.css', './css/appshell.css', './css/landing.css', './css/icons.css',
   './fonts/inter-latin-var.woff2', './fonts/fa-solid-subset.woff2', './fonts/fa-brands-subset.woff2',
   './js/core/core.js', './js/core/barcode.js', './js/core/wedge.js', './js/core/linear.js', './js/core/ui.js', './js/core/config.js',
   './js/modules/app.js', './js/modules/people.js', './js/modules/misc.js', './js/modules/home.js', './js/modules/settings.js',
   './js/services/cloud.js', './js/services/guard.js', './js/services/labelprinter.js', './js/services/pwa.js', './js/services/security.js', './js/services/appshell.js', './js/services/community.js',
-  './assets/icons/icon-192.png', './assets/icons/icon-512.png', './assets/icons/maskable-512.png', './assets/icons/apple-touch-icon.png'
+  './assets/icons/icon-192.png', './assets/icons/telegram.svg', './assets/icons/icon-512.png', './assets/icons/maskable-512.png', './assets/icons/apple-touch-icon.png'
 ];
 const OPTIONAL = [
   './features.html', './privacy.html', './terms.html', './license.html', './404.html', './favicon.ico',
-  './assets/icons/favicon-32.png', './assets/icons/favicon-16.png'
+  './assets/icons/favicon-32.png', './assets/icons/favicon-16.png',
+  './assets/screenshots/02-dashboard.png', './assets/screenshots/03-products.png', './assets/screenshots/04-customers.png', './assets/screenshots/05-purchases.png', './assets/screenshots/07-sales-history.png', './assets/screenshots/08-reports.png'
 ];
 const APP_SHELL = CRITICAL.concat(OPTIONAL);
 
