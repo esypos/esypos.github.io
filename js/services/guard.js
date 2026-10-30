@@ -35,15 +35,6 @@
       return 'bad';
     },
     wait() { return Math.max(1, Math.ceil((lsn(AK.u) - Date.now()) / 1000)); },
-    lockNow() {                                      // instant re-lock (the floating "Lock admin now" pill)
-      if (!this.has()) return false;
-      const was = unlockedNow();
-      openUntil = 0; profitOpen = 0; wasOn = false; apHide();
-      if (window.Modal) Modal.closeAll();            // close any open details sheet
-      if (window.App) showLockScreen();
-      if (was) { log('Admin locked by owner'); toast('Admin locked \ud83d\udd12'); }
-      return was;
-    },
     setup() {
       const has = this.has();
       const m = Modal.open({ title: has ? 'Change Admin PIN' : 'Set Admin PIN', body:
@@ -55,7 +46,7 @@
       m.querySelector('#ad-ok').onclick = async () => {
         if (has && (await Admin.check($('ad-old').value)) !== 'ok') { toast('⚠️ Current Admin PIN is wrong'); return; }
         const a = $('ad-new').value, b = $('ad-new2').value;
-        if (!/^\d{4}$/.test(a)) { toast('⚠️ Enter exactly 4 digits'); return; } if (a !== b) { toast('⚠️ PINs do not match'); return; }
+        if (!/^\d{4}$/.test(a)) { toast('⚠️ Enter exactly 4 digits'); return; } if (/^(\d)\1{3}$/.test(a) || ['0123','1234','2345','3456','4567','5678','6789','9876','8765','7654','6543','5432','4321','3210','1212','2580','1122','2020','2021','2022','2023','2024','2025','2026'].indexOf(a) >= 0) { toast('⚠️ That PIN is too easy to guess — choose another'); return; } if (a !== b) { toast('⚠️ PINs do not match'); return; }
         const salt = C.genId(); DB.settings.adminSalt = salt; DB.settings.adminHash = await Lock.hashFor(a, salt); C.save('settings');
         log('Admin PIN ' + (has ? 'changed' : 'set')); Modal.close(m); toast('Admin PIN saved ✓'); App.refresh();
       };
@@ -77,7 +68,7 @@
     }
   };
 
-  let openUntil = 0, profitOpen = 0;
+  let openUntil = 0;
   const LOGK = 'esypos_audit';
   function log(msg) { try { const a = JSON.parse(localStorage.getItem(LOGK) || '[]'); a.unshift({ t: Date.now(), m: msg }); localStorage.setItem(LOGK, JSON.stringify(a.slice(0, 40))); } catch (_) {} }
   const logs = () => { try { return JSON.parse(localStorage.getItem(LOGK) || '[]'); } catch (_) { return []; } };
@@ -85,47 +76,6 @@
   const lockedList = () => Array.isArray(DB.settings.lockedViews) ? DB.settings.lockedViews : DEFAULT_LOCKED;
   const needs = v => !!(Admin.has() && lockedList().indexOf(v) >= 0 && Date.now() > openUntil);
   const extend = () => { if (Date.now() <= openUntil) openUntil = Date.now() + minutes() * 60000; };
-
-  /* ---- Instant lock: after the Admin PIN has opened a section (or revealed profit) a "Lock admin now" pill stays on screen.
-     One tap closes any open detail sheet, hides the profit numbers and sends the screen back to the Sales Counter.
-     The same lock also comes back by itself after the "Re-lock sections after" time with no touch, key or scroll. ---- */
-  const unlockedNow = () => Admin.has() && (Date.now() < openUntil || Date.now() < profitOpen);
-  const onLockedScreen = () => App.view !== 'pos' && lockedList().indexOf(App.view) >= 0;
-  function showLockScreen() {                          // put the locked state back on whatever is showing
-    if (!window.App) return;
-    if (onLockedScreen()) App.go('pos'); else if (App.view === 'dashboard') App.refresh();
-  }
-  let apBtn = null, apTime = null, wasOn = false;
-  function apHide() { if (apBtn) { apBtn.remove(); apBtn = null; apTime = null; } }
-  function apShow() {
-    if (!apBtn) {
-      apBtn = document.createElement('button'); apBtn.type = 'button'; apBtn.id = 'admin-pill'; apBtn.className = 'admin-pill';
-      apBtn.setAttribute('aria-label', 'Lock the admin area now');
-      apBtn.innerHTML = '<i class="fas fa-lock" aria-hidden="true"></i><span class="ap-t"><b>Lock admin now</b><small></small></span>';
-      apTime = apBtn.querySelector('small');
-      apBtn.onclick = () => Admin.lockNow();
-      document.body.appendChild(apBtn);
-    }
-    const sec = Math.max(0, Math.ceil((Math.max(openUntil, profitOpen) - Date.now()) / 1000));
-    const t = 'Unlocked \u00b7 ' + Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
-    if (apTime && apTime.textContent !== t) apTime.textContent = t;
-  }
-  function tick() {
-    if (!window.App || !window.Core) return;
-    if (unlockedNow()) { wasOn = true; apShow(); return; }
-    apHide();
-    if (!wasOn) return;                                 // timer ran out, or the app was hidden: show the lock again
-    if (window.Modal && Modal.stack.length) return;     // never yank a form somebody is filling in; try again next second
-    wasOn = false; showLockScreen();
-  }
-  let lastBump = 0;
-  const activity = () => {                               // the re-lock timer counts quiet time, not total time
-    const n = Date.now(); if (n - lastBump < 4000) return; lastBump = n;
-    if (n < openUntil) openUntil = n + minutes() * 60000;
-    if (n < profitOpen) profitOpen = n + minutes() * 60000;
-  };
-  ['pointerdown', 'keydown', 'touchstart', 'wheel', 'scroll'].forEach(ev => window.addEventListener(ev, activity, { passive: true, capture: true }));
-  setInterval(tick, 1000);
 
   function ask(done, name, noOpen) {
     const m = Modal.open({
@@ -139,7 +89,7 @@
     const go = async () => {
       if (busy || inp.value.length < 4) return; busy = true;
       const r = await Admin.check(inp.value);
-      if (r === 'ok') { log('Unlocked: ' + (name || 'section')); if (!noOpen) openUntil = Date.now() + minutes() * 60000; Modal.close(m); done(); tick(); }
+      if (r === 'ok') { log('Unlocked: ' + (name || 'section')); if (!noOpen) openUntil = Date.now() + minutes() * 60000; Modal.close(m); done(); }
       else {
         log(r === 'wait' ? 'PIN lock-out (too many wrong attempts)' : 'Wrong PIN for ' + (name || 'section'));
         msg.textContent = r === 'wait' ? '⚠️ Too many wrong attempts. Wait ' + Admin.wait() + ' seconds.' : '⚠️ Wrong PIN';
@@ -166,15 +116,16 @@
     }
     if (window.Lock) {
       const l0 = Lock.lockNow.bind(Lock);
-      Lock.lockNow = function () { openUntil = 0; profitOpen = 0; wasOn = false; apHide(); if (Admin.has() && App.view !== 'pos' && lockedList().indexOf(App.view) >= 0) App.go('pos'); l0(); };
+      Lock.lockNow = function () { openUntil = 0; profitOpen = 0; if (Admin.has() && App.view !== 'pos' && lockedList().indexOf(App.view) >= 0) App.go('pos'); l0(); };
     }
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { openUntil = 0; profitOpen = 0; } else tick(); });
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { openUntil = 0; profitOpen = 0; } });
     const s = App.Views.settings, r0 = s.render.bind(s);
     s.render = function () { r0(); try { card(); } catch (e) { console.warn('[Guard]', e); } };
   }
 
 
   /* ---- dashboard profit mask: lock icon, tap + PIN to reveal ---- */
+  let profitOpen = 0;
   const profitLocked = () => !!(Admin.has() && lockedList().indexOf('profit') >= 0 && Date.now() > profitOpen);
   function maskProfit() {
     const view = $('view'); if (!view || !profitLocked()) return;
@@ -221,7 +172,21 @@
       '</div>' +
       '<div class="card pad mb3" id="audit-card"><div class="sec-title"><i class="fas fa-file-lines ptext"></i> Security log</div>' +
       (L2.length ? L2.map(x => '<div class="kv"><span>' + esc(x.m) + '</span><b class="xs">' + esc(C.fmtDT(new Date(x.t).toISOString())) + '</b></div>').join('') + '<button class="btn btn-ghost btn-block mt3" onclick="Guard.clearLog()">Clear log</button>' : '<p class="xs muted">No unlock or wrong-PIN events yet.</p>') + '</div>';
-    if (!$('guard-card')) host.insertAdjacentHTML('beforeend', html + health);
+    if (!$('guard-card')) { host.insertAdjacentHTML('beforeend', html + health + '<div class="card pad mb3" id="local-card"></div>'); localCard(); }
+  }
+  /* v12: this device + local safety copies (work without internet) */
+  async function localCard() {
+    const el = document.getElementById('local-card'); if (!el || !window.Safety) return;
+    const [list, id, persisted] = await Promise.all([Safety.listCopies(), Safety.deviceId(), (navigator.storage && navigator.storage.persisted) ? navigator.storage.persisted().catch(() => false) : false]);
+    if (!document.getElementById('local-card')) return;
+    el.innerHTML = '<div class="sec-title"><i class="fas fa-hard-drive ptext"></i> This device &amp; local copies</div>' +
+      '<div class="kv"><span>Device ID</span><b class="xs" style="font-family:ui-monospace,monospace">' + esc(id.slice(0, 8) + '…' + id.slice(-4)) + '</b></div>' +
+      '<div class="kv"><span>Counted as</span><b>1 user (this device)</b></div>' +
+      '<div class="kv"><span>Protected storage</span><b>' + (persisted ? 'On ✓' : 'Requested') + '</b></div>' +
+      '<div class="kv"><span>Stay signed in</span><b>Until you press Log out</b></div>' +
+      '<div class="muted xs mt3 mb2">Automatic copies kept on this device (latest ' + 10 + '). If something goes wrong you can bring a copy back, even offline.</div>' +
+      (list.length ? list.slice(0, 5).map(c => '<div class="kv"><span>' + esc(C.fmtDT(new Date(c.t).toISOString())) + ' <small class="muted">· ' + c.n + ' records</small></span><span class="flex gap2"><button class="btn btn-ghost btn-sm" onclick="Guard.localRestore(' + c.t + ')">Restore</button><button class="btn btn-ghost btn-sm" onclick="Safety.downloadCopy(' + c.t + ')" aria-label="Download"><i class="fas fa-download"></i></button></span></div>').join('') : '<p class="xs muted">No copies yet — the first one is saved automatically a few seconds after you add data.</p>') +
+      '<button class="btn btn-ghost btn-block mt3" onclick="Guard.localSave()"><i class="fas fa-floppy-disk"></i> Save a copy now</button>';
   }
 
   const Guard = window.Guard = {
@@ -229,42 +194,70 @@
     set(k, v) { DB.settings[k] = parseInt(v, 10) || 1; C.save('settings'); toast('Saved ✓'); },
     needs, log,
     confirmPin(cb, name) { if (Admin.has()) ask(cb, name, true); else cb(); },   // always asks for the PIN (used before deleting a bill)
-    clearLog() { try { localStorage.removeItem(LOGK); } catch (_) {} App.refresh(); }
+    clearLog() { try { localStorage.removeItem(LOGK); } catch (_) {} App.refresh(); },
+    async localSave() { const ok = await Safety.saveCopy(true); toast(ok ? 'Copy saved ✓' : 'Could not save a copy'); localCard(); },
+    localRestore(t) {
+      askConfirm('Your current data will be replaced by this copy. A copy of the current data is saved first.', async () => {
+        try { await Safety.restoreCopy(t); toast('Restored ✓'); setTimeout(() => location.reload(), 700); } catch (e) { toast('⚠️ ' + (e && e.message || 'Restore failed')); }
+      }, { title: 'Restore this copy?', yes: 'Yes, restore', danger: true });
+    }
   };
 
-  /* ---- anonymous user counter ---- */
+  /* ---- user counter: ONE DEVICE = ONE USER (v12.0.0) ----
+     The id comes from the device itself (Safety.deviceId), so Log out / re-login / clearing data / re-installing the app
+     on the same device is never counted again. With the default free counters the device is registered once through its
+     own tiny counter: the global total only goes up when that device counter is seen for the very first time. */
   const LS = { get: k => { try { return localStorage.getItem(k); } catch (_) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (_) {} } };
-  const base = () => (((window.PROPOS_CONFIG || {}).userCounterUrl) || '').trim().replace(/\/+$/, '');
-  function uid() {
-    let id = LS.get('esypos_uid');
-    if (!/^[a-f0-9]{40}$/.test(id || '')) { const a = new Uint8Array(20); (window.crypto || {}).getRandomValues ? crypto.getRandomValues(a) : a.forEach((_, i) => a[i] = Math.floor(Math.random() * 256)); id = Array.from(a).map(x => x.toString(16).padStart(2, '0')).join(''); LS.set('esypos_uid', id); }
-    return id;
-  }
+  const cfg = () => window.PROPOS_CONFIG || {};
+  const base = () => ((cfg().userCounterUrl) || '').trim().replace(/\/+$/, '');
   function pill() {
-    const n = parseInt(LS.get('esypos_uc') || '0', 10);
-    document.querySelectorAll('.js-ucount').forEach(e => { e.textContent = n ? n.toLocaleString('en-US') : '—'; });
+    const off = parseInt(cfg().userCountOffset, 10) || 0;
+    const n = (parseInt(LS.get('esypos_uc') || '0', 10) || 0) + off;
+    document.querySelectorAll('.js-ucount').forEach(e => { e.textContent = n > 0 ? n.toLocaleString('en-US') : '—'; });
   }
-  // Default counter: free public CounterAPI (no account). One "up" per install; clearing browser data counts again.
-  const ABACUS = 'https://abacus.jasoncameron.dev', NS = 'oldpos.github.io/total-users';
-  const CAPI = 'https://api.counterapi.dev/v1/esypos-github-io/total-users';
+  const ABACUS = 'https://abacus.jasoncameron.dev', NS_ = 'oldpos.github.io', TOTAL = 'total-users';
+  const CAPI = 'https://api.counterapi.dev/v1/esypos-github-io';
   const pick = j => { const v = j && (j.count !== undefined ? j.count : j.value !== undefined ? j.value : j.data && (j.data.up_count !== undefined ? j.data.up_count : j.data.count)); const n = parseInt(v, 10); return isNaN(n) ? 0 : n; };
+  async function hitJSON(url, ctl) { const r = await fetch(url, { signal: ctl.signal, cache: 'no-store' }); if (!r.ok) return 0; return pick(await r.json()); }
+  async function viaCounters(dev, ctl) {
+    const dk = 'dev-' + dev, reg = LS.get('esypos_uc_dev') === dev, legacy = LS.get('esypos_uc_reg') === '1';
+    let total = 0;
+    if (!reg) {
+      // 1) touch this device's own counter. 1 = never seen before anywhere; >1 = this device was already counted.
+      let n = 0;
+      try { n = await hitJSON(ABACUS + '/hit/' + NS_ + '/' + dk, ctl); } catch (_) {}
+      if (!n) { try { n = await hitJSON(CAPI + '/' + dk + '/up', ctl); } catch (_) {} }
+      if (n) {
+        const fresh = n === 1 && !legacy;          // installs counted by older versions are not counted twice
+        if (fresh) {
+          try { total = await hitJSON(ABACUS + '/hit/' + NS_ + '/' + TOTAL, ctl); } catch (_) {}
+          if (!total) { try { total = await hitJSON(CAPI + '/' + TOTAL + '/up', ctl); } catch (_) {} }
+          if (total) LS.set('esypos_uc_dev', dev);   // only remembered once the total really went up (retried next time otherwise)
+        } else LS.set('esypos_uc_dev', dev);
+      }
+    }
+    if (!total) {
+      try { total = await hitJSON(ABACUS + '/get/' + NS_ + '/' + TOTAL, ctl); } catch (_) {}
+      if (!total) { try { total = await hitJSON(CAPI + '/' + TOTAL + '/', ctl); } catch (_) {} }
+    }
+    return total;
+  }
   async function count() {
     if (!navigator.onLine) return pill();
     const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 9000), b = base();
     try {
-      if (b) {                                              // optional: your own Firebase database
-        if (LS.get('esypos_uc_reg') !== '1') {
-          const r = await fetch(b + '/users/' + uid() + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: Date.now() }), signal: ctl.signal });
-          if (r.ok || r.status === 401 || r.status === 403) LS.set('esypos_uc_reg', '1');
+      const dev = window.Safety ? await Safety.deviceId() : null;
+      if (!dev) throw new Error('no device id');
+      if (b) {                                              // optional: your own Firebase database (exact, one record per device)
+        if (LS.get('esypos_uc_dev') !== dev) {
+          const r = await fetch(b + '/devices/' + dev + '.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: Date.now() }), signal: ctl.signal });
+          if (r.ok || r.status === 401 || r.status === 403) LS.set('esypos_uc_dev', dev);
         }
-        const r2 = await fetch(b + '/users.json?shallow=true', { signal: ctl.signal });
+        const r2 = await fetch(b + '/devices.json?shallow=true', { signal: ctl.signal });
         if (r2.ok) { const j = await r2.json(); LS.set('esypos_uc', String(j ? Object.keys(j).length : 0)); }
       } else {
-        const first = LS.get('esypos_uc_reg') !== '1';
-        let n = 0;
-        try { const r = await fetch(ABACUS + (first ? '/hit/' : '/get/') + NS, { signal: ctl.signal }); if (r.ok) n = pick(await r.json()); } catch (_) {}
-        if (!n) { try { const r = await fetch(CAPI + (first ? '/up' : '/'), { signal: ctl.signal }); if (r.ok) n = pick(await r.json()); } catch (_) {} }
-        if (n) { LS.set('esypos_uc', String(n)); if (first) LS.set('esypos_uc_reg', '1'); }
+        const n = await viaCounters(dev, ctl);
+        if (n) LS.set('esypos_uc', String(n));
       }
     } catch (_) { /* offline or blocked: keep the last known number */ }
     clearTimeout(to); pill();

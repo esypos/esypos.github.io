@@ -5,5 +5,7 @@ window.PROPOS_CONFIG = {
   ,
   // Anonymous user counter: paste your Firebase Realtime Database URL (no trailing slash), e.g. 'https://your-app-default-rtdb.firebaseio.com'.
   // Leave empty to hide the counter. Database rules are in README.md.
-  userCounterUrl: ''
+  userCounterUrl: '',
+  // Subtract users counted twice by older versions (they counted every login). Example: userCountOffset: -120
+  userCountOffset: 0
 };

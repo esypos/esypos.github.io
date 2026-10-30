@@ -8,7 +8,7 @@
 
 Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
-[**Website**](https://oldpos.com/) · [Privacy Policy](https://oldpos.com/privacy.html) · [Terms](https://oldpos.com/terms.html)
+[**Website**](https://oldpos.github.io/) · [Privacy Policy](https://oldpos.github.io/privacy.html) · [Terms](https://oldpos.github.io/terms.html)
 
 <br>
 
@@ -20,13 +20,15 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
 ---
 
-## v12.0.0 — Launch edition
-
-- **New domain: [oldpos.com](https://oldpos.com/).** Canonical URLs, sitemap, robots.txt, structured data (WebSite, SoftwareApplication, FAQPage) and a `CNAME` file now point to oldpos.com.
-- **Professional sign-in / home page** with a header menu (Features, Screenshots, How it works, FAQ), a Telegram invite in the header, hero, mid-page band, final call-to-action and a phone floating pill, a screenshot gallery, FAQ and a short Bengali section. The text is real HTML in `index.html`, so search engines read exactly what visitors see.
-- **Telegram** now points to [t.me/old_pos](https://t.me/old_pos) everywhere.
-- **Dashboard (phone and desktop):** the first quick action is now **New bill** and opens the Sales Counter. Add product stays in Products and in the Get-started list.
-- **Instant Admin lock:** after the Admin PIN opens a section or reveals profit, a **Lock admin now** pill stays on screen. One tap closes open sheets, hides profit and returns to the Sales Counter. The lock also returns after the chosen quiet time (touch, key and scroll keep it open) or when the app is hidden.
+## v12.0.0 — App-style redesign, one device = one user, stay signed in
+- **New phone design** (same brand colours, light + dark): app-style header with shop name, big *Today's turnover* card with **New Sale**, four icon cards (Sales Turnover · Gross Profit · Customer Dues · Stock Value), **Quick Actions** (POS Sale · + Product · Purchase · + Expense), *Sales Trend (Last 7 Days)*, and a bottom bar **Home · Products · New sale · Reports · More**.
+- **Calmer desktop**: refined sidebar, glass title bar, wide turnover card, 4-column cards and quick actions.
+- **Total users now counts devices, not logins.** The id comes from the device itself, so Log out / Log in, clearing site data or re-installing on the same device is never counted again. Installs counted by older versions are not counted twice. Optional `userCountOffset` in `js/core/config.js` removes the old inflated numbers.
+- **Stay signed in until you press Log out.** The sign-in marker is mirrored (cookie + IndexedDB) and storage is requested as persistent; if the browser drops local storage the session and cloud data come back automatically.
+- **Backup**: automatic rolling **local safety copies** (last 10, restorable offline, Settings → Security → *This device & local copies*), on top of verified Google Drive backups, daily Drive snapshots and shrink protection.
+- **Security**: easy PINs (0000, 1234, 1111…) are refused for both the home PIN and the Admin PIN. Existing protections stay: PBKDF2 PIN hashing, escalating lock-outs, strict Content-Security-Policy, anti-clickjacking.
+- Telegram link now points to https://t.me/old_pos.
+- New files: `css/modern.css`, `js/services/safety.js` (cached by the service worker; `CACHE_VERSION` v12.0.0).
 
 ## v11.9.1 — Dashboard first
 - The app now **opens on a redesigned Dashboard**: greeting + shop name, big *Today's sales* with a comparison to yesterday, Profit / Bills / Expenses, quick actions, monthly overview and a 7-day chart. Profit stays hidden behind the Admin PIN lock if you enabled it.
@@ -42,7 +44,7 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 ## v11.4.0 — App-like design + Telegram community
 - **Phone**: installed-app feel — no pull-to-refresh bounce, press feedback on every button, no accidental text selection on buttons, 16px inputs (no iOS zoom), 44px touch targets, safe-area aware spacing above the bottom bar.
 - **Desktop**: desktop-app feel — a window-style title bar (page name, shop, total users, cloud status, theme, lock), thin scrollbars, tidier sidebar, and shortcuts: **Alt+1…5** (Sales / Dashboard / Products / Customers / Reports) and **Ctrl+L** (lock).
-- **Telegram channel invite** ([t.me/old_pos](https://t.me/old_pos)) shown in five places: sign-in page, desktop sidebar, mobile menu, Dashboard banner, and a one-time welcome pop-up (repeats at most every 7 days until the user taps Join).
+- **Telegram channel invite** ([t.me/esypos](https://t.me/esypos)) shown in five places: sign-in page, desktop sidebar, mobile menu, Dashboard banner, and a one-time welcome pop-up (repeats at most every 7 days until the user taps Join).
 - New files: `css/appshell.css`, `js/services/appshell.js`, `js/services/community.js` (added to the service-worker shell; `CACHE_VERSION` bumped in `sw.js` and `pwa.js`).
 
 ## v11.3.0 — Easier for every business, safer data, bug fixes
@@ -205,7 +207,7 @@ Old POS is an open-source project released under the **[MIT License](LICENSE)**.
 
 ## Quick Start
 
-1. Open **[oldpos.com](https://oldpos.com/)**
+1. Open **[oldpos.github.io](https://oldpos.github.io/)**
 2. Sign in with Google once and add products (the app then opens instantly, and reconnects to Drive in the background)
 3. On phone: **Add to Home screen**
 
@@ -215,7 +217,7 @@ Old POS is an open-source project released under the **[MIT License](LICENSE)**.
 - Google sign-in is optional and saves one backup file (EsyPOS-Backup.json) in **your** Drive and cannot see other files.
 - Camera (barcode) and Bluetooth (printer) are used only when needed.
 
-[Full Privacy Policy](https://oldpos.com/privacy.html)
+[Full Privacy Policy](https://oldpos.github.io/privacy.html)
 
 ## Terms
 
@@ -223,7 +225,7 @@ Old POS is an open-source project released under the **[MIT License](LICENSE)**.
 - You are responsible for backups and the accuracy of your records.
 - Tax / VAT figures are a guide only.
 
-[Full Terms of Service](https://oldpos.com/terms.html)
+[Full Terms of Service](https://oldpos.github.io/terms.html)
 
 ## Owner
 

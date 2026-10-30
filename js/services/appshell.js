@@ -23,7 +23,18 @@
     const a = document.querySelector('#nav-desk .nav-link.active');
     const t = App.view === 'pos' ? 'Sales Counter' : (a ? a.textContent.trim() : ''); if (t) p.textContent = t;
     const s = $('db-shop'); try { if (s && window.Core) s.textContent = Core.DB.settings.shopName || ''; } catch (_) {}
+    shopName();
   }
+
+  /* Phone header: shop name (first word in the brand colour) + tagline, like an installed app */
+  function shopName() {
+    const el = $('tb-shop'); if (!el || !window.Core) return;
+    const n = String(Core.DB.settings.shopName || 'Old POS').trim() || 'Old POS', parts = n.split(/\s+/), first = parts.shift();
+    const h = '<em>' + Core.esc(first) + '</em>' + (parts.length ? ' ' + Core.esc(parts.join(' ')) : '');
+    if (el.dataset.n !== n) { el.innerHTML = h; el.dataset.n = n; }
+    const sub = $('tb-sub'); if (sub && !sub.dataset.set) { sub.textContent = 'Smart POS & Billing'; sub.dataset.set = '1'; }
+  }
+  window.addEventListener('esypos:saved', shopName);
 
   function hookGo() {
     if (!window.App || App._shell) return; App._shell = 1;
@@ -44,6 +55,6 @@
   /* Stop the browser's own pinch / double-tap zoom on the app chrome (inputs still zoom-safe: font-size ≥ 16px on phones) */
   document.addEventListener('gesturestart', e => e.preventDefault());
 
-  function init() { bar(); hookGo(); setTimeout(hookGo, 500); setTimeout(title, 800); }
+  function init() { bar(); hookGo(); shopName(); setInterval(shopName, 4000); setTimeout(hookGo, 500); setTimeout(title, 800); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
