@@ -220,7 +220,31 @@
     preset: 'today', from: '', to: '',
     range() { const t = C.todayKey(); return { today: [t, t], yday: [C.addDays(t, -1), C.addDays(t, -1)], week: [C.addDays(t, -6), t], month: [C.monthStart(), t], all: ['', ''], custom: [this.from, this.to] }[this.preset]; },
     render() {
+      const needsLock = !(window.Lock && Lock.has && Lock.has()) && !(window.AdminLock && AdminLock.has && AdminLock.has());
+      const lockWarn = needsLock
+        ? `<div class="card pad mb3 lock-warn" role="alert">
+            <div class="flex items-c gap3">
+              <i class="fas fa-shield-halved warn" style="font-size:22px"></i>
+              <div class="grow">
+                <div class="fw7" style="margin-bottom:2px">Protect profit &amp; reports</div>
+                <p class="sm muted" style="margin:0">Anyone using this device can see profit and P/L here. Set a PIN or Admin lock so staff can sell but cannot open Reports.</p>
+              </div>
+              <button type="button" class="btn btn-primary btn-sm" onclick="App.go('settings');setTimeout(function(){Settings.open('security')},80)"><i class="fas fa-lock"></i> Lock now</button>
+            </div>
+          </div>`
+        : '';
+      if (needsLock) {
+        try {
+          const k = 'esypos_rep_lock_warn';
+          const n = parseInt(sessionStorage.getItem(k) || '0', 10) + 1;
+          sessionStorage.setItem(k, String(n));
+          if (n <= 3 || n % 3 === 0) {
+            setTimeout(() => { try { toast('🔒 Lock the app — Reports show profit & sensitive data'); } catch (_) {} }, 400);
+          }
+        } catch (_) {}
+      }
       $('view').innerHTML = `<div class="page-head"><div><h2>Reports</h2><p>Sales, profit/loss & collections</p></div><div class="flex gap2"><button class="btn btn-ghost" onclick="Rep.csv()"><i class="fas fa-file-csv"></i></button><button class="btn btn-ghost" onclick="Rep.print()"><i class="fas fa-print"></i></button></div></div>
+      ${lockWarn}
       <div class="card pad-s mb3"><div class="chips">${[['today', 'Today'], ['yday', 'Yesterday'], ['week', '7 Days'], ['month', 'This Month'], ['all', 'All'], ['custom', 'Custom']].map(p => `<button class="chip ${this.preset === p[0] ? 'on' : ''}" onclick="Rep.setP('${p[0]}')">${p[1]}</button>`).join('')}</div>
         ${this.preset === 'custom' ? `<div class="grid2 mt2"><input type="date" class="input" value="${this.from}" onchange="Rep.from=this.value;Rep.body()"><input type="date" class="input" value="${this.to}" onchange="Rep.to=this.value;Rep.body()"></div>` : ''}</div><div id="rep-body"></div>`;
       this.body();
@@ -292,8 +316,23 @@
       const I = (n, z) => (window.EsyIcon ? EsyIcon(n, z || 22) : '');
       const bills = td.count, sold = DB.products.reduce((a, p) => a + (p.track === false ? 0 : Math.max(0, num(p.stock))), 0);
       const dstr = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
+      const shop = esc(DB.settings.shopName || 'My Shop');
+      const lastSale = recent[0] ? C.fmtTime(recent[0].date) : '—';
+      const avgTicket = bills ? money(r2(td.netSales / bills)) : money(0);
       $('view').innerHTML = `<div class="dash2">
-      <div class="d2-greet"><span>${greet}</span><i></i><span>${dstr}</span></div>
+      <div class="d2-greet">
+        <div class="d2-greet-main">
+          <span class="d2-hi">${greet}</span>
+          <span class="d2-shop">${shop}</span>
+        </div>
+        <div class="d2-greet-meta">
+          <span class="d2-date">${dstr}</span>
+          <span class="d2-dot"></span>
+          <span class="d2-chip">Last sale ${lastSale}</span>
+          <span class="d2-dot d2-desk"></span>
+          <span class="d2-chip d2-desk">${bills} bill${bills === 1 ? '' : 's'} today</span>
+        </div>
+      </div>
       <section class="hero2" aria-label="Today's turnover">
         <div class="h2-row">
           <div class="h2-main"><div class="h2-k">TODAY'S TURNOVER</div><div class="h2-v">${money(td.netSales)}</div>
@@ -302,14 +341,14 @@
         </div>
         <div class="h2-line"></div>
         <div class="h2-metrics">
-          <button type="button" class="hm hm2" data-profit="1" onclick="App.go('reports')" aria-label="Estimated net profit"><span class="k"><span>Est. Net Profit</span></span><b class="v">${money(td.netProfit)}</b></button>
+          <button type="button" class="hm hm2" onclick="App.go('history')" aria-label="Today's bills"><span class="k"><span>Today's Bills</span></span><b class="v">${bills}</b></button>
           <button type="button" class="hm hm2" onclick="App.go('expenses')" aria-label="Today's expenses"><span class="k"><span>Today's Expenses</span></span><b class="v">${money(td.expenses)}</b></button>
           <button type="button" class="hm hm2 r" onclick="App.go('products')" aria-label="Inventory units"><span class="k"><span>Inventory Units</span></span><b class="v">${fmt(Math.round(sold))} items</b></button>
         </div>
       </section>
       <div class="sc-grid">
         <button type="button" class="stat sc" onclick="App.go('history')"><div class="sc-h"><span class="sc-t">Sales Turnover</span><span class="sc-i t-p">${I('till', 22)}</span></div><div class="v sc-v">${money(mo.netSales)}</div><div class="sc-s">Month · Today ${money(td.netSales)}</div></button>
-        <button type="button" class="stat sc" data-profit="1" onclick="App.go('reports')"><div class="sc-h"><span class="sc-t">Gross Profit</span><span class="sc-i t-g">${I('trend', 22)}</span></div><div class="v sc-v">${money(mo.grossProfit)}</div><div class="sc-s">This month</div></button>
+        <button type="button" class="stat sc" onclick="App.go('history')"><div class="sc-h"><span class="sc-t">Avg. Ticket</span><span class="sc-i t-g">${I('trend', 22)}</span></div><div class="v sc-v">${avgTicket}</div><div class="sc-s">Today · per bill</div></button>
         <button type="button" class="stat sc" onclick="People.cf='due';App.go('customers')"><div class="sc-h"><span class="sc-t">Customer Dues</span><span class="sc-i t-w">${I('wallet', 22)}</span></div><div class="v sc-v ${C.totalCustomerDue() > 0 ? 'bad' : ''}">${money(C.totalCustomerDue())}</div><div class="sc-s">Receivable balances</div></button>
         <button type="button" class="stat sc" onclick="App.go('products')"><div class="sc-h"><span class="sc-t">Stock Value</span><span class="sc-i t-i">${I('store', 22)}</span></div><div class="v sc-v">${money(C.stockValue())}</div><div class="sc-s">At purchase cost</div></button>
       </div>
@@ -322,11 +361,11 @@
       </div>
       ${guide}
       <div class="card pad trend2"><div class="flex between items-c mb2"><div><div class="tr-t">Sales Trend (Last 7 Days)</div><div class="tr-s">Daily POS revenue performance</div></div><span class="tr-i">${I('bars', 22)}<b>${money(wk)}</b></span></div><div class="bars">${days.map((d, i) => `<div class="bar${i === days.length - 1 ? ' today' : ''}"><b>${d.v ? fmt(Math.round(d.v)) : ''}</b><i style="height:${Math.max(3, d.v / mx * 90)}%"></i><small>${new Date(d.k + 'T00:00').toLocaleDateString('en-GB', { weekday: 'short' })}</small></div>`).join('')}</div></div>
-      <div class="d2-title">This month</div>
-      <div class="stats"><div class="stat"><div class="k">Sales</div><div class="v">${money(mo.netSales)}</div></div>
-        <div class="stat" data-profit="1"><div class="k">Net profit</div><div class="v ${mo.netProfit >= 0 ? 'ok' : 'bad'}">${money(mo.netProfit)}</div></div>
+      <div class="d2-title d2-work">This month · work summary</div>
+      <div class="stats stats-work"><div class="stat"><div class="k">Sales</div><div class="v">${money(mo.netSales)}</div></div>
+        <div class="stat"><div class="k">Bills</div><div class="v">${mo.count}</div></div>
         <div class="stat"><div class="k">Expenses</div><div class="v">${money(mo.expenses)}</div></div>
-        <div class="stat"><div class="k">Bills</div><div class="v">${mo.count}</div></div></div>
+        <div class="stat d2-to-reports" onclick="App.go('reports')"><div class="k">Profit &amp; P/L</div><div class="v muted" style="font-size:14px">View in Reports →</div></div></div>
       <div class="grid2" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));align-items:start">
         <div class="card pad"><div class="sec-title"><i class="fas fa-user-clock bad"></i> Highest dues</div>${debtors.length ? debtors.map(x => `<div class="kv" onclick="People.detail('${x.c.id}')" style="cursor:pointer"><span>${esc(x.c.name)}</span><b class="bad">${money(x.b)}</b></div>`).join('') : '<div class="empty" style="padding:14px">No dues ✓</div>'}</div>
         <div class="card pad"><div class="sec-title"><i class="fas fa-triangle-exclamation warn"></i> Low Stock</div>${low.length ? low.map(p => `<div class="kv"><span>${esc(p.name)}</span><b class="bad">${p.stock} ${esc(p.unit || '')}</b></div>`).join('') : '<div class="empty" style="padding:14px">All stock levels OK ✓</div>'}</div>
