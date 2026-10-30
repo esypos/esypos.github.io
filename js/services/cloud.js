@@ -365,34 +365,111 @@
     const restore = mode === 'restore';
     document.body.classList.add('gated');
     const el = document.createElement('div'); el.id = 'welcome'; el.className = 'welcome authgate'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
-    el.innerHTML = `<div class="gate">
-      <section class="gate-brand">
-        <div class="gate-logo"><img class="logo-img" src="assets/icons/icon-192.png" alt="Old POS" draggable="false"></div>
-        <h1>Old POS</h1>
-        <p class="gate-tag">Simple POS for Every Business</p>
-        <ul class="gate-feats">
-          <li><i class="fas fa-cloud-arrow-up"></i><span><b>Cloud saved</b>Every sale is backed up to your Google Drive</span></li>
-          <li><i class="fas fa-mobile-screen-button"></i><span><b>Any device</b>Sign in anywhere and continue where you left off</span></li>
-          <li><i class="fas fa-shield-halved"></i><span><b>Private &amp; secure</b>Only you can access your shop data</span></li>
-        </ul>
-      </section>
-      <section class="gate-card">
-        <h2>${restore ? 'Welcome back' : 'Sign in to continue'}</h2>
-        <p>${restore ? 'Signed in as <b>' + esc(get(KEY.email)) + '</b>. Restore your shop data from the cloud to continue.' : 'Old POS needs a Google account. Sign in to open your shop — your data is stored safely in your own Google Drive.'}</p>
-        <button class="btn btn-google btn-block btn-lg" id="w-go">${gIcon} <span>${restore ? 'Restore from cloud' : 'Continue with Google'}</span></button>
-        <div class="gate-msg" id="w-msg" role="alert"></div>
-        ${restore ? '<button class="gate-link" id="w-other" type="button">Use a different account</button>' : ''}
-        <div class="consent-note">By continuing you accept our <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> &amp; <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</div>
-        <div class="consent-note"><a href="features.html">Features &amp; FAQ</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></div>
-        ${clientId() ? '' : '<div class="note-warn mt3"><i class="fas fa-triangle-exclamation"></i> Google Client ID is not set. <a href="#" onclick="Cloud.setup();return false">View setup guide</a></div>'}
-      </section>
-    </div>`;
+    const TGU = (window.Community && Community.url) || 'https://t.me/old_pos';
+    const TGI = '<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="24" fill="#2AABEE"/><path fill="#fff" d="M10.6 23.4 34.7 14.1c1.1-.4 2.1.3 1.7 1.9l-4.1 19.3c-.3 1.4-1.1 1.7-2.2 1.1l-6.1-4.5-2.9 2.8c-.3.3-.6.6-1.2.6l.4-6.2 11.3-10.2c.5-.4-.1-.7-.8-.3l-14 8.8-6-1.9c-1.3-.4-1.3-1.3.3-1.9z"/></svg>';
+    const tgA = (cls, label) => `<a class="${cls}" href="${TGU}" target="_blank" rel="noopener noreferrer" aria-label="Join the Old POS Telegram community"><span class="lp-tgi">${TGI}</span>${label}</a>`;
+    const feat = (ic, t, d) => `<article class="lp-f"><span class="lp-fi"><i class="fas fa-${ic}"></i></span><h3>${t}</h3><p>${d}</p></article>`;
+    const faq = (q, a) => `<details><summary>${q}</summary><p>${a}</p></details>`;
+    el.className = 'welcome authgate lp';
+    el.innerHTML = `<header class="lp-nav"><div class="lp-wrap lp-nav-in">
+        <a class="lp-brand" href="#" onclick="document.getElementById('welcome').scrollTo({top:0,behavior:'smooth'});return false"><span class="lp-logo"><img class="logo-img" src="assets/icons/icon-192.png" alt="" draggable="false"></span><b>Old POS</b></a>
+        <nav class="lp-links" aria-label="Sections"><a href="#lp-features" data-to="lp-features">Features</a><a href="#lp-how" data-to="lp-how">How it works</a><a href="#lp-community" data-to="lp-community">Community</a><a href="#lp-faq" data-to="lp-faq">FAQ</a></nav>
+        <div class="lp-nav-act">${tgA('lp-tg-mini', '<span>Telegram</span>')}<button type="button" class="lp-signin" id="lp-nav-go">${restore ? 'Restore' : 'Sign in'}</button></div>
+      </div></header>
+      <main>
+      <section class="lp-hero"><div class="lp-wrap lp-hero-in">
+        <div class="lp-hero-copy">
+          <span class="lp-badge"><i class="fas fa-circle-check"></i> Free · Open source · Works offline</span>
+          <h1>${restore ? 'Welcome back to Old POS' : 'Free POS &amp; billing software for every shop'}</h1>
+          <p class="lp-lead">${restore ? 'Signed in as <b>' + esc(get(KEY.email)) + '</b>. Restore your shop data from the cloud to continue.' : 'Make bills in seconds, track stock and customer dues, and see your profit — on your phone or computer. Your data is backed up to your own Google Drive.'}</p>
+          <div class="lp-cta">
+            <button class="btn btn-google btn-lg" id="w-go">${gIcon} <span>${restore ? 'Restore from cloud' : 'Continue with Google'}</span></button>
+            ${tgA('lp-tg-btn', '<span>Join on Telegram</span>')}
+          </div>
+          <div class="gate-msg" id="w-msg" role="alert"></div>
+          ${restore ? '<button class="gate-link" id="w-other" type="button">Use a different account</button>' : ''}
+          <div class="lp-trust">
+            <button type="button" class="lp-users" onclick="window.Guard&&Guard.refreshCount()" title="Total Old POS users — tap to refresh"><i class="fas fa-users"></i><span>Total users</span><b class="js-ucount">—</b></button>
+            <span><i class="fas fa-shield-halved"></i> Private &amp; secure</span>
+            <span><i class="fas fa-cloud-arrow-up"></i> Google Drive backup</span>
+          </div>
+          <p class="lp-consent">By continuing you accept our <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> &amp; <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</p>
+          ${clientId() ? '' : '<div class="note-warn mt3"><i class="fas fa-triangle-exclamation"></i> Google Client ID is not set. <a href="#" onclick="Cloud.setup();return false">View setup guide</a></div>'}
+        </div>
+        <div class="lp-hero-art" aria-hidden="true">
+          <div class="lp-phone"><img src="assets/screenshots/02-dashboard.png" alt="" width="405" height="900" decoding="async"></div>
+          <span class="lp-float f1"><i class="fas fa-cloud-arrow-up"></i> Backup saved</span>
+          <span class="lp-float f2"><i class="fas fa-wifi"></i> Works offline</span>
+        </div>
+      </div></section>
+
+      <section class="lp-strip"><div class="lp-wrap lp-strip-in">
+        <div><b class="js-ucount">—</b><span>Total users</span></div>
+        <div><b>Free</b><span>No monthly fee</span></div>
+        <div><b>Offline</b><span>Sell without internet</span></div>
+        <div><b>Your Drive</b><span>You own the data</span></div>
+      </div></section>
+
+      <section class="lp-sec" id="lp-features"><div class="lp-wrap">
+        <div class="lp-head"><h2>Everything a shop needs, nothing it doesn’t</h2><p>One simple app for billing, stock, dues, expenses and reports.</p></div>
+        <div class="lp-grid">
+          ${feat('cash-register', 'Fast billing', 'Search products or scan barcodes, add discount and tax, hold bills and accept cash, card, mobile banking or due.')}
+          ${feat('barcode', 'Barcode scanning', 'Scan with the phone camera or a USB / Bluetooth scanner, and print your own barcode labels.')}
+          ${feat('box-open', 'Stock &amp; expiry alerts', 'Know what is running low or about to expire. Import and export products with CSV.')}
+          ${feat('hand-holding-dollar', 'Customer dues &amp; suppliers', 'A clear ledger for every customer and supplier, with reminders by WhatsApp or SMS.')}
+          ${feat('chart-column', 'Profit reports', 'Daily and monthly sales, expenses, gross and net profit, plus a 7-day trend chart.')}
+          ${feat('print', 'Receipts &amp; invoices', 'Print on 58 / 80 mm paper or a Bluetooth printer, make A4 invoices, share by WhatsApp.')}
+        </div>
+      </div></section>
+
+      <section class="lp-sec lp-alt" id="lp-how"><div class="lp-wrap">
+        <div class="lp-head"><h2>Start selling in three steps</h2></div>
+        <ol class="lp-steps">
+          <li><span>1</span><h3>Sign in with Google</h3><p>No sign-up form and no password to remember.</p></li>
+          <li><span>2</span><h3>Add products and sell</h3><p>Add your shop name and first product, then make your first bill.</p></li>
+          <li><span>3</span><h3>Relax, it is backed up</h3><p>Your data is saved on your device and in your own Google Drive.</p></li>
+        </ol>
+        <p class="lp-who">Used by grocery stores, pharmacies, fashion and fabric shops, mobile shops, cafes and wholesalers.</p>
+      </div></section>
+
+      <section class="lp-sec" id="lp-community"><div class="lp-wrap">
+        <div class="lp-tgband">
+          <span class="lp-tgbig">${TGI}</span>
+          <div class="lp-tgtxt"><h2>Join the Old POS community on Telegram</h2><p>Get updates, ask questions and share tips with other shop owners.</p></div>
+          ${tgA('lp-tg-btn lp-tg-light', '<span>Join Telegram</span>')}
+        </div>
+      </div></section>
+
+      <section class="lp-sec lp-alt" id="lp-faq"><div class="lp-wrap lp-narrow">
+        <div class="lp-head"><h2>Questions, answered</h2></div>
+        ${faq('Is Old POS really free?', 'Yes. There is no monthly fee, no per-device fee and no hidden charge.')}
+        ${faq('Does it work without internet?', 'Yes. After the first load it opens and sells offline, and backs up when you are online again.')}
+        ${faq('Where is my data stored?', 'On your device and in a private folder of your own Google Drive. Old POS has no server that can see your data.')}
+        ${faq('What if I change or lose my phone?', 'Sign in with the same Google account and your shop data comes back from your Drive backup.')}
+        ${faq('Which devices can I use?', 'Any modern browser on Android, iPhone, Windows, Mac and Linux. You can install it like an app.')}
+      </div></section>
+
+      <section class="lp-sec lp-final"><div class="lp-wrap lp-final-in">
+        <h2>Ready to run your shop the simple way?</h2>
+        <div class="lp-cta lp-cta-c"><button class="btn btn-google btn-lg" id="lp-go2">${gIcon} <span>${restore ? 'Restore from cloud' : 'Continue with Google'}</span></button>${tgA('lp-tg-btn', '<span>Join on Telegram</span>')}</div>
+      </div></section>
+      <section class="lp-about-slot"></section>
+      </main>
+      <footer class="lp-foot"><div class="lp-wrap lp-foot-in">
+        <div class="lp-foot-brand"><span class="lp-logo"><img class="logo-img" src="assets/icons/icon-192.png" alt="" draggable="false"></span><div><b>Old POS</b><small>Simple POS for Every Business</small></div></div>
+        <nav aria-label="Old POS pages"><a href="features.html">Features &amp; FAQ</a><a href="privacy.html">Privacy Policy</a><a href="terms.html">Terms of Service</a><a href="license.html">MIT License</a><a href="${TGU}" target="_blank" rel="noopener noreferrer">Telegram</a></nav>
+        <small class="lp-copy">© Old POS · Free and open source</small>
+      </div></footer>`;
     document.body.appendChild(el);
-    const about = $('seo-content'); if (about) { about.classList.remove('seo-only'); about.classList.add('gate-about'); el.appendChild(about); }
+    try { window.Guard && Guard.refreshCount(); } catch (_) {}
+    const about = $('seo-content'); if (about) { about.classList.remove('seo-only'); about.classList.add('gate-about'); (el.querySelector('.lp-about-slot') || el).appendChild(about); }
     const go = el.querySelector('#w-go'), msg = el.querySelector('#w-msg');
     const note = () => { msg.textContent = navigator.onLine ? '' : 'No internet connection. Connect to the internet to sign in.'; };
     if (clientId() && navigator.onLine) loadGIS().catch(() => {});
     note(); window.addEventListener('online', note); window.addEventListener('offline', note);
+    // extra sign-in buttons (top bar, bottom call-to-action) and smooth in-page links
+    ['lp-nav-go', 'lp-go2'].forEach(id => { const b = el.querySelector('#' + id); if (b) b.onclick = () => { const g = $('w-go'); if (g && !g.disabled) g.click(); }; });
+    el.querySelectorAll('[data-to]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); const t = $(a.dataset.to); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }));
     go.onclick = async () => {
       if (!navigator.onLine) { note(); return; }
       go.disabled = true; go.classList.add('busy'); msg.textContent = '';

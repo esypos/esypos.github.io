@@ -308,8 +308,8 @@
         </div>
       </section>
       <div class="sc-grid">
-        <button type="button" class="stat sc" onclick="App.go('history')"><div class="sc-h"><span class="sc-t">Sales Turnover</span><span class="sc-i t-p">${I('till', 22)}</span></div><div class="v sc-v">${money(td.netSales)}</div><div class="sc-s">Today: ${money(td.netSales)}</div></button>
-        <button type="button" class="stat sc" data-profit="1" onclick="App.go('reports')"><div class="sc-h"><span class="sc-t">Gross Profit</span><span class="sc-i t-g">${I('trend', 22)}</span></div><div class="v sc-v">${money(td.grossProfit)}</div><div class="sc-s">Today's profit</div></button>
+        <button type="button" class="stat sc" onclick="App.go('history')"><div class="sc-h"><span class="sc-t">Sales Turnover</span><span class="sc-i t-p">${I('till', 22)}</span></div><div class="v sc-v">${money(mo.netSales)}</div><div class="sc-s">Month · Today ${money(td.netSales)}</div></button>
+        <button type="button" class="stat sc" data-profit="1" onclick="App.go('reports')"><div class="sc-h"><span class="sc-t">Gross Profit</span><span class="sc-i t-g">${I('trend', 22)}</span></div><div class="v sc-v">${money(mo.grossProfit)}</div><div class="sc-s">This month</div></button>
         <button type="button" class="stat sc" onclick="People.cf='due';App.go('customers')"><div class="sc-h"><span class="sc-t">Customer Dues</span><span class="sc-i t-w">${I('wallet', 22)}</span></div><div class="v sc-v ${C.totalCustomerDue() > 0 ? 'bad' : ''}">${money(C.totalCustomerDue())}</div><div class="sc-s">Receivable balances</div></button>
         <button type="button" class="stat sc" onclick="App.go('products')"><div class="sc-h"><span class="sc-t">Stock Value</span><span class="sc-i t-i">${I('store', 22)}</span></div><div class="v sc-v">${money(C.stockValue())}</div><div class="sc-s">At purchase cost</div></button>
       </div>

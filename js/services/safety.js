@@ -104,9 +104,9 @@
   const SK = 'oldpos_sess';
   function mirrorOut() {
     if (LS.get('esypos_g_on') !== '1') return;
-    const o = {}; SESSION_KEYS.forEach(k => { const v = LS.get(k); if (v) o[k] = k === 'esypos_g_pic' && v.length > 300 ? '' : v; });
-    const s = JSON.stringify(o);
-    if (s.length < 3500) CK.set(SK, s, 400);
+    const o = {}; SESSION_KEYS.forEach(k => { const v = LS.get(k); if (v) o[k] = v; });
+    const s = JSON.stringify(o), lite = {}; ['esypos_g_on', 'esypos_g_email', 'esypos_g_fid', 'esypos_g_rev', 'esypos_g_client'].forEach(k => { if (o[k]) lite[k] = o[k]; });   // the cookie keeps only what is needed (no name / photo)
+    const c = JSON.stringify(lite); if (c.length < 3500) CK.set(SK, c, 400);
     IDB.set('sess', s);
   }
   function restoreSync() {                                                // runs before cloud.js reads its keys
@@ -188,7 +188,9 @@
   }
   async function downloadCopy(t) {
     const c = (await IDB.copies()).find(x => x.t === t); if (!c) return;
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([c.data], { type: 'application/json' }));
+    let txt = c.data;
+    try { const d = JSON.parse(c.data); d.settings = Object.assign({}, d.settings, { pinHash: '', pinSalt: '', adminHash: '', adminSalt: '' }); txt = JSON.stringify(d); } catch (_) {}   // a downloaded file never carries PIN hashes
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'application/json' }));
     a.download = 'OldPOS-local-copy-' + new Date(c.t).toISOString().slice(0, 16).replace(/[:T]/g, '-') + '.json'; document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   }

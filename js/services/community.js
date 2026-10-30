@@ -4,7 +4,7 @@
   'use strict';
   const URL_ = 'https://t.me/old_pos', HANDLE = 'Updates & support';
   /* Telegram logo: round badge with the paper plane */
-  const LOGO = '<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="24" fill="#2AABEE"/><path fill="#fff" d="M10.9 23.6c7-3.1 11.7-5.1 14-6.1 6.7-2.8 8.1-3.3 9-3.3.2 0 .6 0 .9.3.2.2.3.5.3.7 0 .2 0 .8-.1 1.2-.4 3.8-2 13-2.8 17.3-.4 1.8-1 2.4-1.7 2.5-1.4.1-2.5-.9-3.9-1.8-2.1-1.4-3.3-2.2-5.3-3.5-2.3-1.5-.8-2.3.5-3.7.3-.4 6.5-6 6.6-6.5 0-.1 0-.3-.1-.4-.1-.1-.3-.1-.4-.1-.2 0-3.5 2.2-9.8 6.5-.9.6-1.800.9-2.600.9-.9 0-2.500-.5-3.800-.9-1.500-.5-2.700-.7-2.600-1.600 0-.5.7-1 1.900-1.500z"/></svg>';
+  const LOGO = '<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="24" fill="#2AABEE"/><path fill="#fff" d="M10.6 23.4 34.7 14.1c1.1-.4 2.1.3 1.7 1.9l-4.1 19.300c-.3 1.4-1.1 1.7-2.2 1.1l-6.100-4.500-2.900 2.800c-.3.3-.6.6-1.200.6l.4-6.200 11.300-10.200c.5-.4-.1-.7-.8-.3l-14 8.800-6-1.900c-1.300-.4-1.300-1.300.3-1.900z"/></svg>';
 
   /* 1) Header: round Telegram icon next to the Backup button (phone top bar + desktop title bar) */
   function btn() {
@@ -13,6 +13,10 @@
   /* 2) Menu: one slim row under the menu list (desktop sidebar + phone drawer) */
   function link() {
     return `<a class="tg-link" href="${URL_}" target="_blank" rel="noopener noreferrer" aria-label="Join the Old POS Telegram channel"><span class="tg-ico">${LOGO}</span><span class="tg-t">Telegram <small>${HANDLE}</small></span></a>`;
+  }
+  /* 3) Sign-in page: full Telegram join card */
+  function card() {
+    return `<a class="tg-card" href="${URL_}" target="_blank" rel="noopener noreferrer" aria-label="Join the Old POS Telegram community"><span class="tg-ico">${LOGO}</span><span class="tg-txt"><b>Join our Telegram community</b><small>Updates, support &amp; tips from the Old POS team</small></span><span class="tg-go">Join</span></a>`;
   }
   function fill() {
     document.querySelectorAll('.topbar-actions').forEach(a => { if (!a.querySelector('.tg-btn')) a.insertAdjacentHTML('beforeend', btn()); });
@@ -24,18 +28,12 @@
     });
   }
 
-  /* Sign-in page: feature chips on phones (the page is rebuilt on sign-out, so watch for it) */
-  function gate() {
-    const g = document.getElementById('welcome'); if (!g) return;
-    const b = g.querySelector('.gate-brand');
-    if (b && !b.querySelector('.gate-chips')) { const d = document.createElement('div'); d.className = 'gate-chips';
-      d.innerHTML = '<span><i class="fas fa-circle-check"></i> Free</span><span><i class="fas fa-wifi"></i> Works offline</span><span><i class="fas fa-shield-halved"></i> Secure</span>'; b.appendChild(d); }
-  }
+  function gate() { document.querySelectorAll('.js-tg-slot').forEach(s => { if (!s.firstElementChild) s.innerHTML = card(); }); }   // sign-in page Telegram card
 
   function init() {
     fill(); gate();
     new MutationObserver(gate).observe(document.body, { childList: true });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
-  window.Community = { url: URL_, fill };
+  window.Community = { url: URL_, fill, card, logo: LOGO };
 })();

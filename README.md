@@ -8,7 +8,7 @@
 
 Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
-[**Website**](https://oldpos.github.io/) · [Privacy Policy](https://oldpos.github.io/privacy.html) · [Terms](https://oldpos.github.io/terms.html)
+[**Website**](https://oldpos.com/) · [Privacy Policy](https://oldpos.com/privacy.html) · [Terms](https://oldpos.com/terms.html)
 
 <br>
 
@@ -19,6 +19,14 @@ Free · Open Source · Offline · Installable · Backup to your own Google Drive
 </div>
 
 ---
+
+## v12.0.3 — Website-style home page, much slimmer dashboard boxes
+- **Home page before sign-in is now a full website-style landing page**: sticky top bar (Features · How it works · Community · FAQ, Telegram button, Sign in), hero with *Continue with Google* and *Join on Telegram*, live app preview, Total users counter, feature cards, three-step guide, a Telegram community band, FAQ, closing call-to-action and footer. Telegram (https://t.me/old_pos) appears in the top bar, hero, community band, closing section and footer. Works on phone and desktop, light and dark.
+- **Dashboard**: the Today's Turnover card and the four boxes (Sales Turnover, Gross Profit, Customer Dues, Stock Value) are now far slimmer on phone, tablet and desktop (icon on the left, text stacked on the right). Quick Actions are tighter too.
+- Sales Turnover and Gross Profit boxes show *this month* as the main value (today's number was shown twice before). Gross Profit still hides behind the Admin PIN lock.
+- Fixes: Telegram icon path, blue strip beside the sign-in page scrollbar, missing icon, Telegram card load order.
+- Login and dashboard screenshots replaced (the old ones showed the previous EsyPOS design and a real shop's data).
+- `CACHE_VERSION` v12.0.3 in `sw.js` and `pwa.js`.
 
 ## v12.0.0 — App-style redesign, one device = one user, stay signed in
 - **New phone design** (same brand colours, light + dark): app-style header with shop name, big *Today's turnover* card with **New Sale**, four icon cards (Sales Turnover · Gross Profit · Customer Dues · Stock Value), **Quick Actions** (POS Sale · + Product · Purchase · + Expense), *Sales Trend (Last 7 Days)*, and a bottom bar **Home · Products · New sale · Reports · More**.
@@ -207,7 +215,7 @@ Old POS is an open-source project released under the **[MIT License](LICENSE)**.
 
 ## Quick Start
 
-1. Open **[oldpos.github.io](https://oldpos.github.io/)**
+1. Open **[oldpos.com](https://oldpos.com/)**
 2. Sign in with Google once and add products (the app then opens instantly, and reconnects to Drive in the background)
 3. On phone: **Add to Home screen**
 
@@ -217,7 +225,7 @@ Old POS is an open-source project released under the **[MIT License](LICENSE)**.
 - Google sign-in is optional and saves one backup file (EsyPOS-Backup.json) in **your** Drive and cannot see other files.
 - Camera (barcode) and Bluetooth (printer) are used only when needed.
 
-[Full Privacy Policy](https://oldpos.github.io/privacy.html)
+[Full Privacy Policy](https://oldpos.com/privacy.html)
 
 ## Terms
 
@@ -225,7 +233,7 @@ Old POS is an open-source project released under the **[MIT License](LICENSE)**.
 - You are responsible for backups and the accuracy of your records.
 - Tax / VAT figures are a guide only.
 
-[Full Terms of Service](https://oldpos.github.io/terms.html)
+[Full Terms of Service](https://oldpos.com/terms.html)
 
 ## Owner
 
