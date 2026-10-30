@@ -8,7 +8,7 @@
 
 Free · Open Source · Offline · Installable · Backup to your own Google Drive
 
-[**Website**](https://oldpos.com/) · [Privacy Policy](https://oldpos.com/privacy.html) · [Terms](https://oldpos.com/terms.html)
+[**Website**](https://oldpos.github.io/) · [Privacy Policy](https://oldpos.github.io/privacy.html) · [Terms](https://oldpos.github.io/terms.html)
 
 <br>
 
@@ -207,7 +207,7 @@ Old POS is an open-source project released under the **[MIT License](LICENSE)**.
 
 ## Quick Start
 
-1. Open **[oldpos.com](https://oldpos.com/)**
+1. Open **[oldpos.github.io](https://oldpos.github.io/)**
 2. Sign in with Google once and add products (the app then opens instantly, and reconnects to Drive in the background)
 3. On phone: **Add to Home screen**
 
@@ -217,7 +217,7 @@ Old POS is an open-source project released under the **[MIT License](LICENSE)**.
 - Google sign-in is optional and saves one backup file (EsyPOS-Backup.json) in **your** Drive and cannot see other files.
 - Camera (barcode) and Bluetooth (printer) are used only when needed.
 
-[Full Privacy Policy](https://oldpos.com/privacy.html)
+[Full Privacy Policy](https://oldpos.github.io/privacy.html)
 
 ## Terms
 
@@ -225,7 +225,7 @@ Old POS is an open-source project released under the **[MIT License](LICENSE)**.
 - You are responsible for backups and the accuracy of your records.
 - Tax / VAT figures are a guide only.
 
-[Full Terms of Service](https://oldpos.com/terms.html)
+[Full Terms of Service](https://oldpos.github.io/terms.html)
 
 ## Owner
 

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-  <url><loc>https://oldpos.com/</loc><lastmod>2026-10-30</lastmod><changefreq>weekly</changefreq><priority>1.0</priority>
-    <image:image><image:loc>https://oldpos.com/assets/icons/og-image.png</image:loc><image:title>Old POS – Free Offline POS Software</image:title></image:image></url>
-  <url><loc>https://oldpos.com/features.html</loc><lastmod>2026-10-30</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://oldpos.com/privacy.html</loc><lastmod>2026-10-30</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
-  <url><loc>https://oldpos.com/terms.html</loc><lastmod>2026-10-30</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
-  <url><loc>https://oldpos.com/license.html</loc><lastmod>2026-10-30</lastmod><changefreq>yearly</changefreq><priority>0.2</priority></url>
+  <url><loc>https://oldpos.github.io/</loc><lastmod>2026-10-26</lastmod><changefreq>weekly</changefreq><priority>1.0</priority>
+    <image:image><image:loc>https://oldpos.github.io/assets/icons/og-image.png</image:loc><image:title>Old POS – Free Offline POS Software</image:title></image:image></url>
+  <url><loc>https://oldpos.github.io/features.html</loc><lastmod>2026-10-26</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://oldpos.github.io/privacy.html</loc><lastmod>2026-10-26</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://oldpos.github.io/terms.html</loc><lastmod>2026-10-26</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://oldpos.github.io/license.html</loc><lastmod>2026-10-26</lastmod><changefreq>yearly</changefreq><priority>0.2</priority></url>
 </urlset>
