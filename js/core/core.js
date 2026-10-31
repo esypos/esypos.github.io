@@ -108,8 +108,27 @@
     });
     migrate();
   }
+  /* Security: record ids end up inside inline handlers (onclick="Receipt.showId('…')"). A tampered backup / cloud file could carry an id like
+     "');alert(1);//" → stored XSS. Every id-like field is therefore forced to a safe alphabet when data is loaded or restored. The same
+     replacement is applied everywhere, so references between records (customerId, saleId, items[].id…) keep matching. */
+  const BAD_ID = /[^A-Za-z0-9_.:@-]/;
+  const fixId = v => (typeof v === 'string' && (BAD_ID.test(v) || v.length > 80)) ? v.slice(0, 80).replace(/[^A-Za-z0-9_.:@-]/g, '_') : v;
+  function sanitizeIds(rec) {
+    let ch = false;
+    if (!rec || typeof rec !== 'object') return ch;
+    for (const k in rec) {
+      if (k === 'id' || k === 'key' || /Id$/.test(k)) { const n = fixId(rec[k]); if (n !== rec[k]) { rec[k] = n; ch = true; } }
+    }
+    if (Array.isArray(rec.items)) rec.items.forEach(it => { if (sanitizeIds(it)) ch = true; });
+    return ch;
+  }
   function migrate() {
     let changed = false;
+    ['products', 'sales', 'customers', 'payments', 'suppliers', 'purchases', 'spayments', 'expenses', 'returns', 'hold', 'cart'].forEach(k => {
+      const a = DB[k]; if (!Array.isArray(a)) return;
+      let bad = false; a.forEach(r => { if (sanitizeIds(r)) bad = true; });
+      if (bad) { changed = true; try { save(k); } catch (_) {} }
+    });
     DB.products.forEach(p => {
       if (p.track === undefined) { p.track = true; changed = true; }
       if (p.expiry === undefined) { p.expiry = ''; changed = true; }

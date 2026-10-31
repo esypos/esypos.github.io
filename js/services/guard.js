@@ -218,27 +218,33 @@
   const ABACUS = 'https://abacus.jasoncameron.dev', NS_ = 'oldpos.github.io', TOTAL = 'total-users';
   const CAPI = 'https://api.counterapi.dev/v1/esypos-github-io';
   const pick = j => { const v = j && (j.count !== undefined ? j.count : j.value !== undefined ? j.value : j.data && (j.data.up_count !== undefined ? j.data.up_count : j.data.count)); const n = parseInt(v, 10); return isNaN(n) ? 0 : n; };
-  async function hitJSON(url, ctl) { const r = await fetch(url, { signal: ctl.signal, cache: 'no-store' }); if (!r.ok) return 0; return pick(await r.json()); }
-  async function viaCounters(dev, ctl, canReg) {
-    const dk = 'dev-' + dev, reg = LS.get('esypos_uc_dev') === dev || !canReg, legacy = LS.get('esypos_uc_reg') === '1';   // only real, signed-in devices are ever added to the total
+  async function hitJSON(url) {                       // one request = its own timeout, so a slow first request can no longer cancel the next one
+    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 8000);
+    try { const r = await fetch(url, { signal: ctl.signal, cache: 'no-store' }); if (!r.ok) return 0; return pick(await r.json()); }
+    finally { clearTimeout(to); }
+  }
+  /* v12.1.2 counter rules (fixes under- and over-counting):
+     1. ONE source of truth (Abacus) decides whether a device is new. The old fallback counted the same device again on a second service → inflated total.
+     2. A device whose own counter was created but whose total-increment failed is remembered (esypos_uc_pend) and retried; before, it was lost forever.
+     3. The number shown never goes down because a fallback service returned a smaller value. */
+  async function viaCounters(dev, canReg) {
+    const dk = 'dev-' + dev, done = LS.get('esypos_uc_dev') === dev || !canReg, legacy = LS.get('esypos_uc_reg') === '1';
     let total = 0;
-    if (!reg) {
-      // 1) touch this device's own counter. 1 = never seen before anywhere; >1 = this device was already counted.
-      let n = 0;
-      try { n = await hitJSON(ABACUS + '/hit/' + NS_ + '/' + dk, ctl); } catch (_) {}
-      if (!n) { try { n = await hitJSON(CAPI + '/' + dk + '/up', ctl); } catch (_) {} }
+    if (!done) {
+      const pend = LS.get('esypos_uc_pend') === dev;
+      let n = pend ? 1 : 0;
+      if (!pend) { try { n = await hitJSON(ABACUS + '/hit/' + NS_ + '/' + dk); } catch (_) {} }
       if (n) {
-        const fresh = n === 1 && !legacy;          // installs counted by older versions are not counted twice
-        if (fresh) {
-          try { total = await hitJSON(ABACUS + '/hit/' + NS_ + '/' + TOTAL, ctl); } catch (_) {}
-          if (!total) { try { total = await hitJSON(CAPI + '/' + TOTAL + '/up', ctl); } catch (_) {} }
-          if (total) { LS.set('esypos_uc_dev', dev); try { window.Users && Users.noteJoin(); } catch (_) {} }   // only remembered once the total really went up (retried next time otherwise)
-        } else LS.set('esypos_uc_dev', dev);
+        if (n === 1 && !legacy) {
+          LS.set('esypos_uc_pend', dev);                       // survives a failed request / closed tab → retried next time
+          try { total = await hitJSON(ABACUS + '/hit/' + NS_ + '/' + TOTAL); } catch (_) {}
+          if (total) { LS.set('esypos_uc_dev', dev); try { localStorage.removeItem('esypos_uc_pend'); } catch (_) {} try { window.Users && Users.noteJoin(); } catch (_) {} }
+        } else { LS.set('esypos_uc_dev', dev); }              // already counted before (or counted by an older version)
       }
     }
     if (!total) {
-      try { total = await hitJSON(ABACUS + '/get/' + NS_ + '/' + TOTAL, ctl); } catch (_) {}
-      if (!total) { try { total = await hitJSON(CAPI + '/' + TOTAL + '/', ctl); } catch (_) {} }
+      try { total = await hitJSON(ABACUS + '/get/' + NS_ + '/' + TOTAL); } catch (_) {}
+      if (!total) { try { total = await hitJSON(CAPI + '/' + TOTAL + '/'); } catch (_) {} }
     }
     return total;
   }
@@ -254,8 +260,8 @@
         const r2 = await fetch(b + '/devices.json?shallow=true', { signal: ctl.signal });
         if (r2.ok) { const j = await r2.json(); LS.set('esypos_uc', String(j ? Object.keys(j).length : 0)); }
       } else {
-        const n = await viaCounters(dev, ctl, canReg);
-        if (n) LS.set('esypos_uc', String(n));
+        const n = await viaCounters(dev, canReg), old = parseInt(LS.get('esypos_uc') || '0', 10) || 0;
+        if (n && n >= old) LS.set('esypos_uc', String(n));          // counters only ever grow: ignore a smaller answer from a fallback service
       }
     } catch (_) { /* offline or blocked: keep the last known number */ }
     clearTimeout(to); pill(); if (window.Users) Users.paint();

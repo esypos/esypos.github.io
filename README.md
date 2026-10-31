@@ -62,7 +62,7 @@ Old POS is an open-source project released under the **[MIT License](LICENSE)**.
 ## Live user counter (optional)
 Old POS shows **Total users** in the menu. Tap it to open the **Users** page: total users, new users per day and visits per day for the last 30 days. Only signed-in, real devices are counted; one device is one user. No name, e-mail, shop data, country or city is collected or looked up.
 
-Without any setup the counters work through free public counters (daily history starts from v12.1.1). For exact history of every user, use your own Firebase database:
+Without any setup the counters work through free public counters (daily history starts from v12.1.1; v12.1.2 fixes under-counting). For exact history of every user, use your own Firebase database:
 
 1. Create a Firebase Realtime Database and paste its URL (no trailing slash) into `userCounterUrl` in `js/core/config.js`.
 2. Use these database rules:

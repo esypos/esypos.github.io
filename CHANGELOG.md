@@ -2,6 +2,12 @@
 
 All notable changes to Old POS. Latest first.
 
+## v12.1.2 — Total-users fix, security hardening, offline-cache fix
+- **Total users counter fixed.** (1) Device id is now random: the old id was a hash of screen/CPU/GPU traits, so phones of the same model got the *same* id and were counted as one user. Existing devices keep their stored id. (2) If the device counter was created but the total could not be raised (offline / request failed) the device was never counted; it is now remembered and retried. (3) The old fallback service counted the same device a second time; registration now uses one service only. (4) The shown number can no longer drop because a fallback returned a smaller value. (5) Each request has its own timeout.
+- **Security: stored-XSS via backup / cloud / local-copy restore.** Record ids were placed inside inline `onclick` handlers without validation. All id fields (`id`, `key`, `*Id`, item ids) are now forced to `A-Za-z0-9_.:@-` on every load and restore (references stay consistent).
+- **Fixed: offline cache wiped on every start.** `pwa.js` had `CACHE_VERSION v12.1.0` while `sw.js` was `v12.1.1`, so `clearOldCaches()` deleted the live cache. Both are now `v12.1.2`.
+- **UI:** tap targets ≥ 36px, captions wrap instead of being cut, media never wider than the screen, reduced-motion support.
+
 ## v12.1.1 — Users history, simpler design, fixes
 - **Active now removed** from the menu, sidebar and Users page (no heartbeat any more → less network use and battery).
 - **Users page rebuilt**: total users + a 30-day chart of **new users per day** and **visits per day** (tap a bar to see the day). The country / city section, the "not switched on" notice and the Countries card are gone; the network-address location lookup is removed.

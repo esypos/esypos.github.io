@@ -162,3 +162,16 @@ html body table th{font-size:11.5px;letter-spacing:.05em;text-transform:uppercas
   html body .view>h1,html body .view .page-title{letter-spacing:-.02em}
   html body .main{background:transparent}
 }
+
+/* v12.1.2 — touch targets ≥ 36px (invisible padding only, layout unchanged), readable captions, no clipped text */
+.uc-s{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.35}
+.usr-tabs button{min-height:36px}
+.usr-head .btn,.usr-rf{min-height:36px}
+.wc-all{min-height:36px}
+.link-btn{min-height:36px;min-width:36px;justify-content:center}
+@media (pointer:coarse){.icon-btn{min-width:40px;min-height:40px}}
+/* never let a long name / number push a card wider than the screen */
+.wr-m,.usr-card>div{min-width:0}.wr-m b,.wr-m small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+img,video,canvas,svg{max-width:100%}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}

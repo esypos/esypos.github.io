@@ -90,7 +90,10 @@
       const cached = LS.get('oldpos_dev') || CK.get('oldpos_dev') || await IDB.get('dev');
       const ok = v => typeof v === 'string' && /^[a-f0-9]{32}$/.test(v);
       let id = ok(cached) ? cached : null;
-      if (!id) id = (await sha256hex(traits())).slice(0, 32);
+      if (!id) {                                           // v12.1.2: random id. The old id was a hash of screen/CPU/GPU traits, so identical phones (same model) got the SAME id and were counted as one user.
+        try { const b = new Uint8Array(16); crypto.getRandomValues(b); id = Array.from(b, x => x.toString(16).padStart(2, '0')).join(''); }
+        catch (_) { id = (await sha256hex(traits() + Date.now() + Math.random())).slice(0, 32); }
+      }
       LS.set('oldpos_dev', id); CK.set('oldpos_dev', id, 3650); IDB.set('dev', id);   // keep in three places
       return id;
     })();
