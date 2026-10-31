@@ -2,6 +2,12 @@
 
 All notable changes to Old POS. Latest first.
 
+## v12.1.4 — Exact user counter
+- **Exact counting with Firebase** (`userCounterUrl` + `firebase-rules.json`): one Google account = one user (SHA-256 fingerprint, e-mail never stored). Registration is a single atomic update accepted by the rules only when the user does not exist, so the total rises exactly once per user — parallel tabs, several phones, data wipes, re-installs and failed/retried requests cannot double-count. Total and daily history are plain counters (no scanning of all users).
+- Previously counted devices are recorded but not added again (`userCountOffset` carries the old number).
+- Users page shows which mode is active (Exact / Approximate).
+- Privacy Policy updated.
+
 ## v12.1.3 — Second audit pass
 - **Fixed:** Privacy, Terms, License and Features pages scrolled sideways on 320px phones (long links); text now wraps.
 - **Security:** product images are accepted only as in-app data images; a tampered backup can no longer point the app at remote URLs.

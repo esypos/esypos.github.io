@@ -256,9 +256,9 @@
       if (!dev) throw new Error('no device id');
       const canReg = !!(window.Users && Users.real());          // v12.1: visitors, bots and signed-out devices are never counted
       if (b) {                                              // optional: your own Firebase database (exact, one record per real device)
-        if (window.Users) await Users.sync();
-        const r2 = await fetch(b + '/devices.json?shallow=true', { signal: ctl.signal });
-        if (r2.ok) { const j = await r2.json(); LS.set('esypos_uc', String(j ? Object.keys(j).length : 0)); }
+        if (window.Users) await Users.sync();             // registers this account once (atomic), then reads the exact total
+        const r2 = await fetch(b + '/stats/total.json', { signal: ctl.signal, cache: 'no-store' });
+        if (r2.ok) { const j = await r2.json(); if (typeof j === 'number') LS.set('esypos_uc', String(j)); }
       } else {
         const n = await viaCounters(dev, canReg), old = parseInt(LS.get('esypos_uc') || '0', 10) || 0;
         if (n && n >= old) LS.set('esypos_uc', String(n));          // counters only ever grow: ignore a smaller answer from a fallback service

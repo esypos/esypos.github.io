@@ -62,17 +62,15 @@ Old POS is an open-source project released under the **[MIT License](LICENSE)**.
 ## Live user counter (optional)
 Old POS shows **Total users** in the menu. Tap it to open the **Users** page: total users, new users per day and visits per day for the last 30 days. Only signed-in, real devices are counted; one device is one user. No name, e-mail, shop data, country or city is collected or looked up.
 
-Without any setup the counters work through free public counters (daily history starts from v12.1.1; v12.1.2 fixes under-counting). For exact history of every user, use your own Firebase database:
+Without any setup the counters use free public services (approximate: they can be reset or go offline). For an **exact** count use your own free Firebase database — one Google account = one user, counted exactly once even on several phones, after clearing data or re-installing:
 
-1. Create a Firebase Realtime Database and paste its URL (no trailing slash) into `userCounterUrl` in `js/core/config.js`.
-2. Use these database rules:
-```json
-{"rules":{
-  "devices":{".read":true,".indexOn":["l","t"],"$id":{".write":"$id.matches(/^[a-f0-9]{32}$/)",".validate":"newData.hasChildren(['l'])","t":{".validate":"newData.isNumber() && (!data.exists() || data.val()==newData.val())"},"l":{".validate":"newData.isNumber()"},"$o":{".validate":false}}},
-  "visits":{".read":true,".indexOn":["$key"],"$day":{"$id":{".write":"$id.matches(/^[a-f0-9]{32}$/)",".validate":"newData.val()==1"}}}
-}}
-```
-Use `userCountOffset` to subtract devices counted by older versions.
+1. Firebase console → *Build → Realtime Database → Create database*.
+2. *Rules* tab → paste the whole content of `firebase-rules.json` → *Publish*. (Rules accept only "create this user once" and "+1" updates, so nothing can be deleted or lowered from the app.)
+3. Copy the database URL (no trailing slash) into `userCounterUrl` in `js/core/config.js`.
+4. Put the number you show today into `userCountOffset` so the total continues from it. Users counted before are recorded but not added again.
+5. Open the app signed in → **Users** page should say *Exact counter*.
+
+Anyone who reads the app code can still call a public database directly, so the counter is exact for normal use, not tamper-proof. Firebase App Check can be added later for that.
 
 ## Privacy
 

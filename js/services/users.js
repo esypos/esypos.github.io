@@ -43,17 +43,50 @@
     const today = dayKey(Date.now()); if (LS.get('esypos_vd') === today) return;
     const dev = window.Safety ? await Safety.deviceId() : null; if (!dev) return;
     const b = base();
-    const ok = b ? await jsend('PUT', b + '/visits/' + today + '/' + dev + '.json', 1) : !!(await jget(ABACUS + '/hit/' + NS_ + '/visit-' + today, 8000));
+    const ok = b ? await fbVisit(dev, today) : !!(await jget(ABACUS + '/hit/' + NS_ + '/visit-' + today, 8000));
     if (ok) LS.set('esypos_vd', today);
   }
+  /* ---- exact mode (Firebase, v12.1.3) ----
+     One USER = one Google account. The key is SHA-256("oldpos:" + e-mail) — the e-mail itself is never sent or stored. Clearing data, a new phone,
+     a second device or a re-install all map to the same key, and two phones of the same model can never collide.
+     Every change is ONE atomic multi-path update that the database rules only accept when the user record does not exist yet, so the total
+     goes up exactly once per user, even with parallel tabs/devices, retries or flaky networks (a rejected/duplicate write changes nothing). */
+  async function fbGet(url) {                           // {ok:false} = network/permission problem · {ok:true, v:null} = the record really does not exist
+    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 9000);
+    try { const r = await fetch(url, { signal: ctl.signal, cache: 'no-store' }); if (!r.ok) return { ok: false }; return { ok: true, v: await r.json() }; } catch (_) { return { ok: false }; } finally { clearTimeout(to); }
+  }
+  const INC = { '.sv': { increment: 1 } };
+  async function sha256hex(str) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)); return Array.from(new Uint8Array(b), x => x.toString(16).padStart(2, '0')).join(''); }
+  async function userKey(dev) {
+    try { const em = (LS.get('esypos_g_email') || '').trim().toLowerCase(); if (em && em.indexOf('@') > 0 && window.crypto && crypto.subtle) return await sha256hex('oldpos:' + em); } catch (_) {}
+    return (dev + dev).slice(0, 64);                     // no e-mail / no crypto: fall back to the device id (still unique, never collides)
+  }
   async function fbRegister(dev) {
-    const b = base(), first = LS.get('esypos_uc_dev') !== dev;
-    const ok = first ? await jsend('PATCH', b + '/devices/' + dev + '.json', { t: Date.now(), l: Date.now() }) : await jsend('PATCH', b + '/devices/' + dev + '.json', { l: Date.now() });
-    if (ok) LS.set('esypos_uc_dev', dev);
+    const b = base(), uid = await userKey(dev), now = Date.now(), day = dayKey(now);
+    if (LS.get('esypos_uc_uid') === uid) {              // already registered: only refresh "last seen" (at most once per day)
+      if (LS.get('esypos_uc_seen') !== day && await jsend('PATCH', b + '/users/' + uid + '.json', { l: now })) LS.set('esypos_uc_seen', day);
+      return;
+    }
+    const known = await fbGet(b + '/users/' + uid + '/t.json');               // registered earlier from another device / before a data wipe?
+    if (!known.ok) return;                                                   // network problem → try again next time (never guess)
+    if (typeof known.v === 'number') { LS.set('esypos_uc_uid', uid); return; }
+    // devices counted by older versions are already inside the number the owner keeps in userCountOffset → record them, but do not add them again
+    const legacy = LS.get('esypos_uc_reg') === '1' || !!LS.get('esypos_uc_dev');
+    const upd = { ['users/' + uid]: { t: now, l: now, d: dev.slice(0, 8), g: legacy ? 1 : 0 } };
+    if (!legacy) { upd['stats/total'] = INC; upd['daily/' + day + '/j'] = INC; }
+    if (await jsend('PATCH', b + '/.json', upd)) LS.set('esypos_uc_uid', uid);
+    else { const t2 = await fbGet(b + '/users/' + uid + '/t.json'); if (t2.ok && typeof t2.v === 'number') LS.set('esypos_uc_uid', uid); }   // lost a race with another device → already counted
+  }
+  async function fbVisit(dev, today) {
+    const b = base(), uid = await userKey(dev);
+    const ok = await jsend('PATCH', b + '/.json', { ['visits/' + today + '/' + uid]: 1, ['daily/' + today + '/v']: INC });
+    if (ok) return true;
+    const ex = await fbGet(b + '/visits/' + today + '/' + uid + '.json');        // rejected because it already exists = already counted today
+    return ex.ok && ex.v === 1;
   }
   async function fbTotal() {
-    const j = await jget(base() + '/devices.json?shallow=true', 9000);
-    if (j && typeof j === 'object') LS.set('esypos_uc', String(Object.keys(j).length));
+    const r = await fbGet(base() + '/stats/total.json');
+    if (r.ok) LS.set('esypos_uc', String(typeof r.v === 'number' ? r.v : 0));
   }
 
   /* ---- history for the Users page ---- */
@@ -62,12 +95,9 @@
     const days = lastDays(), b = base(), ck = 'esypos_h_' + kind;
     try { const c = JSON.parse(LS.get(ck) || 'null'); if (c && Date.now() - c.t < 120000 && c.d0 === days[0]) return c.v; } catch (_) {}
     let counts = days.map(() => 0), okAny = false;
-    if (b && kind === 'join') {
-      const d = await jget(b + '/devices.json?orderBy=%22t%22&startAt=' + (Date.now() - (DAYS + 1) * 864e5), 12000);
-      if (d && typeof d === 'object') { okAny = true; Object.values(d).forEach(x => { const i = x && x.t ? days.indexOf(dayKey(x.t)) : -1; if (i >= 0) counts[i]++; }); }
-    } else if (b) {
-      const d = await jget(b + '/visits.json?orderBy=%22%24key%22&startAt=%22' + days[0] + '%22', 12000);
-      if (d && typeof d === 'object') { okAny = true; days.forEach((k, i) => { counts[i] = d[k] ? Object.keys(d[k]).length : 0; }); }
+    if (b) {
+      const d = await jget(b + '/daily.json?orderBy=%22%24key%22&startAt=%22' + days[0] + '%22', 12000);
+      if (d && typeof d === 'object') { okAny = true; days.forEach((k, i) => { counts[i] = (d[k] && parseInt(d[k][kind === 'join' ? 'j' : 'v'], 10)) || 0; }); }
     } else {
       const prefix = kind === 'join' ? 'joined-' : 'visit-';
       const res = await Promise.all(days.map(k => jget(ABACUS + '/get/' + NS_ + '/' + prefix + k, 7000)));
@@ -79,7 +109,7 @@
   }
 
   const Users = window.Users = {
-    real, paint,
+    real, paint, exact() { return !!base(); }, userKey,
     open() { try { if (window.App) { App.closeDrawers(); App.go('users'); } } catch (_) {} },
     /* called by guard.js when this device was counted for the very first time */
     async noteJoin() {
@@ -106,7 +136,7 @@
       const my = ++seq, el = document.getElementById('view'); if (!el) return;
       const total = (parseInt(LS.get('esypos_uc') || '0', 10) || 0) + (parseInt(cfg().userCountOffset, 10) || 0);
       el.innerHTML = `<div class="usr">
-        <div class="usr-head"><p>New users and visits over the last ${DAYS} days.</p><button type="button" class="btn btn-sm usr-rf" onclick="App.Views.users.render()"><i class="fas fa-rotate"></i> Refresh</button></div>
+        <div class="usr-head"><p>New users and visits over the last ${DAYS} days.<br><small class=\"usr-mode\">${base() ? 'Exact counter · one Google account = one user' : 'Free public counter · approximate. Add a Firebase database in config.js for an exact count.'}</small></p><button type="button" class="btn btn-sm usr-rf" onclick="App.Views.users.render()"><i class="fas fa-rotate"></i> Refresh</button></div>
         <div class="usr-cards" id="usr-cards"><div class="usr-card"><div><div class="uc-k">Total users</div><div class="uc-v">${total > 0 ? fmt(total) : '—'}</div></div></div></div>
         <section class="usr-panel"><header><div class="usr-tabs" role="tablist"><button type="button" role="tab" data-t="join" class="${tab === 'join' ? 'on' : ''}">New users</button><button type="button" role="tab" data-t="visit" class="${tab === 'visit' ? 'on' : ''}">Visits</button></div><span id="usr-sum"></span></header>
         <div id="usr-chart" class="usr-chart"><div class="usr-loading"><span class="ld-ring"></span> Loading…</div></div></section></div>`;
@@ -116,7 +146,7 @@
         const cur = tab === 'join' ? j : v, cards = document.getElementById('usr-cards'), chart = document.getElementById('usr-chart'), sum = document.getElementById('usr-sum');
         if (!cards || !chart) return;
         const sumOf = a => a ? a.reduce((s, x) => s + x.n, 0) : 0, today = j && j.length ? j[j.length - 1].n : 0;
-        cards.innerHTML = card('Total users', total > 0 ? fmt(total) : '—', 'All signed-in devices') + card('Joined in ' + DAYS + ' days', j ? fmt(sumOf(j)) : '—', 'New users') + card('Joined today', j ? fmt(today) : '—', 'New users') + card('Visits today', v && v.length ? fmt(v[v.length - 1].n) : '—', 'Devices that opened the app');
+        cards.innerHTML = card('Total users', total > 0 ? fmt(total) : '—', 'All users') + card('Joined in ' + DAYS + ' days', j ? fmt(sumOf(j)) : '—', 'New users') + card('Joined today', j ? fmt(today) : '—', 'New users') + card('Visits today', v && v.length ? fmt(v[v.length - 1].n) : '—', 'Devices that opened the app');
         sum.textContent = cur ? fmt(sumOf(cur)) + ' in ' + DAYS + ' days' : '';
         chart.innerHTML = cur ? bars(cur, tab === 'join' ? 'new user' : 'visit') : '<div class="usr-empty"><h3>Could not load</h3><p>Check your internet connection and tap Refresh.</p></div>';
         wire(chart);

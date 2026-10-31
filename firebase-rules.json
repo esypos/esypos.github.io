@@ -1,0 +1,39 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "stats": {
+      "total": {
+        ".read": true,
+        ".write": "newData.isNumber() && newData.val() === (data.exists() ? data.val() + 1 : 1)"
+      }
+    },
+    "users": {
+      "$uid": {
+        ".write": "$uid.matches(/^[a-f0-9]{64}$/) && newData.exists() && (!data.exists() || newData.child('t').val() === data.child('t').val())",
+        ".validate": "newData.hasChildren(['t', 'l'])",
+        "t": { ".validate": "newData.isNumber()" },
+        "l": { ".validate": "newData.isNumber()" },
+        "d": { ".validate": "newData.isString() && newData.val().length <= 8" },
+        "g": { ".validate": "newData.val() === 0 || newData.val() === 1" },
+        "$other": { ".validate": false }
+      }
+    },
+    "visits": {
+      "$day": {
+        "$uid": {
+          ".write": "$day.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) && $uid.matches(/^[a-f0-9]{64}$/) && !data.exists()",
+          ".validate": "newData.val() === 1"
+        }
+      }
+    },
+    "daily": {
+      ".read": true,
+      "$day": {
+        "$k": {
+          ".write": "$day.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) && ($k === 'j' || $k === 'v') && newData.isNumber() && newData.val() === (data.exists() ? data.val() + 1 : 1)"
+        }
+      }
+    }
+  }
+}
