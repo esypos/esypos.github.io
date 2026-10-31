@@ -8,5 +8,9 @@ window.PROPOS_CONFIG = {
   userCounterUrl: '',
   // Added to the Firebase total. When you switch to Firebase, put the number shown today here (e.g. 1250): users already counted before are
   // recorded but NOT added again. With the free counters it can be negative to remove old duplicates (e.g. -120).
-  userCountOffset: 0
+  userCountOffset: 0,
+  // ADMIN PANEL (Vercel): paste the https address of your Vercel admin project, e.g. 'https://oldpos-admin.vercel.app' (no trailing slash).
+  // The app keeps running from GitHub; this only lets the admin panel send maintenance / announcement / update / block settings to it.
+  // Empty = remote control is OFF and nothing is sent. Setup steps: admin-vercel/README.md
+  controlUrl: ''
 };

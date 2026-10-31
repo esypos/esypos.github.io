@@ -1,11 +1,11 @@
-/* Old POS Service Worker (v11.9.1)
+/* Old POS Service Worker (v12.2.0)
    - Cache-first app shell, versioned per release, so the app opens instantly with or without a network.
    - Atomic install: if any CRITICAL file cannot be cached, the install fails and the previous working version keeps running.
    - Self-repair: the page can ask the worker to re-download any missing shell file (message 'REPAIR').
    - Security headers: every page served by this worker carries frame-ancestors 'none', nosniff, a strict referrer policy
      and a Permissions-Policy that only allows the camera (barcode scan) and Bluetooth (printer) for this app.
    App data lives in localStorage + the user's Google Drive; this cache only holds the app files. */
-const CACHE_VERSION = 'v12.1.4';
+const CACHE_VERSION = 'v12.2.0';
 const APP_CACHE = `oldpos-app-${CACHE_VERSION}`;
 
 const CRITICAL = [
@@ -14,7 +14,7 @@ const CRITICAL = [
   './fonts/inter-latin-var.woff2', './fonts/fa-solid-subset.woff2', './fonts/fa-brands-subset.woff2',
   './js/core/core.js', './js/core/barcode.js', './js/core/wedge.js', './js/core/linear.js', './js/core/ui.js', './js/core/config.js',
   './js/modules/app.js', './js/modules/people.js', './js/modules/misc.js', './js/modules/home.js', './js/modules/settings.js',
-  './js/services/cloud.js', './js/services/guard.js', './js/services/labelprinter.js', './js/services/pwa.js', './js/services/security.js', './js/services/safety.js', './js/services/appshell.js', './js/services/community.js', './js/services/users.js',
+  './js/services/cloud.js', './js/services/guard.js', './js/services/labelprinter.js', './js/services/pwa.js', './js/services/security.js', './js/services/safety.js', './js/services/appshell.js', './js/services/community.js', './js/services/users.js', './js/services/remote.js',
   './assets/icons/icon-192.png', './assets/icons/icon-512.png', './assets/icons/maskable-512.png', './assets/icons/apple-touch-icon.png'
 ];
 const OPTIONAL = [

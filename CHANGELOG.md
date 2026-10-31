@@ -2,6 +2,13 @@
 
 All notable changes to Old POS. Latest first.
 
+## v12.2.0 — Admin panel (Vercel) remote control
+- **New `js/services/remote.js`:** the app still runs from GitHub Pages, but when `controlUrl` (js/core/config.js) points to the Vercel admin project it reads settings from it: maintenance notice / lock, announcement banner, minimum version (force update) and user block. Empty `controlUrl` = completely off.
+- Safe by design: a server or network error never locks the app (last saved settings are used); locked / blocked users can always tap **Download my data**; nothing is deleted.
+- Only an anonymous SHA-256 user key and the app version are sent (never the e-mail).
+- CSP `connect-src` allows `https://*.vercel.app`; service worker and PWA cache `v12.2.0` (remote.js is in the offline shell).
+- New companion project: `oldpos-admin/` (Vercel serverless API + admin panel). See its README.
+
 ## v12.1.4 — Exact user counter
 - **Exact counting with Firebase** (`userCounterUrl` + `firebase-rules.json`): one Google account = one user (SHA-256 fingerprint, e-mail never stored). Registration is a single atomic update accepted by the rules only when the user does not exist, so the total rises exactly once per user — parallel tabs, several phones, data wipes, re-installs and failed/retried requests cannot double-count. Total and daily history are plain counters (no scanning of all users).
 - Previously counted devices are recorded but not added again (`userCountOffset` carries the old number).

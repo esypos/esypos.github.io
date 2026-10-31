@@ -72,9 +72,12 @@ Without any setup the counters use free public services (approximate: they can b
 
 Anyone who reads the app code can still call a public database directly, so the counter is exact for normal use, not tamper-proof. Firebase App Check can be added later for that.
 
+## Admin panel (optional, Vercel)
+The app keeps running from GitHub Pages. A separate Vercel project (`oldpos-admin`) gives the owner an admin panel: maintenance mode, announcements, forced update and user block / unblock. Set `controlUrl` in `js/core/config.js` to enable it (empty = off). The app then sends only an anonymous SHA-256 user key and its version. Network errors never lock the app, and locked users can always download their own data.
+
 ## Privacy
 
-- Data stays on **your device**. No backend server, no analytics, no ads.
+- Data stays on **your device**. No analytics, no ads. (Only if the owner enables the optional admin panel, an anonymous user key and the app version are sent to the owner's control server; shop data never is.)
 - Google sign-in is optional and saves one backup file (EsyPOS-Backup.json) in **your** Drive and cannot see other files.
 - Camera (barcode) and Bluetooth (printer) are used only when needed.
 
