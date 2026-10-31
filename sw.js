@@ -5,7 +5,7 @@
    - Security headers: every page served by this worker carries frame-ancestors 'none', nosniff, a strict referrer policy
      and a Permissions-Policy that only allows the camera (barcode scan) and Bluetooth (printer) for this app.
    App data lives in localStorage + the user's Google Drive; this cache only holds the app files. */
-const CACHE_VERSION = 'v12.1.0';
+const CACHE_VERSION = 'v12.1.1';
 const APP_CACHE = `oldpos-app-${CACHE_VERSION}`;
 
 const CRITICAL = [

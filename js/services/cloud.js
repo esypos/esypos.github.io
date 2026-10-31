@@ -321,7 +321,7 @@
     switch (S.status) {
       case 'ok': return { t: 'Secured in cloud', long: 'Synced' + (timeOf() ? ' · ' + timeOf() : ''), c: 'ok', i: 'fa-cloud' };
       case 'pending': return { t: 'Sync pending', long: 'Changes waiting to sync', c: 'pending', i: 'fa-cloud-arrow-up' };
-      case 'syncing': return { t: 'Syncing', long: 'Syncing…', c: 'spin', i: 'fa-rotate' };
+      case 'syncing': return { t: 'Syncing', long: 'Syncing…', c: 'syncing', i: 'fa-rotate' };
       case 'auth': return { t: 'Reconnect', long: 'Reconnect to Google to sync — tap here', c: 'pending pulse', i: 'fa-link-slash' };
       case 'offline': return { t: 'Offline', long: 'Offline — will sync when online', c: 'pending', i: 'fa-wifi' };
       case 'error': return { t: 'Sync failed', long: 'Sync failed — try again', c: 'err', i: 'fa-triangle-exclamation' };

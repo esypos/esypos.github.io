@@ -2,6 +2,13 @@
 
 All notable changes to Old POS. Latest first.
 
+## v12.1.1 — Users history, simpler design, fixes
+- **Active now removed** from the menu, sidebar and Users page (no heartbeat any more → less network use and battery).
+- **Users page rebuilt**: total users + a 30-day chart of **new users per day** and **visits per day** (tap a bar to see the day). The country / city section, the "not switched on" notice and the Countries card are gone; the network-address location lookup is removed.
+- **Fixed: "Syncing" text spinning** around the Google account card and the Backup button. A global `.spin` loader class was being applied to the whole label; the status class is now `syncing` and only the icon turns.
+- **Simpler design across the app**: flat cards with a thin border, no heavy shadows or gradients, calmer title bar and dashboard.
+- Privacy Policy and README updated; service-worker cache bumped to v12.1.1.
+
 ## v12.1.0 — Professional dashboard, real-user counter, Active users & Users page
 - **Desktop title bar** now shows only the page name (the shop name next to *Dashboard*, *Sales*… is gone).
 - **Dashboard greeting strip redesigned** to match the software: time-of-day icon with *Good morning / afternoon / evening / night*, shop name, and three clear info blocks — today’s date, **last sale (time + “x min ago”)** and **bills today**. Same layout on phone.

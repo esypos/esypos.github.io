@@ -60,17 +60,19 @@ Old POS is an open-source project released under the **[MIT License](LICENSE)**.
 3. On phone: **Add to Home screen**
 
 ## Live user counter (optional)
-Old POS can show **Total users**, **Active now** and a **Users** page (countries and cities). Only signed-in, real devices are counted; one device is one user. Each device stores a random anonymous ID, its country and city (from the network address), the device type and its last-seen time — no name, e-mail or shop data.
+Old POS shows **Total users** in the menu. Tap it to open the **Users** page: total users, new users per day and visits per day for the last 30 days. Only signed-in, real devices are counted; one device is one user. No name, e-mail, shop data, country or city is collected or looked up.
+
+Without any setup the counters work through free public counters (daily history starts from v12.1.1). For exact history of every user, use your own Firebase database:
 
 1. Create a Firebase Realtime Database and paste its URL (no trailing slash) into `userCounterUrl` in `js/core/config.js`.
 2. Use these database rules:
 ```json
 {"rules":{
-  "devices":{".read":true,".indexOn":["l","t"],"$id":{".write":"$id.matches(/^[a-f0-9]{32}$/)",".validate":"newData.hasChildren(['l'])","t":{".validate":"newData.isNumber() && (!data.exists() || data.val()==newData.val())"},"l":{".validate":"newData.isNumber()"},"c":{".validate":"newData.isString() && newData.val().length<=2"},"cn":{".validate":"newData.isString() && newData.val().length<=60"},"ci":{".validate":"newData.isString() && newData.val().length<=60"},"p":{".validate":"newData.isString() && newData.val().length<=12"},"$o":{".validate":false}}},
-  "presence":{".read":true,".indexOn":["t"],"$id":{".write":"$id.matches(/^[a-f0-9]{32}$/)",".validate":"newData.hasChildren(['t'])","t":{".validate":"newData.isNumber()"},"c":{".validate":"newData.isString() && newData.val().length<=2"},"ci":{".validate":"newData.isString() && newData.val().length<=60"},"$o":{".validate":false}}}
+  "devices":{".read":true,".indexOn":["l","t"],"$id":{".write":"$id.matches(/^[a-f0-9]{32}$/)",".validate":"newData.hasChildren(['l'])","t":{".validate":"newData.isNumber() && (!data.exists() || data.val()==newData.val())"},"l":{".validate":"newData.isNumber()"},"$o":{".validate":false}}},
+  "visits":{".read":true,".indexOn":["$key"],"$day":{"$id":{".write":"$id.matches(/^[a-f0-9]{32}$/)",".validate":"newData.val()==1"}}}
 }}
 ```
-Without `userCounterUrl`, the total and a live active count still work through free public counters, but the Users page cannot list countries. Use `userCountOffset` to subtract devices counted by older versions.
+Use `userCountOffset` to subtract devices counted by older versions.
 
 ## Privacy
 

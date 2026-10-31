@@ -73,7 +73,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Old POS">
-    <link rel="icon" href="favicon.ico?v=12.1.0" sizes="any">
+    <link rel="icon" href="favicon.ico?v=12.1.1" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16.png">
     <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
@@ -81,12 +81,12 @@
 
     <link rel="preload" href="fonts/inter-latin-var.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="fonts/fa-solid-subset.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="css/icons.css?v=12.1.0">
+    <link rel="stylesheet" href="css/icons.css?v=12.1.1">
     <style>.hidden{display:none!important}.drawer{position:fixed;top:0;height:100%;transition:transform .28s}.drawer.left{left:0;transform:translateX(-100%)}.drawer.right{right:0;transform:translateX(100%)}.drawer.open{transform:none}</style>
-    <link rel="stylesheet" href="css/style.css?v=12.1.0">
-    <link rel="stylesheet" href="css/appshell.css?v=12.1.0">
-    <link rel="stylesheet" href="css/modern.css?v=12.1.0">
-    <link rel="stylesheet" href="css/polish.css?v=12.1.0">
+    <link rel="stylesheet" href="css/style.css?v=12.1.1">
+    <link rel="stylesheet" href="css/appshell.css?v=12.1.1">
+    <link rel="stylesheet" href="css/modern.css?v=12.1.1">
+    <link rel="stylesheet" href="css/polish.css?v=12.1.1">
 </head>
 <body data-view="pos">
 
@@ -125,7 +125,7 @@
 
 <!-- Desktop sidebar -->
 <aside class="sidebar" id="sidebar">
-    <div class="brand brand-v2"><div class="brand-top"><div class="logo"><img class="logo-img" src="assets/icons/icon-192.png" alt="Old POS" draggable="false"></div><div class="fw7 brand-name">Old POS</div></div><div class="brand-stats"><button type="button" class="bs-row bs-total" onclick="window.Users&&Users.open()" title="See who uses Old POS" aria-label="Total users — open details"><i class="fas fa-users"></i><span>Total users</span><b class="js-ucount">—</b><i class="fas fa-chevron-right bs-go"></i></button><div class="bs-row bs-live" title="Users online right now"><span class="live-dot"></span><span>Active now</span><b class="js-acount">—</b></div></div></div>
+    <div class="brand brand-v2"><div class="brand-top"><div class="logo"><img class="logo-img" src="assets/icons/icon-192.png" alt="Old POS" draggable="false"></div><div class="fw7 brand-name">Old POS</div></div><div class="brand-stats"><button type="button" class="bs-row bs-total" onclick="window.Users&&Users.open()" title="See who uses Old POS" aria-label="Total users — open details"><i class="fas fa-users"></i><span>Total users</span><b class="js-ucount">—</b><i class="fas fa-chevron-right bs-go"></i></button></div></div>
     <nav class="nav" id="nav-desk"></nav>
     <div class="side-foot">
         <div class="js-acct"></div>
@@ -149,7 +149,7 @@
 
 <!-- Mobile Menu -->
 <aside id="mobile-nav" class="drawer left">
-    <div class="brand brand-v2"><div class="brand-top"><div class="logo"><img class="logo-img" src="assets/icons/icon-192.png" alt="Old POS" draggable="false"></div><div class="fw7 brand-name grow">Old POS</div><button class="icon-btn" onclick="App.closeDrawers()" aria-label="Close menu"><i class="fas fa-xmark"></i></button></div><div class="brand-stats"><button type="button" class="bs-row bs-total" onclick="window.Users&&Users.open()" title="See who uses Old POS" aria-label="Total users — open details"><i class="fas fa-users"></i><span>Total users</span><b class="js-ucount">—</b><i class="fas fa-chevron-right bs-go"></i></button><div class="bs-row bs-live" title="Users online right now"><span class="live-dot"></span><span>Active now</span><b class="js-acount">—</b></div></div></div>
+    <div class="brand brand-v2"><div class="brand-top"><div class="logo"><img class="logo-img" src="assets/icons/icon-192.png" alt="Old POS" draggable="false"></div><div class="fw7 brand-name grow">Old POS</div><button class="icon-btn" onclick="App.closeDrawers()" aria-label="Close menu"><i class="fas fa-xmark"></i></button></div><div class="brand-stats"><button type="button" class="bs-row bs-total" onclick="window.Users&&Users.open()" title="See who uses Old POS" aria-label="Total users — open details"><i class="fas fa-users"></i><span>Total users</span><b class="js-ucount">—</b><i class="fas fa-chevron-right bs-go"></i></button></div></div>
     <nav class="nav" id="nav-mob"></nav>
     <div class="side-foot">
         <div class="js-acct" onclick="App.closeDrawers()"></div>
@@ -186,25 +186,25 @@
 </section>
 
 
-<script defer src="js/core/core.js?v=12.1.0"></script>
-<script defer src="js/core/barcode.js?v=12.1.0"></script>
-<script defer src="js/core/wedge.js?v=12.1.0"></script>
-<script defer src="js/core/linear.js?v=12.1.0"></script>
-<script defer src="js/core/ui.js?v=12.1.0"></script>
-<script defer src="js/modules/app.js?v=12.1.0"></script>
-<script defer src="js/modules/people.js?v=12.1.0"></script>
-<script defer src="js/modules/misc.js?v=12.1.0"></script>
-<script defer src="js/modules/home.js?v=12.1.0"></script>
-<script defer src="js/modules/settings.js?v=12.1.0"></script>
-<script defer src="js/services/labelprinter.js?v=12.1.0"></script>
-<script defer src="js/services/guard.js?v=12.1.0"></script>
-<script defer src="js/services/security.js?v=12.1.0"></script>
-<script defer src="js/services/safety.js?v=12.1.0"></script>
-<script defer src="js/core/config.js?v=12.1.0"></script>
-<script defer src="js/services/cloud.js?v=12.1.0"></script>
-<script defer src="js/services/appshell.js?v=12.1.0"></script>
-<script defer src="js/services/community.js?v=12.1.0"></script>
-<script defer src="js/services/users.js?v=12.1.0"></script>
-<script defer src="js/services/pwa.js?v=12.1.0"></script>
+<script defer src="js/core/core.js?v=12.1.1"></script>
+<script defer src="js/core/barcode.js?v=12.1.1"></script>
+<script defer src="js/core/wedge.js?v=12.1.1"></script>
+<script defer src="js/core/linear.js?v=12.1.1"></script>
+<script defer src="js/core/ui.js?v=12.1.1"></script>
+<script defer src="js/modules/app.js?v=12.1.1"></script>
+<script defer src="js/modules/people.js?v=12.1.1"></script>
+<script defer src="js/modules/misc.js?v=12.1.1"></script>
+<script defer src="js/modules/home.js?v=12.1.1"></script>
+<script defer src="js/modules/settings.js?v=12.1.1"></script>
+<script defer src="js/services/labelprinter.js?v=12.1.1"></script>
+<script defer src="js/services/guard.js?v=12.1.1"></script>
+<script defer src="js/services/security.js?v=12.1.1"></script>
+<script defer src="js/services/safety.js?v=12.1.1"></script>
+<script defer src="js/core/config.js?v=12.1.1"></script>
+<script defer src="js/services/cloud.js?v=12.1.1"></script>
+<script defer src="js/services/appshell.js?v=12.1.1"></script>
+<script defer src="js/services/community.js?v=12.1.1"></script>
+<script defer src="js/services/users.js?v=12.1.1"></script>
+<script defer src="js/services/pwa.js?v=12.1.1"></script>
 </body>
 </html>

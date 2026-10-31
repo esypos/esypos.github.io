@@ -232,7 +232,7 @@
         if (fresh) {
           try { total = await hitJSON(ABACUS + '/hit/' + NS_ + '/' + TOTAL, ctl); } catch (_) {}
           if (!total) { try { total = await hitJSON(CAPI + '/' + TOTAL + '/up', ctl); } catch (_) {} }
-          if (total) LS.set('esypos_uc_dev', dev);   // only remembered once the total really went up (retried next time otherwise)
+          if (total) { LS.set('esypos_uc_dev', dev); try { window.Users && Users.noteJoin(); } catch (_) {} }   // only remembered once the total really went up (retried next time otherwise)
         } else LS.set('esypos_uc_dev', dev);
       }
     }

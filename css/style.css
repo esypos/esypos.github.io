@@ -185,7 +185,7 @@ ol.guide{padding-left:20px;margin:0;line-height:1.75}ol.guide li{margin-bottom:6
 .sync-chip.ok{color:var(--ok);background:var(--oksoft);border-color:transparent}
 .sync-chip.pending{color:var(--warn);background:var(--warnsoft);border-color:transparent}
 .sync-chip.err{color:var(--bad);background:var(--badsoft);border-color:transparent}
-.sync-chip.spin i,.sync-line.spin i,small.spin i{animation:spin 1s linear infinite}
+.sync-chip.syncing i,.sync-line.syncing i,small.syncing i{animation:spin 1s linear infinite;display:inline-block}
 .sync-chip.pulse{animation:chipPulse 1.6s ease-in-out infinite}
 @media(max-width:380px){.sync-chip .lbl{display:none}}
 .acct{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:1px solid var(--border);background:var(--card);border-radius:16px;color:var(--text);font:inherit;text-align:left;cursor:pointer;transition:transform .15s,box-shadow .15s}
