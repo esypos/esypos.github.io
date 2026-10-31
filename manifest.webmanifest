@@ -40,31 +40,52 @@
   "screenshots": [
     {
       "src": "assets/screenshots/02-dashboard.png",
-      "sizes": "405x900",
+      "sizes": "810x1800",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Dashboard"
     },
     {
       "src": "assets/screenshots/03-products.png",
-      "sizes": "405x900",
+      "sizes": "810x1800",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Products and stock"
     },
     {
       "src": "assets/screenshots/04-customers.png",
-      "sizes": "405x900",
+      "sizes": "810x1800",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Customers and due"
     },
     {
       "src": "assets/screenshots/08-reports.png",
-      "sizes": "405x900",
+      "sizes": "810x1800",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Reports"
+    },
+    {
+      "src": "assets/screenshots/desktop-02-dashboard.png",
+      "sizes": "1440x900",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Dashboard"
+    },
+    {
+      "src": "assets/screenshots/desktop-11-users.png",
+      "sizes": "1440x900",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Users"
+    },
+    {
+      "src": "assets/screenshots/desktop-03-products.png",
+      "sizes": "1440x900",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Products and stock"
     }
   ],
   "display_override": [
