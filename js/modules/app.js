@@ -403,7 +403,8 @@
       const need = {}; DB.cart.forEach(it => { const k = it.productId || it.id; need[k] = (need[k] || 0) + it.qty; });
       for (const it of DB.cart) { const k = it.productId || it.id; const p = findProduct(k); if (p && p.track !== false && p.stock < need[k]) { this._busy = false; toast('⚠️ ' + p.name + ' has insufficient stock!'); return; } }
       const cust = findCustomer(this.customerId);
-      const proceed = () => {
+      const proceed = () => { try { proceed_(); } catch (e) { this._busy = false; console.error(e); toast('⚠️ Sale could not be completed — please try again'); } };   // v12.1.3: an error can no longer leave the POS stuck on "busy"
+      const proceed_ = () => {
         DB.cart.forEach(it => { const p = findProduct(it.productId || it.id); if (p && p.track !== false) p.stock = r2(p.stock - it.qty); });
         const sale = {
           id: genId(), no: DB.settings.nextInvoice++, pre: DB.settings.invPrefix || '', date: new Date().toISOString(), customerId: this.customerId || null,

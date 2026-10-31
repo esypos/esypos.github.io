@@ -169,6 +169,7 @@
   const imgCache = new Map();
   function imgSrc(p) {
     const d = p && p.image; if (!d) return '';
+    if (typeof d !== 'string' || !/^data:image\/(png|jpe?g|webp|gif);/i.test(d)) return '';   // v12.1.3: images are only ever created in-app as data URLs; a tampered backup can no longer make the app load remote URLs (tracking) or odd schemes
     if (typeof d !== 'string' || d.slice(0, 5) !== 'data:' || typeof Blob === 'undefined' || !root.URL || !root.URL.createObjectURL) return d;
     const hit = imgCache.get(p.id); if (hit && hit.d === d) return hit.u;
     try {

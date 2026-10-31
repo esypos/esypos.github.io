@@ -1,4 +1,4 @@
-# Old POS v12.1.2 — Audit Report
+# Old POS v12.1.3 — Audit Report (pass 1: v12.1.2, pass 2: v12.1.3)
 
 ## Fixed
 | # | Area | Problem (root cause) | Fix |
@@ -16,3 +16,8 @@
 
 ## Not verified
 Real Google sign-in/Drive backup, live Abacus service, camera/barcode scanner, label printers, Safari/Firefox, real phones. Old inflated total: use `userCountOffset` in js/core/config.js. Free public counters can be reset or removed by their owner; a Firebase `userCounterUrl` is the reliable option. Devices that cleared all site data before this version may still be counted twice.
+
+## Pass 2 (v12.1.3)
+Fixed: privacy/terms/license/features pages overflowed sideways at 320px; product image field accepted any URL from a tampered backup (now data:image only); an error inside sale completion could leave the POS stuck on "busy" (now recovers with a message).
+Tested: 8 pages × 4 widths; ~160 controls clicked across 10 views at 360px and 1280px with seeded data (no errors, no modal overflow); sale test (totals, stock deduction, overselling blocked); load 289 ms locally, 29 requests, ~711 KB.
+Open risks (not changed, need a larger refactor): CSP still allows 'unsafe-inline' scripts because the UI uses inline onclick handlers; the Google access token (1 hour) is kept in localStorage; PIN lock is client-side only, so anyone with browser access to the device data can bypass it.

@@ -2,6 +2,12 @@
 
 All notable changes to Old POS. Latest first.
 
+## v12.1.3 — Second audit pass
+- **Fixed:** Privacy, Terms, License and Features pages scrolled sideways on 320px phones (long links); text now wraps.
+- **Security:** product images are accepted only as in-app data images; a tampered backup can no longer point the app at remote URLs.
+- **Stability:** an unexpected error while completing a sale no longer leaves the POS stuck on "busy"; the cashier sees a message and can retry.
+- Cache `v12.1.3` in `sw.js` and `pwa.js`.
+
 ## v12.1.2 — Total-users fix, security hardening, offline-cache fix
 - **Total users counter fixed.** (1) Device id is now random: the old id was a hash of screen/CPU/GPU traits, so phones of the same model got the *same* id and were counted as one user. Existing devices keep their stored id. (2) If the device counter was created but the total could not be raised (offline / request failed) the device was never counted; it is now remembered and retried. (3) The old fallback service counted the same device a second time; registration now uses one service only. (4) The shown number can no longer drop because a fallback returned a smaller value. (5) Each request has its own timeout.
 - **Security: stored-XSS via backup / cloud / local-copy restore.** Record ids were placed inside inline `onclick` handlers without validation. All id fields (`id`, `key`, `*Id`, item ids) are now forced to `A-Za-z0-9_.:@-` on every load and restore (references stay consistent).
